@@ -1,8 +1,9 @@
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
-import { Bell, CaretRight, CurrencyDollar, Eye, EyeClosed, Question, Tote, User, Wallet } from 'phosphor-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Bell, CallBell, CaretRight, CurrencyDollar, Eye, EyeClosed, Question, ShoppingBag, User, Wallet } from 'phosphor-react-native';
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() { 
   const [showBalance, setShowBalance] = useState(true);
@@ -66,25 +67,81 @@ export default function HomeScreen() {
         {/* CONTEÚDO PRINCIPAL (CLARO) */}
         <View style={styles.mainContent}>
           
+          {/* Wallet Banner */}
           <View style={styles.walletBanner}>
             <View>
               <Text style={styles.walletTitle}>Carteira</Text>
-              <Text style={styles.walletDesc}>Lorem Ipsum, Lorem Ipsum.</Text>
+              <Text style={styles.walletDesc}>Acesse sua carteira</Text>
             </View>
-            <Wallet size={32} color={colors.text.light} />
+            <Wallet size={32} color={colors.text.light} weight="bold" />
           </View>
 
+          {/* Action Grid */}
           <View style={styles.actionGrid}>
             <View style={styles.actionCard}>
-              <Tote size={28} color={colors.text.dark} style={{ marginBottom: 16 }} />
-              <Text style={styles.actionCardTitle}>Travelshop</Text>
-              <Text style={styles.actionCardDesc}>Reserve sua Viagem</Text>
+              <ShoppingBag size={28} color={colors.text.dark} style={{ marginBottom: 16 }} weight="bold" />
+              <View>
+                <Text style={styles.actionCardTitle}>Travelshop</Text>
+                <Text style={styles.actionCardDesc}>Reserve sua viagem</Text>
+              </View>
             </View>
             <View style={styles.actionCard}>
-              <CurrencyDollar size={28} color={colors.text.dark} style={{ marginBottom: 16 }} />
-              <Text style={styles.actionCardTitle}>Assinaturas</Text>
-              <Text style={styles.actionCardDesc}>Gerencie suas Assinaturas</Text>
+              <CurrencyDollar size={28} color={colors.text.dark} style={{ marginBottom: 16 }} weight="bold" />
+              <View>
+                <Text style={styles.actionCardTitle}>Assinaturas</Text>
+                <Text style={styles.actionCardDesc}>Gerencie suas assinaturas</Text>
+              </View>
             </View>
+          </View>
+
+          {/* Assistant Card */}
+          <View style={styles.assistantCard}>
+            <View>
+              <Text style={styles.assistantTitle}>Assistente de Viagem</Text>
+              <Text style={styles.assistantDesc}>Converse com a Bia</Text>
+            </View>
+            <CallBell size={28} color={colors.text.dark} weight="fill" />
+          </View>
+
+          {/* Next Trip Ideas */}
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>Inspirações de Viagem</Text>
+              <Text style={styles.sectionSubtitle}>Experiências selecionadas</Text>
+            </View>
+            <TouchableOpacity>
+              <Text style={styles.viewAllLink}>VER TUDO</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.tripCard}>
+            <View style={styles.tripImageContainer}>
+              <Image 
+                source={{ uri: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?q=80&w=800&auto=format&fit=crop' }} 
+                style={styles.tripImage} 
+              />
+              {/* 👇 2. Adicione o LinearGradient AQUI (entre a imagem e o texto) */}
+              <LinearGradient
+                // Cores: Começa preto com 60% de opacidade e vai para preto transparente
+                // Ajuste a opacidade (0.6) para controlar a escuridão
+                colors={['rgba(0,0,0,0.75)', 'rgba(0,0,0,0)']}
+                // Posição das cores: [início, fim]
+                // 0.0 é o início do gradiente (na borda inferior, pois definimos start=[0, 1])
+                // 1.0 é o fim (transparente)
+                locations={[0.0, 1.0]} 
+                // Início e Fim da transição (x, y) - de baixo para cima
+                start={[0, 1]} // Canto inferior esquerdo (y=1 é baixo)
+                end={[0, 0]}   // Canto superior esquerdo (y=0 é cima)
+                style={styles.tripGradient}
+              >
+                  {/* 👇 3. Mova o texto para dentro do LinearGradient ou coloque-o no mesmo nível, mas DEPOIS */}
+                  <View style={styles.tripTag}>
+                    <Text style={styles.tripTagText}>VERÃO 2026</Text>
+                  </View>
+              </LinearGradient>
+            </View>
+            <Text style={styles.tripTitle}>Arquipélago das Maldivas</Text>
+            <Text style={styles.tripDesc}>Experimente a simetria arquitetônica do litoral italiano. Uma jornada curada por Positano e Ravello com foco em geometria e patrimônio.</Text>
           </View>
 
         </View>
@@ -102,12 +159,13 @@ const styles = StyleSheet.create({
   darkHeader: {
     backgroundColor: colors.background.dark,
     padding: 24,
-    paddingTop: 42, // Espaço extra para a status bar
+    paddingTop: 38, // Espaço extra para a status bar
+    paddingBottom: 15,
   },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 22,
+    marginBottom: 15,
   },
   topIconsRight: {
     flexDirection: 'row',
@@ -117,17 +175,19 @@ const styles = StyleSheet.create({
     color: colors.text.light,
     fontSize: 20,
     fontFamily: fonts.bold,
-    marginBottom: 18,
+    letterSpacing: -0.5,
+    marginBottom: 15,
     textTransform: 'uppercase',
   },
   balanceSection: {
-    marginBottom: 18,
+    marginBottom: 15,
   },
   balanceLabel: {
     color: colors.text.muted,
     fontSize: 15,
     fontFamily: fonts.regular,
-    marginBottom: -12,
+    letterSpacing: 0.9,
+    marginBottom: -13,
   },
   balanceRow: {
     flexDirection: 'row',
@@ -139,6 +199,7 @@ const styles = StyleSheet.create({
     color: colors.text.light,
     fontSize: 45,
     fontFamily: fonts.bold,
+    letterSpacing: -0.5,
   },
   currency: {
     fontSize: 24,
@@ -152,17 +213,20 @@ const styles = StyleSheet.create({
     color: colors.text.muted,
     fontSize: 15,
     fontFamily: fonts.regular,
+    letterSpacing: -0.5,
   },
   statementLink: {
     color: colors.brand.primary,
     fontSize: 12,
     fontFamily: fonts.bold,
+    letterSpacing: 0.9,
     textTransform: 'uppercase',
   },
   highlightsLabel: {
     color: colors.text.muted,
     fontSize: 15,
     fontFamily: fonts.regular,
+    letterSpacing: 0.9,
     marginBottom: 10,
   },
   highlightsContainer: {
@@ -176,6 +240,8 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     marginRight: 16,
     width: 240,
+    marginTop: -5,
+    marginBottom: -5,
   },
   highlightTitle: {
     color: colors.text.light,
@@ -196,10 +262,11 @@ const styles = StyleSheet.create({
   },
   mainContent: {
     padding: 24,
+    marginTop: -12,
   },
-  walletBanner: {
+   walletBanner: {
     backgroundColor: colors.brand.primary,
-    padding: 24,
+    padding: 19 ,
     borderRadius: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -208,34 +275,149 @@ const styles = StyleSheet.create({
   },
   walletTitle: {
     color: colors.text.light,
-    fontSize: 20,
+    fontSize: 17,
     fontFamily: fonts.bold,
+    letterSpacing: -0.5,
   },
   walletDesc: {
     color: colors.text.light,
     opacity: 0.8,
-    fontSize: 12,
+    fontSize: 10,
+    fontFamily: fonts.regular,
     marginTop: -5,
   },
   actionGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     gap: 16,
+    marginBottom: 16,
   },
   actionCard: {
     backgroundColor: colors.background.cardLight,
     flex: 1,
-    padding: 20,
+    padding: 9,
     borderRadius: 0,
+    minHeight: 130,
+    justifyContent: 'space-between',
   },
   actionCardTitle: {
-    color: colors.text.dark,
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: fonts.bold,
+    color: colors.text.dark,
+    letterSpacing: -0.5,
+    marginBottom: -2,
   },
   actionCardDesc: {
+    fontSize: 11,
+    fontFamily: fonts.regular,
     color: colors.text.muted,
+    marginTop: 0,
+  },
+  assistantCard: {
+    backgroundColor: colors.background.cardLight,
+    padding: 19,
+    borderRadius: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  assistantTitle: {
+    fontSize: 17,
+    fontFamily: fonts.bold,
+    color: colors.text.dark,
+    letterSpacing: -0.5,
+    marginBottom: -5,
+  },
+  assistantDesc: {
+    fontSize: 11,
+    fontFamily: fonts.regular,
+    color: colors.text.muted,
+    marginTop: 0,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 15,
+  },
+  sectionTitle: {
+    fontSize: 21,
+    fontFamily: fonts.bold,
+    color: colors.text.dark,
+    letterSpacing: -0.9,
+    marginBottom: -5,
+  },
+  sectionSubtitle: {
     fontSize: 12,
-    marginTop: -5,
-  }
+    fontFamily: fonts.bold,
+    letterSpacing: 0.2,
+    color: colors.text.muted,
+  },
+  viewAllLink: {
+    fontSize: 12,
+    fontFamily: fonts.bold,
+    color: colors.brand.primary,
+    letterSpacing: -0.5,
+    textTransform: 'uppercase',
+  },
+  tripCard: {
+    marginBottom: 32,
+  },
+  tripImageContainer: {
+    width: '100%',
+    height: 400,
+    borderRadius: 0,
+    overflow: 'hidden',
+    backgroundColor: '#E5E5E5',
+    marginBottom: 10,
+  },
+  tripImage: {
+    width: '100%',
+    height: '100%',
+  },
+  // 👇 4. Novo Estilo para o Gradiente
+  tripGradient: {
+    // Posicionamento absoluto para cobrir a imagem
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 10, // Pode cobrir toda a imagem ou apenas a parte inferior ajustando a altura
+    bottom: 0, 
+    // Altura opcional se quiser cobrir apenas a parte inferior (ex: 40% da altura do container)
+    // height: '40%', 
+    // bottom: 0, // posiciona na parte inferior
+    
+    // Garante que o conteúdo dentro dele (a tag) seja alinhado corretamente
+    justifyContent: 'flex-end', // Alinha a tag na parte inferior do gradiente
+    paddingBottom: 20, // Espaço extra abaixo da tag
+  },
+  tripTag: {
+    // Removemos o posicionamento absoluto da tag, pois agora ela é alinhada pelo gradiente
+    // position: 'absolute',
+    // bottom: 20,
+    // left: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginLeft: 20,
+    marginRight: 'auto',
+  },
+  tripTagText: {
+    color: colors.text.light,
+    fontSize: 10,
+    fontFamily: fonts.bold,
+  },
+  tripTitle: {
+    fontSize: 24,
+    fontFamily: fonts.bold,
+    color: colors.text.dark,
+    letterSpacing: -0.9,
+    marginBottom: 8,
+  },
+  tripDesc: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: '#444',
+    lineHeight: 20,
+  },
 });

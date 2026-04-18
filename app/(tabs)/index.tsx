@@ -23,7 +23,7 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          <Text style={styles.greeting}>Olá, Elmo</Text>
+          <Text style={styles.greeting}>Olá, Fabio</Text>
 
           <View style={styles.balanceSection}>
             <Text style={styles.balanceLabel}>Saldo Disponível</Text>

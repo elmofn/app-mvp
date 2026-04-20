@@ -1,29 +1,43 @@
-import { colors } from '@/src/theme/colors';
-import { fonts } from '@/src/theme/typography';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Bell, CallBell, CaretRight, CurrencyDollar, Eye, EyeClosed, Question, ShoppingBag, User, Wallet } from 'phosphor-react-native';
+import { StatusBar } from 'expo-status-bar';
+import { CallBell, CurrencyDollar, Eye, EyeClosed, ShoppingBag, Wallet } from 'phosphor-react-native';
 import React, { useState } from 'react';
 import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+import Animated, { useAnimatedScrollHandler, useSharedValue, } from 'react-native-reanimated';
+
+import { TopBar } from '@/src/components/Topbar';
+import { colors } from '@/src/theme/colors';
+import { fonts } from '@/src/theme/typography';
 
 export default function HomeScreen() { 
   const [showBalance, setShowBalance] = useState(true);
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        
-        {/* HEADER ESCURO */}
-        <View style={styles.darkHeader}>
-          <View style={styles.topBar}>
-            <CaretRight size={24} color={colors.text.light} />
-            <View style={styles.topIconsRight}>
-              <Question size={24} color={colors.text.light} />
-              <Bell size={24} color={colors.text.light} />
-              <User size={24} color={colors.text.light} />
-            </View>
-          </View>
+  const scrollY = useSharedValue(0);
 
-          <Text style={styles.greeting}>Olá, Fabio</Text>
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  return (
+  <SafeAreaView style={styles.container}>
+    <StatusBar style="light" />
+    
+    {/* ScrollView vem PRIMEIRO. 
+       A TopBar vem DEPOIS, para garantir que fique na camada superior.
+    */}
+    <Animated.ScrollView 
+      showsVerticalScrollIndicator={false}
+      onScroll={scrollHandler}
+      scrollEventThrottle={16}
+    >
+      <View style={styles.darkHeader}>
+        {/* Espaço para compensar a TopBar absoluta que está fixa no topo */}
+        <View style={{ height: 100 }} />
+
+          <Text style={styles.greeting}>Olá, Elmo</Text>
 
           <View style={styles.balanceSection}>
             <Text style={styles.balanceLabel}>Saldo Disponível</Text>
@@ -145,9 +159,13 @@ export default function HomeScreen() {
           </View>
 
         </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
+      </Animated.ScrollView>
+
+    {/* TopBar por último para garantir o Z-Index visual */}
+    <TopBar scrollY={scrollY} />
+
+  </SafeAreaView>
+);
 }
 
 // O StyleSheet substitui o CSS convencional
@@ -161,15 +179,6 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: 38, // Espaço extra para a status bar
     paddingBottom: 15,
-  },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 15,
-  },
-  topIconsRight: {
-    flexDirection: 'row',
-    gap: 16,
   },
   greeting: {
     color: colors.text.light,

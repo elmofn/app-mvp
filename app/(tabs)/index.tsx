@@ -10,20 +10,17 @@ import { TopBar } from '@/src/components/Topbar';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
-// 👇 1. Importamos os dados e a tipagem do nosso mock service
 import { fetchHomeData, HomeData } from '@/src/services/api';
 
 export default function HomeScreen() { 
   const [showBalance, setShowBalance] = useState(true);
   
-  // 👇 2. Estado para guardar os dados do backend
   const [data, setData] = useState<HomeData | null>(null);
 
   const scrollY = useSharedValue(0);
   const scrollViewRef = useRef<Animated.ScrollView>(null);
   const isForcingAnimation = useSharedValue(false);
 
-  // 👇 3. Dispara a requisição assim que a tela carrega
   useEffect(() => {
     fetchHomeData().then((response) => {
       setData(response);
@@ -55,7 +52,6 @@ export default function HomeScreen() {
     }, [])
   );
 
-  // 👇 4. Tela de Loading enquanto os dados não chegam (aqueles 800ms)
   if (!data) {
     return (
       <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -78,7 +74,6 @@ export default function HomeScreen() {
         <View style={styles.darkHeader}>
           <View style={{ height: 25 }} />
 
-          {/* 👇 5. Renderizando dados reais do usuário */}
           <Text style={styles.greeting}>Olá, {data.user.firstName}</Text>
 
           <View style={styles.balanceSection}>
@@ -107,7 +102,6 @@ export default function HomeScreen() {
           <Text style={styles.highlightsLabel}>Atividade da Conta</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.highlightsContainer}>
             
-            {/* 👇 6. Função Map iterando sobre as transações da API */}
             {data.recentTransactions.map((tx) => (
               <View key={tx.id} style={styles.highlightCard}>
                 <Text style={styles.highlightTitle}>{tx.title}</Text>
@@ -164,7 +158,6 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* 👇 7. Função Map iterando sobre as viagens da API */}
           {data.curatedTrips.map((trip) => (
             <View key={trip.id} style={styles.tripCard}>
               <View style={styles.tripImageContainer}>
@@ -195,7 +188,6 @@ export default function HomeScreen() {
   );
 }
 
-// O StyleSheet continua exatamente igual, sem nenhuma alteração.
 const styles = StyleSheet.create({
   container: {
     flex: 1,

@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { CaretLeft, ChatTeardropText, Phone, Plus } from 'phosphor-react-native';
+import { ArrowRight, CaretLeft, Robot, VideoCamera, WhatsappLogo } from 'phosphor-react-native';
 import React from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -11,64 +11,78 @@ export default function SupportScreen() {
   const router = useRouter();
 
   const faqs = [
-    { id: '1', question: 'COMO SOLICITO UM NOVO CARTÃO?' },
-    { id: '2', question: 'QUAL O LIMITE DE SAQUE NO EXTERIOR?' },
-    { id: '3', question: 'COMO FUNCIONA O SEGURO VIAGEM?' },
+    { id: '1', question: 'HOW DO I FREEZE MY PHYSICAL CARD?' },
+    { id: '2', question: 'TRAVEL INSURANCE COVERAGE LIMITS' },
+    { id: '3', question: 'INTERNATIONAL ATM WITHDRAWAL FEES' },
+    { id: '4', question: 'ADDING FUNDS VIA SWIFT TRANSFER' },
   ];
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
+      {/* Mantém a barra de status branca já que o topo é preto */}
+      <StatusBar style="light" /> 
       
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <CaretLeft size={28} color={colors.text.light} />
-        </TouchableOpacity>
-        <Text style={styles.title}>SUPPORT</Text>
-        <Text style={styles.subtitle}>ESTAMOS AQUI PARA AJUDAR VOCÊ EM QUALQUER LUGAR DO MUNDO.</Text>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
         
-        <View style={styles.contactGrid}>
+        {/* === SEÇÃO SUPERIOR ESCURA === */}
+        <View style={styles.headerSection}>
           
-          <View style={styles.contactCard}>
-            <View style={styles.cardHeader}>
-              <ChatTeardropText size={28} color={colors.text.light} weight="bold" />
-              <View style={styles.cardTextContent}>
-                <Text style={styles.cardTitle}>CONCIERGE 24/7</Text>
-                <Text style={styles.cardDesc}>FALE COM UM ESPECIALISTA AGORA MESMO.</Text>
-              </View>
-            </View>
-            <TouchableOpacity>
-              <Text style={styles.cardAction}>CHAT NOW</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backNav} activeOpacity={0.7}>
+            <CaretLeft size={16} color={colors.text.light} weight="bold" />
+            <Text style={styles.backNavText}>SUPPORT</Text>
+          </TouchableOpacity>
 
-          <View style={styles.contactCard}>
-            <View style={styles.cardHeader}>
-              <Phone size={28} color={colors.text.light} weight="bold" />
-              <View style={styles.cardTextContent}>
-                <Text style={styles.cardTitle}>CALL US</Text>
-                <Text style={styles.cardDesc}>NÚMEROS INTERNACIONAIS GRATUITOS.</Text>
-              </View>
-            </View>
-            <TouchableOpacity>
-              <Text style={styles.cardAction}>SEE NUMBERS</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.mainTitle}>How Can{'\n'}We Assist{'\n'}You?</Text>
 
+          <View style={styles.contactCards}>
+            
+            {/* Card 1: Whatsapp (Azul) */}
+            <TouchableOpacity style={[styles.card, styles.cardBlue]} activeOpacity={0.8}>
+              <View>
+                <Text style={[styles.cardTitle, { color: colors.text.light }]}>Whatsapp</Text>
+                <Text style={[styles.cardSubtitle, { color: colors.text.light }]}>DIRECT SUPPORT</Text>
+              </View>
+              <WhatsappLogo size={28} color={colors.text.light} weight="fill" />
+            </TouchableOpacity>
+
+            {/* Card 2: Video Call (Branco) */}
+            <TouchableOpacity style={[styles.card, styles.cardWhite]} activeOpacity={0.8}>
+              <View>
+                <Text style={[styles.cardTitle, { color: colors.text.dark }]}>Video Call</Text>
+                <Text style={[styles.cardSubtitle, { color: '#888888' }]}>VISUAL ASSISTANT</Text>
+              </View>
+              <VideoCamera size={28} color={colors.text.dark} weight="fill" />
+            </TouchableOpacity>
+
+            {/* Card 3: Travel Assistant (Branco) */}
+            <TouchableOpacity style={[styles.card, styles.cardWhite]} activeOpacity={0.8}>
+              <View>
+                <Text style={[styles.cardTitle, { color: colors.text.dark }]}>Travel Assistant</Text>
+                <Text style={[styles.cardSubtitle, { color: '#888888' }]}>AI ASSISTANT</Text>
+              </View>
+              <Robot size={28} color={colors.text.dark} weight="fill" />
+            </TouchableOpacity>
+
+          </View>
         </View>
 
+        {/* === SEÇÃO INFERIOR CLARA (FAQ) === */}
         <View style={styles.faqSection}>
-          <Text style={styles.faqTitle}>FAQ</Text>
-          
-          {faqs.map((faq) => (
-            <TouchableOpacity key={faq.id} style={styles.faqItem}>
-              <Text style={styles.faqQuestion}>{faq.question}</Text>
-              <Plus size={20} color={colors.text.light} weight="bold" />
-            </TouchableOpacity>
-          ))}
+          <Text style={styles.faqSubtitle}>KNOWLEDGE BASE</Text>
+          <Text style={styles.faqTitle}>FREQUENT{'\n'}QUESTIONS</Text>
+
+          <View style={styles.faqList}>
+            {faqs.map((faq) => (
+              <TouchableOpacity key={faq.id} style={styles.faqItem} activeOpacity={0.7}>
+                <Text style={styles.faqItemText}>{faq.question}</Text>
+                <ArrowRight size={20} color={colors.text.dark} weight="bold" />
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <TouchableOpacity style={styles.aboutAppButton} activeOpacity={0.7}>
+            <Text style={styles.aboutAppText}>ABOUT THE APP</Text>
+          </TouchableOpacity>
         </View>
 
       </ScrollView>
@@ -79,98 +93,122 @@ export default function SupportScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background.dark, // Previne que o overscroll no topo revele cor clara
+  },
+  
+  /* --- ESTILOS DO TOPO (ESCURO) --- */
+  headerSection: {
     backgroundColor: colors.background.dark,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 32,
   },
-  header: {
-    padding: 24,
-    paddingTop: 20,
+  backNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 40,
+    gap: 4,
   },
-  backButton: {
-    marginBottom: 32,
-    marginLeft: -8,
+  backNavText: {
+    color: colors.text.light,
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
-  title: {
+  mainTitle: {
     color: colors.text.light,
     fontSize: 42,
     fontFamily: fonts.bold,
-    letterSpacing: -2,
-    lineHeight: 42,
+    lineHeight: 44, // Equivalente ao 1.05 do CSS
+    marginBottom: 32,
+    letterSpacing: -1,
   },
-  subtitle: {
-    color: colors.text.muted,
-    fontSize: 12,
-    fontFamily: fonts.bold,
-    marginTop: 16,
-    letterSpacing: 0.5,
-    lineHeight: 18,
-    textTransform: 'uppercase',
+  contactCards: {
+    gap: 12,
   },
-  content: {
-    padding: 24,
-  },
-  contactGrid: {
-    gap: 16,
-    marginBottom: 48,
-  },
-  contactCard: {
-    backgroundColor: colors.background.cardDark,
-    padding: 24,
-    borderRadius: 4,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 16,
-    marginBottom: 24,
-  },
-  cardTextContent: {
-    flex: 1,
-    marginTop: 2,
-  },
-  cardTitle: {
-    color: colors.text.light,
-    fontSize: 16,
-    fontFamily: fonts.bold,
-    letterSpacing: 0.5,
-  },
-  cardDesc: {
-    color: colors.text.muted,
-    fontSize: 10,
-    fontFamily: fonts.bold,
-    marginTop: 6,
-    lineHeight: 14,
-    letterSpacing: 0.5,
-  },
-  cardAction: {
-    color: colors.brand.primary,
-    fontFamily: fonts.bold,
-    fontSize: 12,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  faqSection: {
-    marginTop: 10,
-  },
-  faqTitle: {
-    color: colors.text.light,
-    fontSize: 24,
-    fontFamily: fonts.bold,
-    marginBottom: 16,
-  },
-  faqItem: {
+  card: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    padding: 24,
+    borderRadius: 0,
   },
-  faqQuestion: {
-    color: colors.text.light,
-    fontSize: 13,
+  cardBlue: {
+    backgroundColor: '#1A56FF', // Azul vibrante do seu CSS
+  },
+  cardWhite: {
+    backgroundColor: colors.background.light, // Branco
+  },
+  cardTitle: {
+    fontSize: 22,
     fontFamily: fonts.bold,
-    flex: 1,
-    marginRight: 16,
-    letterSpacing: 0.5,
+    marginBottom: 4,
+    letterSpacing: -0.5,
+  },
+  cardSubtitle: {
+    fontSize: 9,
+    fontFamily: fonts.bold,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+
+  /* --- ESTILOS DA BASE (CLARO) --- */
+  faqSection: {
+    backgroundColor: '#F7F7F7', // Cinza bem claro do CSS
+    paddingHorizontal: 24,
+    paddingVertical: 40,
+    minHeight: 500, // Garante que preencha a tela em celulares grandes
+  },
+  faqSubtitle: {
+    color: '#1A56FF', // Azul da marca
+    fontSize: 10,
+    fontFamily: fonts.bold,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    marginBottom: 8,
+  },
+  faqTitle: {
+    color: colors.text.dark,
+    fontSize: 32,
+    fontFamily: fonts.bold,
+    lineHeight: 35, // Equivalente ao 1.1 do CSS
+    marginBottom: 32,
+    letterSpacing: -1,
+  },
+  faqList: {
+    gap: 12,
+  },
+  faqItem: {
+    backgroundColor: colors.background.light, // Cartão branco
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    // Sombra sutil como no CSS (box-shadow)
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 5,
+    elevation: 1, // Para Android
+  },
+  faqItemText: {
+    color: colors.text.dark,
+    fontSize: 14,
+    fontFamily: fonts.bold,
+    lineHeight: 19, // Equivalente ao 1.4
+    maxWidth: '85%',
+  },
+  aboutAppButton: {
+    backgroundColor: '#D1D1D1',
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    marginTop: 40,
+  },
+  aboutAppText: {
+    color: colors.text.dark,
+    fontSize: 18,
+    fontFamily: fonts.bold,
   },
 });

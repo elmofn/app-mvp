@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { CallBell, CurrencyDollar, Eye, EyeClosed, ShoppingBag, Wallet } from 'phosphor-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -13,6 +13,7 @@ import { fonts } from '@/src/theme/typography';
 import { fetchHomeData, HomeData } from '@/src/services/api';
 
 export default function HomeScreen() { 
+  const router = useRouter();
   const [showBalance, setShowBalance] = useState(true);
   
   const [data, setData] = useState<HomeData | null>(null);
@@ -72,7 +73,7 @@ export default function HomeScreen() {
         scrollEventThrottle={16}
       >
         <View style={styles.darkHeader}>
-          <View style={{ height: 25 }} />
+          <View style={{ height: 35 }} />
 
           <Text style={styles.greeting}>Olá, {data.user.firstName}</Text>
 
@@ -93,7 +94,7 @@ export default function HomeScreen() {
             </View>
             <View style={styles.balanceSubRow}>
               <Text style={styles.usdBalance}>{showBalance ? `US$ ${data.user.balanceUSD}` : 'US$ ••••••'}</Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/statement')}>
                 <Text style={styles.statementLink}>EXTRATO</Text>
               </TouchableOpacity>
             </View>
@@ -103,11 +104,16 @@ export default function HomeScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.highlightsContainer}>
             
             {data.recentTransactions.map((tx) => (
-              <View key={tx.id} style={styles.highlightCard}>
+              <TouchableOpacity 
+                key={tx.id} 
+                style={styles.highlightCard}
+                onPress={() => router.push('/statement')}
+                activeOpacity={0.7} // Dá um leve feedback visual ao tocar
+              >
                 <Text style={styles.highlightTitle}>{tx.title}</Text>
                 <Text style={styles.highlightDate}>{tx.dateLabel}</Text>
                 <Text style={styles.highlightAmount}>{tx.amount}</Text>
-              </View>
+              </TouchableOpacity>
             ))}
 
           </ScrollView>

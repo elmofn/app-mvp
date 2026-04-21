@@ -1,7 +1,8 @@
 import { colors } from '@/src/theme/colors';
+import { useRouter } from 'expo-router';
 import { Bell, CaretRight, Question, User } from 'phosphor-react-native';
 import React from 'react';
-import { Dimensions, StyleSheet } from 'react-native';
+import { Dimensions, StyleSheet, TouchableOpacity } from 'react-native';
 
 import Animated, { Extrapolation, interpolate, SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 
@@ -13,6 +14,7 @@ interface TopBarProps {
 }
 
 export function TopBar({ scrollY }: TopBarProps) {
+  const router = useRouter();
   // Distância do scroll em que a animação deve terminar (80 pixels)
   const SCROLL_DISTANCE = 150;
 
@@ -58,7 +60,9 @@ export function TopBar({ scrollY }: TopBarProps) {
       </Animated.View>
 
       <Animated.View style={[styles.topIconsRight, rightIconsStyle]}>
-        <Question size={24} color={colors.text.light} />
+        <TouchableOpacity onPress={() => router.push('/support')}>
+          <Question size={24} color={colors.text.light} />
+        </TouchableOpacity>
         <Bell size={24} color={colors.text.light} />
         <User size={24} color={colors.text.light} />
       </Animated.View>

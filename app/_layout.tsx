@@ -23,8 +23,8 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
-    'Helvetica-Regular': require('../assets/fonts/Helvetica-Regular.ttf'),
-    'Helvetica-Bold': require('../assets/fonts/Helvetica-Bold.ttf'),
+    'Helvetica-Regular': require('@/assets/fonts/Helvetica-Regular.ttf'),
+    'Helvetica-Bold': require('@/assets/fonts/Helvetica-Bold.ttf'),
     ...FontAwesome.font, // Mantido apenas para não quebrar telas do template antigo
   });
 

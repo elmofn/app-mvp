@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowRight, CaretLeft, Robot, VideoCamera, WhatsappLogo } from 'phosphor-react-native';
+import { ArrowLeft, ArrowRight, Robot, VideoCamera, WhatsappLogo } from 'phosphor-react-native';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,7 +29,7 @@ export default function SupportScreen() {
         <View style={styles.headerSection}>
           
           <TouchableOpacity onPress={() => router.back()} style={styles.backNav} activeOpacity={0.7}>
-            <CaretLeft size={16} color={colors.text.light} weight="bold" />
+            <ArrowLeft size={24} color={colors.text.light} weight="bold" />
             <Text style={styles.backNavText}>SUPPORT</Text>
           </TouchableOpacity>
 
@@ -101,20 +101,20 @@ const styles = StyleSheet.create({
   headerSection: {
     backgroundColor: colors.background.dark,
     paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingTop: 0,
     paddingBottom: 32,
   },
   backNav: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 35,
     gap: 4,
   },
   backNavText: {
     color: colors.text.light,
-    fontSize: 11,
+    fontSize: 18,
     fontFamily: fonts.bold,
-    letterSpacing: 0.5,
+    letterSpacing: - 0.5,
     textTransform: 'uppercase',
   },
   mainTitle: {

@@ -64,7 +64,7 @@ export default function StatementScreen() {
         scrollEventThrottle={16}
       >
         <View style={styles.darkHeader}>
-          <View style={{ height: 25 }} />
+          <View style={{ height: 0 }} />
 
           <Text style={styles.greeting}>Extrato</Text>
           <Text style={styles.subtitle}>Página em construção...</Text>

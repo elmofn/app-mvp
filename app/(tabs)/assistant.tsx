@@ -62,7 +62,7 @@ export default function AssistantScreen() {
         scrollEventThrottle={16}
       >
         <View style={styles.darkHeader}>
-          <View style={{ height: 25 }} />
+          <View style={{ height: 0 }} />
 
           <Text style={styles.greeting}>Assistente</Text>
           <Text style={styles.subtitle}>Página em construção...</Text>

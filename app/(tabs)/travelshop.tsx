@@ -63,7 +63,7 @@ export default function TravelshopScreen() {
         scrollEventThrottle={16}
       >
         <View style={styles.darkHeader}>
-          <View style={{ height: 25 }} />
+          <View style={{ height: 0 }} />
 
           <Text style={styles.greeting}>TravelShop</Text>
           <Text style={styles.subtitle}>Página em construção...</Text>

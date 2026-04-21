@@ -2,27 +2,36 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { CallBell, CurrencyDollar, Eye, EyeClosed, ShoppingBag, Wallet } from 'phosphor-react-native';
-import React, { useCallback, useRef, useState } from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { TopBar } from '@/src/components/Topbar';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
+// 👇 1. Importamos os dados e a tipagem do nosso mock service
+import { fetchHomeData, HomeData } from '@/src/services/api';
+
 export default function HomeScreen() { 
   const [showBalance, setShowBalance] = useState(true);
+  
+  // 👇 2. Estado para guardar os dados do backend
+  const [data, setData] = useState<HomeData | null>(null);
 
   const scrollY = useSharedValue(0);
-
   const scrollViewRef = useRef<Animated.ScrollView>(null);
-
   const isForcingAnimation = useSharedValue(false);
+
+  // 👇 3. Dispara a requisição assim que a tela carrega
+  useEffect(() => {
+    fetchHomeData().then((response) => {
+      setData(response);
+    });
+  }, []);
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
-      // Só escuta o ScrollView se NÃO estivermos forçando a animação de entrada
       if (!isForcingAnimation.value) {
         scrollY.value = event.contentOffset.y;
       }
@@ -32,20 +41,12 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       if (scrollY.value > 0) {
-        // CENÁRIO 1: A tela já estava rolada, então usamos a rolagem nativa para subir.
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
       } else {
-        // CENÁRIO 2: Mudança de aba.
-        
-        // Ativa o escudo para o ScrollView não atrapalhar
         isForcingAnimation.value = true; 
-        
-        // Coloca a barra preta imediatamente
         scrollY.value = 150;
-
-        // Espera um pentelhésimo de segundo para a transição do menu do celular terminar
+        
         setTimeout(() => {
-          // Faz a animação suave e, quando terminar (callback), desativa o escudo
           scrollY.value = withTiming(0, { duration: 450 }, () => {
             isForcingAnimation.value = false;
           });
@@ -54,31 +55,38 @@ export default function HomeScreen() {
     }, [])
   );
 
-  return (
-  <SafeAreaView style={styles.container}>
-    <StatusBar style="light" />
-    
-    {/* ScrollView vem PRIMEIRO. 
-       A TopBar vem DEPOIS, para garantir que fique na camada superior.
-    */}
-    <Animated.ScrollView 
-      ref={scrollViewRef}
-      showsVerticalScrollIndicator={false}
-      onScroll={scrollHandler}
-      scrollEventThrottle={16}
-    >
-      <View style={styles.darkHeader}>
-        {/* Espaço para compensar a TopBar absoluta que está fixa no topo */}
-        <View style={{ height: 35 }} />
+  // 👇 4. Tela de Loading enquanto os dados não chegam (aqueles 800ms)
+  if (!data) {
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <StatusBar style="light" />
+        <ActivityIndicator size="large" color={colors.text.light} />
+      </SafeAreaView>
+    );
+  }
 
-          <Text style={styles.greeting}>Olá, Elmo</Text>
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar style="light" />
+      
+      <Animated.ScrollView 
+        ref={scrollViewRef}
+        showsVerticalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+      >
+        <View style={styles.darkHeader}>
+          <View style={{ height: 25 }} />
+
+          {/* 👇 5. Renderizando dados reais do usuário */}
+          <Text style={styles.greeting}>Olá, {data.user.firstName}</Text>
 
           <View style={styles.balanceSection}>
             <Text style={styles.balanceLabel}>Saldo Disponível</Text>
             <View style={styles.balanceRow}>
               <Text style={styles.mainBalance}>
                 <Text style={styles.currency}>R$ </Text>
-                {showBalance ? '1.250,00' : '••••••'}
+                {showBalance ? data.user.balanceBRL : '••••••'}
               </Text>
               <TouchableOpacity onPress={() => setShowBalance(!showBalance)}>
                 {showBalance ? (
@@ -89,33 +97,30 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
             <View style={styles.balanceSubRow}>
-              <Text style={styles.usdBalance}>{showBalance ? 'US$ 244,75' : 'US$ ••••••'}</Text>
+              <Text style={styles.usdBalance}>{showBalance ? `US$ ${data.user.balanceUSD}` : 'US$ ••••••'}</Text>
               <TouchableOpacity>
                 <Text style={styles.statementLink}>EXTRATO</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* HIGHLIGHTS SCROLL HORIZONTAL */}
-            <Text style={styles.highlightsLabel}>Atividade da Conta</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.highlightsContainer}>
-              <View style={styles.highlightCard}>
-                <Text style={styles.highlightTitle}>Milan Luxury Suites</Text>
-                <Text style={styles.highlightDate}>UPCOMING PAYMENT • OCT 12</Text>
-                <Text style={styles.highlightAmount}>- R$ 420,00</Text>
+          <Text style={styles.highlightsLabel}>Atividade da Conta</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.highlightsContainer}>
+            
+            {/* 👇 6. Função Map iterando sobre as transações da API */}
+            {data.recentTransactions.map((tx) => (
+              <View key={tx.id} style={styles.highlightCard}>
+                <Text style={styles.highlightTitle}>{tx.title}</Text>
+                <Text style={styles.highlightDate}>{tx.dateLabel}</Text>
+                <Text style={styles.highlightAmount}>{tx.amount}</Text>
               </View>
-              <View style={[styles.highlightCard, { marginRight: 20 }]}>
-                <Text style={styles.highlightTitle}>Starbucks Airport</Text>
-                <Text style={styles.highlightDate}>RECENT TRANSACTION • OCT 10</Text>
-                <Text style={styles.highlightAmount}>- R$ 28,50</Text>
-              </View>
-            </ScrollView>
+            ))}
+
+          </ScrollView>
         </View>
 
-        {/* CONTEÚDO PRINCIPAL (CLARO) */}
         <View style={styles.mainContent}>
           
-          {/* Wallet Banner */}
           <View style={styles.walletBanner}>
             <View>
               <Text style={styles.walletTitle}>Carteira</Text>
@@ -124,7 +129,6 @@ export default function HomeScreen() {
             <Wallet size={32} color={colors.text.light} weight="bold" />
           </View>
 
-          {/* Action Grid */}
           <View style={styles.actionGrid}>
             <View style={styles.actionCard}>
               <ShoppingBag size={28} color={colors.text.dark} style={{ marginBottom: 16 }} weight="bold" />
@@ -142,7 +146,6 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Assistant Card */}
           <View style={styles.assistantCard}>
             <View>
               <Text style={styles.assistantTitle}>Assistente de Viagem</Text>
@@ -151,7 +154,6 @@ export default function HomeScreen() {
             <CallBell size={28} color={colors.text.dark} weight="fill" />
           </View>
 
-          {/* Next Trip Ideas */}
           <View style={styles.sectionHeader}>
             <View>
               <Text style={styles.sectionTitle}>Inspirações de Viagem</Text>
@@ -162,47 +164,38 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.tripCard}>
-            <View style={styles.tripImageContainer}>
-              <Image 
-                source={{ uri: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?q=80&w=800&auto=format&fit=crop' }} 
-                style={styles.tripImage} 
-              />
-              {/* 👇 2. Adicione o LinearGradient AQUI (entre a imagem e o texto) */}
-              <LinearGradient
-                // Cores: Começa preto com 60% de opacidade e vai para preto transparente
-                // Ajuste a opacidade (0.6) para controlar a escuridão
-                colors={['rgba(0,0,0,0.75)', 'rgba(0,0,0,0)']}
-                // Posição das cores: [início, fim]
-                // 0.0 é o início do gradiente (na borda inferior, pois definimos start=[0, 1])
-                // 1.0 é o fim (transparente)
-                locations={[0.0, 1.0]} 
-                // Início e Fim da transição (x, y) - de baixo para cima
-                start={[0, 1]} // Canto inferior esquerdo (y=1 é baixo)
-                end={[0, 0]}   // Canto superior esquerdo (y=0 é cima)
-                style={styles.tripGradient}
-              >
-                  {/* 👇 3. Mova o texto para dentro do LinearGradient ou coloque-o no mesmo nível, mas DEPOIS */}
-                  <View style={styles.tripTag}>
-                    <Text style={styles.tripTagText}>VERÃO 2026</Text>
-                  </View>
-              </LinearGradient>
+          {/* 👇 7. Função Map iterando sobre as viagens da API */}
+          {data.curatedTrips.map((trip) => (
+            <View key={trip.id} style={styles.tripCard}>
+              <View style={styles.tripImageContainer}>
+                <Image source={{ uri: trip.imageUrl }} style={styles.tripImage} />
+                <LinearGradient
+                  colors={['rgba(0,0,0,0.75)', 'rgba(0,0,0,0)']}
+                  locations={[0.0, 1.0]} 
+                  start={[0, 1]}
+                  end={[0, 0]}
+                  style={styles.tripGradient}
+                >
+                    <View style={styles.tripTag}>
+                      <Text style={styles.tripTagText}>{trip.tag}</Text>
+                    </View>
+                </LinearGradient>
+              </View>
+              <Text style={styles.tripTitle}>{trip.title}</Text>
+              <Text style={styles.tripDesc}>{trip.description}</Text>
             </View>
-            <Text style={styles.tripTitle}>Arquipélago das Maldivas</Text>
-            <Text style={styles.tripDesc}>Experimente a simetria arquitetônica do litoral italiano. Uma jornada curada por Positano e Ravello com foco em geometria e patrimônio.</Text>
-          </View>
+          ))}
 
         </View>
       </Animated.ScrollView>
 
-    {/* TopBar por último para garantir o Z-Index visual */}
-    <TopBar scrollY={scrollY} />
+      <TopBar scrollY={scrollY} />
 
-  </SafeAreaView>
-);
+    </SafeAreaView>
+  );
 }
 
-// O StyleSheet substitui o CSS convencional
+// O StyleSheet continua exatamente igual, sem nenhuma alteração.
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -211,7 +204,7 @@ const styles = StyleSheet.create({
   darkHeader: {
     backgroundColor: colors.background.dark,
     padding: 24,
-    paddingTop: 38, // Espaço extra para a status bar
+    paddingTop: 38,
     paddingBottom: 15,
   },
   greeting: {
@@ -307,7 +300,7 @@ const styles = StyleSheet.create({
     padding: 24,
     marginTop: -12,
   },
-   walletBanner: {
+  walletBanner: {
     backgroundColor: colors.brand.primary,
     padding: 19 ,
     borderRadius: 0,
@@ -418,27 +411,16 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  // 👇 4. Novo Estilo para o Gradiente
   tripGradient: {
-    // Posicionamento absoluto para cobrir a imagem
     position: 'absolute',
     left: 0,
     right: 0,
-    top: 10, // Pode cobrir toda a imagem ou apenas a parte inferior ajustando a altura
+    top: 10, 
     bottom: 0, 
-    // Altura opcional se quiser cobrir apenas a parte inferior (ex: 40% da altura do container)
-    // height: '40%', 
-    // bottom: 0, // posiciona na parte inferior
-    
-    // Garante que o conteúdo dentro dele (a tag) seja alinhado corretamente
-    justifyContent: 'flex-end', // Alinha a tag na parte inferior do gradiente
-    paddingBottom: 20, // Espaço extra abaixo da tag
+    justifyContent: 'flex-end', 
+    paddingBottom: 20, 
   },
   tripTag: {
-    // Removemos o posicionamento absoluto da tag, pois agora ela é alinhada pelo gradiente
-    // position: 'absolute',
-    // bottom: 20,
-    // left: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingVertical: 8,
     paddingHorizontal: 12,

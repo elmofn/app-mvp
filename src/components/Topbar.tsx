@@ -2,7 +2,7 @@ import { colors } from '@/src/theme/colors';
 import { Bell, CaretRight, Question, User } from 'phosphor-react-native';
 import React from 'react';
 import { Dimensions, StyleSheet } from 'react-native';
-// 👇 Importamos as funções de animação
+
 import Animated, { Extrapolation, interpolate, SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 
 // Pegamos a largura da tela para saber até onde o logo pode deslizar

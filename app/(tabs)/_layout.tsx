@@ -1,58 +1,76 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Link, Tabs } from 'expo-router';
+import { colors } from '@/src/theme/colors';
+import { Tabs } from 'expo-router';
+import { CallBell, House, Receipt, ShoppingBag } from 'phosphor-react-native';
 import React from 'react';
-import { Pressable } from 'react-native';
-
-import { useColorScheme } from '@/components/useColorScheme';
-import Colors from '@/constants/Colors';
-
-// You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
-  color: string;
-}) {
-  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
-}
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#0D5CFF',
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
         headerShown: false,
+        tabBarActiveTintColor: colors.brand.primary,
+        tabBarInactiveTintColor: colors.text.muted,
+        // Estilização da barra para dar um visual limpo "Swiss Style"
+        tabBarStyle: {
+          backgroundColor: colors.background.light,
+          borderTopColor: '#E5E5E5',
+          height: 65,
+          paddingBottom: 10,
+          paddingTop: 0,
+        },
+        tabBarLabelStyle: {
+          fontFamily: 'Helvetica-Bold',
+          fontSize: 10,
+          textTransform: 'uppercase',
+          paddingBottom: 10,
+          marginTop: 0,
+        },
       }}>
+      
+      {/* 1. ABA HOME (index.tsx) */}
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable>
-                {({ pressed }) => (
-                  <FontAwesome
-                    name="info-circle"
-                    size={25}
-                    color={Colors[colorScheme ?? 'light'].text}
-                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
+          tabBarIcon: ({ color, focused }) => (
+            <House size={26} color={color} weight={focused ? 'fill' : 'regular'} />
           ),
         }}
       />
+      
+      {/* 2. ABA TRAVELSHOP (travelshop.tsx) */}
       <Tabs.Screen
-        name="two"
+        name="travelshop"
         options={{
-          title: 'TRAVELSHOP',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: 'Travelshop',
+          tabBarIcon: ({ color, focused }) => (
+            <ShoppingBag size={26} color={color} weight={focused ? 'fill' : 'regular'} />
+          ),
         }}
       />
+      
+      {/* 3. ABA EXTRATO (statement.tsx) */}
+      <Tabs.Screen
+        name="statement"
+        options={{
+          title: 'Extrato',
+          tabBarIcon: ({ color, focused }) => (
+            <Receipt size={26} color={color} weight={focused ? 'fill' : 'regular'} />
+          ),
+        }}
+      />
+      
+      {/* 4. ABA ASSISTENTE (assistant.tsx) */}
+      <Tabs.Screen
+        name="assistant"
+        options={{
+          title: 'Assistente',
+          tabBarIcon: ({ color, focused }) => (
+            <CallBell size={26} color={color} weight={focused ? 'fill' : 'regular'} />
+          ),
+        }}
+      />
+      
     </Tabs>
   );
 }

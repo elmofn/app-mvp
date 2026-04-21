@@ -1,10 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { CallBell, CurrencyDollar, Eye, EyeClosed, ShoppingBag, Wallet } from 'phosphor-react-native';
-import React, { useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import Animated, { useAnimatedScrollHandler, useSharedValue, } from 'react-native-reanimated';
+import Animated, { useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { TopBar } from '@/src/components/Topbar';
 import { colors } from '@/src/theme/colors';
@@ -15,11 +16,43 @@ export default function HomeScreen() {
 
   const scrollY = useSharedValue(0);
 
+  const scrollViewRef = useRef<Animated.ScrollView>(null);
+
+  const isForcingAnimation = useSharedValue(false);
+
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
+      // Só escuta o ScrollView se NÃO estivermos forçando a animação de entrada
+      if (!isForcingAnimation.value) {
+        scrollY.value = event.contentOffset.y;
+      }
     },
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      if (scrollY.value > 0) {
+        // CENÁRIO 1: A tela já estava rolada, então usamos a rolagem nativa para subir.
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      } else {
+        // CENÁRIO 2: Mudança de aba.
+        
+        // Ativa o escudo para o ScrollView não atrapalhar
+        isForcingAnimation.value = true; 
+        
+        // Coloca a barra preta imediatamente
+        scrollY.value = 150;
+
+        // Espera um pentelhésimo de segundo para a transição do menu do celular terminar
+        setTimeout(() => {
+          // Faz a animação suave e, quando terminar (callback), desativa o escudo
+          scrollY.value = withTiming(0, { duration: 450 }, () => {
+            isForcingAnimation.value = false;
+          });
+        }, 50);
+      }
+    }, [])
+  );
 
   return (
   <SafeAreaView style={styles.container}>
@@ -29,13 +62,14 @@ export default function HomeScreen() {
        A TopBar vem DEPOIS, para garantir que fique na camada superior.
     */}
     <Animated.ScrollView 
+      ref={scrollViewRef}
       showsVerticalScrollIndicator={false}
       onScroll={scrollHandler}
       scrollEventThrottle={16}
     >
       <View style={styles.darkHeader}>
         {/* Espaço para compensar a TopBar absoluta que está fixa no topo */}
-        <View style={{ height: 100 }} />
+        <View style={{ height: 35 }} />
 
           <Text style={styles.greeting}>Olá, Elmo</Text>
 

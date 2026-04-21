@@ -64,7 +64,6 @@ export default function TravelshopScreen() {
         <View style={styles.darkHeader}>
           <View style={{ height: 25 }} />
 
-          {/* Mude este título para Extrato, Assistente, etc. */}
           <Text style={styles.greeting}>TravelShop</Text>
           <Text style={styles.subtitle}>Página em construção...</Text>
           

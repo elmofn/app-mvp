@@ -65,7 +65,6 @@ export default function StatementScreen() {
         <View style={styles.darkHeader}>
           <View style={{ height: 25 }} />
 
-          {/* Mude este título para Extrato, Assistente, etc. */}
           <Text style={styles.greeting}>Extrato</Text>
           <Text style={styles.subtitle}>Página em construção...</Text>
           

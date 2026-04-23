@@ -7,6 +7,7 @@ export const colors = {
   },
   brand: {
     primary: '#0D5CFF',
+    details: '#cfcfcf',
   },
   text: {
     light: '#FFFFFF',

@@ -152,7 +152,7 @@ export default function HomeScreen() {
               <Text style={styles.assistantTitle}>Assistente de Viagem</Text>
               <Text style={styles.assistantDesc}>Converse com a Bia</Text>
             </View>
-            <CallBell size={28} color={colors.text.dark} weight="fill" />
+            <CallBell size={28} color={colors.text.dark} />
           </View>
 
           <View style={styles.sectionHeader}>

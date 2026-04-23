@@ -1,12 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { CallBell, CurrencyDollar, Eye, EyeClosed, ShoppingBag, Wallet } from 'phosphor-react-native';
+import { CallBell, CurrencyDollar, ShoppingBag, Wallet } from 'phosphor-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BalanceDisplay } from '@/src/components/BalanceDisplay';
 import { TopBar } from '@/src/components/Topbar';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
@@ -78,28 +79,12 @@ export default function HomeScreen() {
 
           <Text style={styles.greeting}>Olá, {data.user.firstName}</Text>
 
-          <View style={styles.balanceSection}>
-            <Text style={styles.balanceLabel}>Saldo Disponível</Text>
-            <View style={styles.balanceRow}>
-              <Text style={styles.mainBalance}>
-                <Text style={styles.currency}>R$ </Text>
-                {showBalance ? data.user.balanceBRL : '••••••'}
-              </Text>
-              <TouchableOpacity onPress={() => setShowBalance(!showBalance)}>
-                {showBalance ? (
-                  <Eye size={28} color={colors.text.muted} />
-                ) : (
-                  <EyeClosed size={28} color={colors.text.muted} />
-                )}
-              </TouchableOpacity>
-            </View>
-            <View style={styles.balanceSubRow}>
-              <Text style={styles.usdBalance}>{showBalance ? `US$ ${data.user.balanceUSD}` : 'US$ ••••••'}</Text>
-              <TouchableOpacity onPress={() => router.push('/statement')}>
-                <Text style={styles.statementLink}>EXTRATO</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <BalanceDisplay 
+            balanceBRL={data.user.balanceBRL} 
+            balanceUSD={data.user.balanceUSD} 
+            showStatementLink={true}
+            showToggleIcon={true}
+          />
 
           <Text style={styles.highlightsLabel}>Atividade da Conta</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.highlightsContainer}>

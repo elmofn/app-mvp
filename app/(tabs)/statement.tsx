@@ -4,6 +4,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BalanceDisplay } from '@/src/components/BalanceDisplay';
 import { TopBar } from '@/src/components/Topbar';
 import { fetchStatementData, Transaction } from '@/src/services/api';
 import { colors } from '@/src/theme/colors';
@@ -127,12 +128,13 @@ export default function StatementScreen() {
             <Text style={styles.greeting}>EXTRATO</Text>
           </View>
 
-          <View style={styles.summaryContainer}>
-            <Text style={styles.summaryLabel}>Saldo Disponível</Text>
-            <Text style={styles.summaryValue}>
-              <Text style={styles.summaryCurrency}>R$ </Text>{balance.brl}
-
-            </Text>
+          {/* O NOVO COMPONENTE DE SALDO ENTRA AQUI */}
+          <View style={styles.balanceWrapper}>
+            <BalanceDisplay 
+              balanceBRL={balance.brl} 
+              balanceUSD={balance.usd}
+              showToggleIcon={false}
+            />
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.yearContainer}>
@@ -168,13 +170,17 @@ export default function StatementScreen() {
               </View>
               <View style={styles.transactionsColumn}>
                 {group.items.map((tx: Transaction) => (
-                  <View key={tx.id} style={styles.transactionItem}>
+                  <TouchableOpacity 
+                    key={tx.id} 
+                    style={styles.transactionItem} 
+                    activeOpacity={0.7}
+                  >
                     <View style={styles.textContainer}>
                       <Text style={styles.txTitle}>{tx.title}</Text>
                       <Text style={styles.txSubtitle}>{tx.type}</Text>
                     </View>
                     <Text style={[styles.txAmount, tx.isPositive && styles.amountPositive]}>{tx.amount}</Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             </View>
@@ -188,55 +194,20 @@ export default function StatementScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: colors.background.light 
+  container: { flex: 1, backgroundColor: colors.background.light },
+  loadingContainer: { flex: 1, backgroundColor: colors.background.dark, justifyContent: 'center', alignItems: 'center' },
+  darkHeader: { backgroundColor: colors.background.dark, paddingTop: 13, paddingBottom: 24, paddingHorizontal: 24 },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  greeting: { color: colors.text.light, fontSize: 20, fontFamily: fonts.bold, letterSpacing: -0.5 },
+  actionButtons: { flexDirection: 'row', gap: 12 },
+  
+  // Wrapper para o BalanceDisplay manter as margens da página do Extrato
+  balanceWrapper: {  
+    marginTop: 15, 
+    marginBottom: 10 
   },
-  loadingContainer: { 
-    flex: 1, 
-    backgroundColor: colors.background.dark, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
-  },
-  darkHeader: { 
-    backgroundColor: colors.background.dark,
-    padding: 24,
-    paddingTop: 13,
-    paddingBottom: 24, 
-  },
-  titleRow: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center',  
-  },
-  greeting: { 
-    color: colors.text.light,
-    fontSize: 20,
-    fontFamily: fonts.bold,
-    letterSpacing: -0.5,
-    marginBottom: 15,
-    textTransform: 'uppercase',
-  },
-  summaryContainer: { 
-    marginBottom: 15 
-  },
-  summaryLabel: { 
-    color: colors.text.muted,
-    fontSize: 15,
-    fontFamily: fonts.regular,
-    letterSpacing: 0.9,
-    marginBottom: -13, 
-  },
-  summaryValue: { 
-    color: colors.text.light,
-    fontSize: 45,
-    fontFamily: fonts.bold,
-    letterSpacing: -0.5, 
-  },
-  summaryCurrency: { 
-    fontSize: 24, 
-  },
-  yearContainer: { 
+  
+  yearContainer: {  
     gap: 24 
   },
   yearText: { 
@@ -244,93 +215,22 @@ const styles = StyleSheet.create({
     fontSize: 16, 
     fontFamily: fonts.bold 
   },
-  yearTextActive: { 
-    color: colors.text.light 
-  },
-  monthContainer: {  
-    gap: 8 
-  },
-  monthPill: { 
-    paddingVertical: 12, 
-    paddingHorizontal: 12, 
-    borderRadius: 0, 
-    borderWidth: 0.5, 
-    borderColor: colors.text.muted, 
-  },
-  monthPillActive: { 
-    backgroundColor: colors.text.light, 
-    borderColor: colors.text.light 
-  },
-  monthText: { 
-    color: colors.text.muted, 
-    fontSize: 12, 
-    fontFamily: fonts.bold, 
-    textTransform: 'uppercase' 
-  },
-  monthTextActive: { 
-    color: colors.background.dark 
-  },
-  mainContent: { 
-    padding: 24, 
-    marginTop: 8 
-  },
-  timelineGroup: { 
-    flexDirection: 'row', 
-    marginBottom: 16 
-  },
-  dateColumn: { 
-    width: 35, 
-    alignItems: 'center', 
-    marginRight: 20, 
-    paddingTop: 8 
-  },
-  dateDay: { 
-    fontFamily: fonts.bold, 
-    fontSize: 32, 
-    color: colors.text.dark, 
-    letterSpacing: -1, 
-    lineHeight: 32 
-  },
-  dateMonth: { 
-    fontFamily: fonts.bold, 
-    fontSize: 10, 
-    color: colors.text.muted, 
-    textTransform: 'uppercase' 
-  },
-  transactionsColumn: { 
-    flex: 1, 
-    borderLeftWidth: 1, 
-    borderLeftColor: '#E5E5E5', 
-    paddingLeft: 20, 
-    paddingBottom: 24 
-  },
-  transactionItem: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginBottom: 24 
-  },
-  textContainer: { 
-    flex: 1, 
-    paddingRight: 8 
-  },
-  txTitle: { 
-    color: colors.text.dark, 
-    fontSize: 15, 
-    fontFamily: fonts.bold, 
-    marginBottom: 2 
-  },
-  txSubtitle: { 
-    color: colors.text.muted, 
-    fontSize: 10, 
-    fontFamily: fonts.bold, 
-    textTransform: 'uppercase' 
-  },
-  txAmount: { 
-    color: colors.text.dark, 
-    fontSize: 16, 
-    fontFamily: fonts.bold 
-  },
-  amountPositive: { 
-    color: '#00A86B' 
-  },
+  yearTextActive: { color: colors.text.light },
+  monthContainer: { gap: 8, paddingVertical: 3 },
+  monthPill: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 0, borderWidth: 0.5, borderColor: colors.text.muted },
+  monthPillActive: { backgroundColor: colors.text.light, borderColor: colors.text.light },
+  monthText: { color: colors.text.muted, fontSize: 12, paddingTop: 3, fontFamily: fonts.bold, textTransform: 'uppercase' },
+  monthTextActive: { color: colors.background.dark },
+  mainContent: { padding: 24, marginTop: 8 },
+  timelineGroup: { flexDirection: 'row', marginBottom: 16 },
+  dateColumn: { width: 35, alignItems: 'center', marginRight: 20, paddingTop: 8 },
+  dateDay: { fontFamily: fonts.bold, fontSize: 32, color: colors.text.dark, letterSpacing: -1, lineHeight: 32 },
+  dateMonth: { fontFamily: fonts.bold, fontSize: 10, color: colors.text.muted, textTransform: 'uppercase' },
+  transactionsColumn: { flex: 1, borderLeftWidth: 1, borderLeftColor: colors.text.muted, paddingLeft: 20, paddingBottom: 24 },
+  transactionItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
+  textContainer: { flex: 1, paddingRight: 8 },
+  txTitle: { color: colors.text.dark, fontSize: 15, fontFamily: fonts.bold, marginBottom: 2 },
+  txSubtitle: { color: colors.text.muted, fontSize: 10, fontFamily: fonts.bold, textTransform: 'uppercase' },
+  txAmount: { color: colors.text.dark, fontSize: 16, fontFamily: fonts.bold },
+  amountPositive: { color: '#00A86B' },
 });

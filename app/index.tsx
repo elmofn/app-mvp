@@ -15,6 +15,16 @@ export default function LoginScreen() {
     router.replace('/(tabs)/home');
   };
 
+  const handleSignup = () => {
+    // Por enquanto, apenas navega para as abas principais
+    router.replace('/signup');
+  };
+
+  //const handleActivateAccount = () => {
+    // Por enquanto, apenas navega para as abas principais
+    //router.replace('/accountactivation');
+  //};
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
@@ -37,6 +47,7 @@ export default function LoginScreen() {
 
         <TouchableOpacity 
           style={styles.btnBorder} 
+          onPress={handleSignup}
           activeOpacity={0.8}
         >
           <Text style={styles.btnText}>CADASTRO</Text>
@@ -44,6 +55,7 @@ export default function LoginScreen() {
 
         <TouchableOpacity 
           style={styles.btnFilled} 
+          //onPress={handleActivateAccount}
           activeOpacity={0.8}
         >
           <Text style={styles.btnText}>ATIVAR CONTA</Text>

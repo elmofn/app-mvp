@@ -1,28 +1,35 @@
-import { colors } from '@/src/theme/colors';
 import { useRouter } from 'expo-router';
 import { Bell, CaretRight, Question, User } from 'phosphor-react-native';
 import React from 'react';
 import { Dimensions, StyleSheet, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import Animated, { Extrapolation, interpolate, SharedValue, useAnimatedStyle } from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated'; // 👈 Importação correta do tipo
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle
+} from 'react-native-reanimated';
+
+import { colors } from '@/src/theme/colors';
 
 // Pegamos a largura da tela para saber até onde o logo pode deslizar
 const { width } = Dimensions.get('window');
 
 interface TopBarProps {
-  scrollY: SharedValue<number>;
+  scrollY: SharedValue<number>; // 👈 Uso correto sem o "Animated."
 }
 
 export function TopBar({ scrollY }: TopBarProps) {
   const router = useRouter();
+  const insets = useSafeAreaInsets(); // 👈 Correção do fundo branco da StatusBar
+  
   // Distância do scroll em que a animação deve terminar (80 pixels)
   const SCROLL_DISTANCE = 150;
 
   // Animação dos ícones da direita (somem)
   const rightIconsStyle = useAnimatedStyle(() => {
-    // A opacidade vai de 1 (visível) para 0 (invisível)
     const opacity = interpolate(scrollY.value, [0, SCROLL_DISTANCE], [1, 0], Extrapolation.CLAMP);
-    // Move levemente para cima enquanto some para um efeito mais refinado
     const translateY = interpolate(scrollY.value, [0, SCROLL_DISTANCE], [0, -10], Extrapolation.CLAMP);
     
     return {
@@ -33,10 +40,7 @@ export function TopBar({ scrollY }: TopBarProps) {
 
   // Animação do logo (CaretRight) deslizando para a direita
   const logoStyle = useAnimatedStyle(() => {
-    // Calcula o limite direito: Largura da tela - 24px (padding esq) - 24px (padding dir) - 24px (tamanho do ícone)
     const maxTranslateX = width - 72; 
-    
-    // Move de 0 (esquerda) até maxTranslateX (direita)
     const translateX = interpolate(scrollY.value, [0, SCROLL_DISTANCE], [0, maxTranslateX], Extrapolation.CLAMP);
 
     return {
@@ -44,7 +48,7 @@ export function TopBar({ scrollY }: TopBarProps) {
     };
   });
 
-  // Fundo da TopBar: Transparente no topo, fica Preto ao rolar para cobrir o conteúdo que passa por baixo
+  // Fundo da TopBar
   const containerStyle = useAnimatedStyle(() => {
     const backgroundColor = scrollY.value > 10 ? colors.background.dark : 'transparent';
     return {
@@ -53,18 +57,26 @@ export function TopBar({ scrollY }: TopBarProps) {
   });
 
   return (
-    <Animated.View style={[styles.topBarWrapper, containerStyle]}>
+    // 👈 Aplicamos o insets.top para a barra descer respeitando a câmera do celular
+    <Animated.View style={[styles.topBarWrapper, containerStyle, { paddingTop: insets.top + 10 }]}>
       
       <Animated.View style={logoStyle}>
         <CaretRight size={24} color={colors.text.light} />
       </Animated.View>
 
       <Animated.View style={[styles.topIconsRight, rightIconsStyle]}>
-        <TouchableOpacity onPress={() => router.push('/support')}>
+        <TouchableOpacity onPress={() => router.push('/support')} activeOpacity={0.7}>
           <Question size={24} color={colors.text.light} />
         </TouchableOpacity>
-        <Bell size={24} color={colors.text.light} />
-        <User size={24} color={colors.text.light} />
+        
+        <TouchableOpacity activeOpacity={0.7}>
+          <Bell size={24} color={colors.text.light} />
+        </TouchableOpacity>
+        
+        {/* 👈 Roteamento para a página de configurações */}
+        <TouchableOpacity onPress={() => router.push('/settings')} activeOpacity={0.7}>
+          <User size={24} color={colors.text.light} />
+        </TouchableOpacity>
       </Animated.View>
 
     </Animated.View>
@@ -73,7 +85,6 @@ export function TopBar({ scrollY }: TopBarProps) {
 
 const styles = StyleSheet.create({
   topBarWrapper: {
-    // Faz a barra flutuar (sticky) e ficar por cima de tudo
     position: 'absolute',
     top: 0,
     left: 0,
@@ -83,9 +94,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
-    // Espaçamento do topo para não colar no relógio do celular
-    paddingTop: 35,
-    paddingBottom: 8,
+    paddingBottom: 15,
   },
   topIconsRight: {
     flexDirection: 'row',

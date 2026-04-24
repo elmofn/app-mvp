@@ -2,7 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BalanceDisplay } from '@/src/components/BalanceDisplay';
 import { TopBar } from '@/src/components/Topbar';
@@ -34,6 +34,8 @@ export default function StatementScreen() {
 
   const monthHeight = useSharedValue(0);
   const monthOpacity = useSharedValue(0);
+
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     fetchStatementData().then((res) => {
@@ -114,7 +116,7 @@ export default function StatementScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <StatusBar style="light" />
       <Animated.ScrollView 
         ref={scrollViewRef} 
@@ -122,7 +124,7 @@ export default function StatementScreen() {
         scrollEventThrottle={16} 
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.darkHeader}>
+        <View style={[styles.darkHeader, { paddingTop: insets.top + 13}]} >
           <View style={{ height: 25 }} />
           <View style={styles.titleRow}>
             <Text style={styles.greeting}>EXTRATO</Text>
@@ -194,12 +196,37 @@ export default function StatementScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background.light },
-  loadingContainer: { flex: 1, backgroundColor: colors.background.dark, justifyContent: 'center', alignItems: 'center' },
-  darkHeader: { backgroundColor: colors.background.dark, paddingTop: 13, paddingBottom: 24, paddingHorizontal: 24 },
-  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  greeting: { color: colors.text.light, fontSize: 20, fontFamily: fonts.bold, letterSpacing: -0.5 },
-  actionButtons: { flexDirection: 'row', gap: 12 },
+  container: { 
+    flex: 1, 
+    backgroundColor: colors.background.light 
+  },
+  loadingContainer: { 
+    flex: 1, 
+    backgroundColor: colors.background.dark, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  darkHeader: { 
+    backgroundColor: colors.background.dark, 
+    paddingTop: 13, 
+    paddingBottom: 24, 
+    paddingHorizontal: 24 
+  },
+  titleRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center' 
+  },
+  greeting: { 
+    color: colors.text.light, 
+    fontSize: 20, 
+    fontFamily: fonts.bold, 
+    letterSpacing: -0.5 
+  },
+  actionButtons: { 
+    flexDirection: 'row', 
+    gap: 12 
+  },
   
   // Wrapper para o BalanceDisplay manter as margens da página do Extrato
   balanceWrapper: {  
@@ -215,22 +242,95 @@ const styles = StyleSheet.create({
     fontSize: 16, 
     fontFamily: fonts.bold 
   },
-  yearTextActive: { color: colors.text.light },
-  monthContainer: { gap: 8, paddingVertical: 3 },
-  monthPill: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 0, borderWidth: 0.5, borderColor: colors.text.muted },
-  monthPillActive: { backgroundColor: colors.text.light, borderColor: colors.text.light },
-  monthText: { color: colors.text.muted, fontSize: 12, paddingTop: 3, fontFamily: fonts.bold, textTransform: 'uppercase' },
-  monthTextActive: { color: colors.background.dark },
-  mainContent: { padding: 24, marginTop: 8 },
-  timelineGroup: { flexDirection: 'row', marginBottom: 16 },
-  dateColumn: { width: 35, alignItems: 'center', marginRight: 20, paddingTop: 8 },
-  dateDay: { fontFamily: fonts.bold, fontSize: 32, color: colors.text.dark, letterSpacing: -1, lineHeight: 32 },
-  dateMonth: { fontFamily: fonts.bold, fontSize: 10, color: colors.text.muted, textTransform: 'uppercase' },
-  transactionsColumn: { flex: 1, borderLeftWidth: 1, borderLeftColor: colors.text.muted, paddingLeft: 20, paddingBottom: 24 },
-  transactionItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
-  textContainer: { flex: 1, paddingRight: 8 },
-  txTitle: { color: colors.text.dark, fontSize: 15, fontFamily: fonts.bold, marginBottom: 2 },
-  txSubtitle: { color: colors.text.muted, fontSize: 10, fontFamily: fonts.bold, textTransform: 'uppercase' },
-  txAmount: { color: colors.text.dark, fontSize: 16, fontFamily: fonts.bold },
-  amountPositive: { color: '#00A86B' },
+  yearTextActive: { 
+    color: colors.text.light 
+  },
+  monthContainer: { 
+    gap: 8, 
+    paddingVertical: 3 
+  },
+  monthPill: { 
+    paddingVertical: 6, 
+    paddingHorizontal: 12, 
+    borderRadius: 0, 
+    borderWidth: 0.5, 
+    borderColor: colors.text.muted 
+  },
+  monthPillActive: { 
+    backgroundColor: colors.text.light, 
+    borderColor: colors.text.light 
+  },
+  monthText: { 
+    color: colors.text.muted, 
+    fontSize: 12, 
+    paddingTop: 3, 
+    fontFamily: fonts.bold, 
+    textTransform: 'uppercase' 
+  },
+  monthTextActive: { 
+    color: colors.background.dark 
+  },
+  mainContent: { 
+    padding: 24, 
+    marginTop: 8 
+  },
+  timelineGroup: { 
+    flexDirection: 'row', 
+    marginBottom: 16 
+  },
+  dateColumn: { 
+    width: 35, 
+    alignItems: 'center', 
+    marginRight: 20, 
+    paddingTop: 8 
+  },
+  dateDay: { 
+    fontFamily: fonts.bold, 
+    fontSize: 32, 
+    color: colors.text.dark, 
+    letterSpacing: -1, 
+    lineHeight: 32 
+  },
+  dateMonth: { 
+    fontFamily: fonts.bold, 
+    fontSize: 10, 
+    color: colors.text.muted, 
+    textTransform: 'uppercase' 
+  },
+  transactionsColumn: { 
+    flex: 1, 
+    borderLeftWidth: 1, 
+    borderLeftColor: colors.text.muted, 
+    paddingLeft: 20, 
+    paddingBottom: 24 
+  },
+  transactionItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 24 
+  },
+  textContainer: { 
+    flex: 1, 
+    paddingRight: 8
+   },
+  txTitle: { 
+    color: colors.text.dark, 
+    fontSize: 15, 
+    fontFamily: fonts.bold, 
+    marginBottom: 2 
+  },
+  txSubtitle: { 
+    color: colors.text.muted, 
+    fontSize: 10, 
+    fontFamily: fonts.bold, 
+    textTransform: 'uppercase' 
+  },
+  txAmount: { 
+    color: colors.text.dark, 
+    fontSize: 16, 
+    fontFamily: fonts.bold 
+  },
+  amountPositive: { 
+    color: '#00A86B' 
+  },
 });

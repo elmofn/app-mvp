@@ -5,7 +5,7 @@ import { CallBell, CurrencyDollar, ShoppingBag, Wallet } from 'phosphor-react-na
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BalanceDisplay } from '@/src/components/BalanceDisplay';
 import { TopBar } from '@/src/components/Topbar';
@@ -38,6 +38,8 @@ export default function HomeScreen() {
     },
   });
 
+  const insets = useSafeAreaInsets();
+
   useFocusEffect(
     useCallback(() => {
       if (scrollY.value > 0) {
@@ -57,7 +59,7 @@ export default function HomeScreen() {
 
   if (!data) {
     return (
-      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center', }]} edges={['left', 'right']}>
         <StatusBar style="light" />
         <ActivityIndicator size="large" color={colors.text.light} />
       </SafeAreaView>
@@ -65,7 +67,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <StatusBar style="light" />
       
       <Animated.ScrollView 
@@ -74,7 +76,7 @@ export default function HomeScreen() {
         onScroll={scrollHandler}
         scrollEventThrottle={16}
       >
-        <View style={styles.darkHeader}>
+        <View style={[styles.darkHeader, { paddingTop: insets.top + 38 }]}>
           <View style={{ height: 0 }} />
 
           <Text style={styles.greeting}>Olá, {data.user.firstName}</Text>
@@ -188,7 +190,6 @@ const styles = StyleSheet.create({
   darkHeader: {
     backgroundColor: colors.background.dark,
     padding: 24,
-    paddingTop: 38,
     paddingBottom: 15,
   },
   greeting: {

@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TopBar } from '@/src/components/Topbar';
 import { colors } from '@/src/theme/colors';
@@ -16,6 +16,8 @@ export default function AssistantScreen() {
   const scrollViewRef = useRef<Animated.ScrollView>(null);
   
   const isForcingAnimation = useSharedValue(false);
+
+  const insets = useSafeAreaInsets();
 
   const scrollHandler = useAnimatedScrollHandler({
       onScroll: (event) => {
@@ -52,7 +54,7 @@ export default function AssistantScreen() {
     );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <StatusBar style="light" />
       
       <Animated.ScrollView 
@@ -61,7 +63,7 @@ export default function AssistantScreen() {
         onScroll={scrollHandler}
         scrollEventThrottle={16}
       >
-        <View style={styles.darkHeader}>
+        <View style={[styles.darkHeader, { paddingTop: insets.top + 38 }]}>
           <View style={{ height: 0 }} />
 
           <Text style={styles.greeting}>Assistente</Text>

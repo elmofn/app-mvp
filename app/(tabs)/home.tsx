@@ -77,7 +77,7 @@ export default function HomeScreen() {
         scrollEventThrottle={16}
       >
         <View style={[styles.darkHeader, { paddingTop: insets.top + 38 }]}>
-          <View style={{ height: 0 }} />
+          <View style={{ height: 0}} />
 
           <Text style={styles.greeting}>Olá, {data.user.firstName}</Text>
 

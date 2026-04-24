@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingBottom: 15,
+    paddingBottom: 10,
   },
   topIconsRight: {
     flexDirection: 'row',

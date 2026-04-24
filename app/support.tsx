@@ -1,10 +1,11 @@
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft, ArrowRight, Robot, VideoCamera, WhatsappLogo } from 'phosphor-react-native';
+import { ArrowRight, Robot, VideoCamera, WhatsappLogo } from 'phosphor-react-native';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -22,17 +23,14 @@ export default function SupportScreen() {
     <SafeAreaView style={styles.container}>
       {/* Mantém a barra de status branca já que o topo é preto */}
       <StatusBar style="light" /> 
+
+      <ScreenHeader title="Suporte" />
       
       <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
         
         {/* === SEÇÃO SUPERIOR ESCURA === */}
         <View style={styles.headerSection}>
           
-          <TouchableOpacity onPress={() => router.back()} style={styles.backNav} activeOpacity={0.7}>
-            <ArrowLeft size={24} color={colors.text.light} weight="bold" />
-            <Text style={styles.backNavText}>SUPPORT</Text>
-          </TouchableOpacity>
-
           <Text style={styles.mainTitle}>How Can{'\n'}We Assist{'\n'}You?</Text>
 
           <View style={styles.contactCards}>

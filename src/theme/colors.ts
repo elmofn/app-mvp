@@ -6,7 +6,7 @@ export const colors = {
     cardLight: '#E5E5E5',
   },
   brand: {
-    primary: '#0D5CFF',
+    primary: '#0052FF',
     details: '#cfcfcf',
   },
   text: {

@@ -10,7 +10,6 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.brand.primary,
         tabBarInactiveTintColor: colors.text.muted,
-        // Estilização da barra para dar um visual limpo "Swiss Style"
         tabBarStyle: {
           backgroundColor: colors.background.light,
           borderTopColor: '#E5E5E5',
@@ -27,9 +26,8 @@ export default function TabLayout() {
         },
       }}>
       
-      {/* 1. ABA HOME (index.tsx) */}
       <Tabs.Screen
-        name="index"
+        name="home"
         options={{
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
@@ -38,7 +36,6 @@ export default function TabLayout() {
         }}
       />
       
-      {/* 2. ABA TRAVELSHOP (travelshop.tsx) */}
       <Tabs.Screen
         name="travelshop"
         options={{
@@ -49,7 +46,6 @@ export default function TabLayout() {
         }}
       />
       
-      {/* 3. ABA EXTRATO (statement.tsx) */}
       <Tabs.Screen
         name="statement"
         options={{
@@ -60,7 +56,6 @@ export default function TabLayout() {
         }}
       />
       
-      {/* 4. ABA ASSISTENTE (assistant.tsx) */}
       <Tabs.Screen
         name="assistant"
         options={{

@@ -1,23 +1,47 @@
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
+import React, { useEffect } from 'react';
+
+// 1. Impede que a tela de splash inicial feche antes de carregarmos os assets
+SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
   initialRouteName: 'index',
 };
 
 export default function RootLayout() {
+  // 2. Carrega os arquivos físicos da fonte
+  const [fontsLoaded, error] = useFonts({
+    'Helvetica-Regular': require('../assets/fonts/Helvetica-Regular.ttf'),
+    'Helvetica-Bold': require('../assets/fonts/Helvetica-Bold.ttf'),
+  });
+
+  // 3. Monitora o carregamento
+  useEffect(() => {
+    if (error) throw error;
+    
+    // Se terminou de carregar, esconde a tela de splash e libera o app
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, error]);
+
+  // Se as fontes ainda não carregaram, segura a tela em branco/splash
+  if (!fontsLoaded) {
+    return null;
+  }
+
+  // 4. Se chegou aqui, as fontes estão prontas e o app renderiza normalmente
   return (
     <>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false }}>
-        {/* 1. O LOGIN DEVE SER A PRIMEIRA ROTA DECLARADA */}
         <Stack.Screen name="index" /> 
-        
-        {/* 2. O GRUPO DE ABAS VEM DEPOIS */}
         <Stack.Screen name="(tabs)" />
-        
-        {/* 3. MODAIS E OUTRAS TELAS */}
+        <Stack.Screen name="signup" />
+        <Stack.Screen name="settings" />
         <Stack.Screen name="support" options={{ presentation: 'modal' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>

@@ -3,21 +3,21 @@ import { StatusBar } from 'expo-status-bar';
 import { Check } from 'phosphor-react-native'; // Ícone para a checkbox
 import React, { useEffect, useState } from 'react';
 import {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Animated, {
-    interpolate,
-    runOnJS,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming
+  interpolate,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -28,7 +28,7 @@ import { fonts } from '@/src/theme/typography';
 const STEPS = [
   { id: 1, title: 'Nova Conta', description: 'Para começar, informe o seu nome completo como consta nos seus documentos.', label: 'NOME COMPLETO', placeholder: 'DIGITE SEU NOME' },
   { id: 2, title: 'E-mail', description: 'Agora informe o e-mail que deseja utilizar para aceder à sua conta TravelCash.', label: 'E-MAIL', placeholder: 'DIGITE SEU E-MAIL' },
-  { id: 3, title: 'Telemóvel', description: 'Informe o seu número de telemóvel com o código do país para mantermos a sua conta segura.', label: 'NÚMERO DE TELEFONE', placeholder: '+351 9XX XXX XXX' },
+  { id: 3, title: 'Telefone', description: 'Informe o seu número de telemóvel com o código do país para mantermos a sua conta segura.', label: 'NÚMERO DE TELEFONE', placeholder: '+351 9XX XXX XXX' },
   { id: 4, title: 'Revisão', description: 'Verifique se todos os seus dados estão corretos e aceite os termos para prosseguir.', label: 'RESUMO DOS DADOS', placeholder: '' },
   { id: 5, title: 'Verificação', description: 'Enviámos um código de 6 dígitos para o seu e-mail. Digite-o abaixo para validar.', label: 'CÓDIGO DE VERIFICAÇÃO', placeholder: '0 0 0 0 0 0' },
   { id: 6, title: 'Senha', description: 'Para finalizar, crie uma senha forte para proteger os seus dados e as suas viagens.', label: 'SUA SENHA', placeholder: '••••••••' },

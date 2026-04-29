@@ -69,7 +69,7 @@ export function TopBar({ scrollY }: TopBarProps) {
           <Question size={24} color={colors.text.light} />
         </TouchableOpacity>
         
-        <TouchableOpacity activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => router.push('/notifications')} activeOpacity={0.7}>
           <Bell size={24} color={colors.text.light} />
         </TouchableOpacity>
         

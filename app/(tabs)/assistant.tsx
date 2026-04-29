@@ -1,78 +1,126 @@
-import { useFocusEffect } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import Animated, { useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
+import { MagicWand, MapPin, PaperPlaneRight } from 'phosphor-react-native';
+import React, { useRef, useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { TopBar } from '@/src/components/Topbar';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
+interface Message {
+  id: number;
+  text: string;
+  sender: 'user' | 'ai';
+}
 
 export default function AssistantScreen() {
-  const scrollY = useSharedValue(0);
-
-  const scrollViewRef = useRef<Animated.ScrollView>(null);
-  
-  const isForcingAnimation = useSharedValue(false);
-
   const insets = useSafeAreaInsets();
-
-  const scrollHandler = useAnimatedScrollHandler({
-      onScroll: (event) => {
-        // Só escuta o ScrollView se NÃO estivermos forçando a animação de entrada
-        if (!isForcingAnimation.value) {
-          scrollY.value = event.contentOffset.y;
-        }
-      },
-    });
-
-  useFocusEffect(
-      useCallback(() => {
-        if (scrollY.value > 0) {
-          // CENÁRIO 1: A tela já estava rolada, então usamos a rolagem nativa para subir.
-          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-        } else {
-          // CENÁRIO 2: Mudança de aba.
-          
-          // Ativa o escudo para o ScrollView não atrapalhar
-          isForcingAnimation.value = true; 
-          
-          // Coloca a barra preta imediatamente
-          scrollY.value = 150;
+  const scrollViewRef = useRef<ScrollView>(null);
   
-          // Espera um pentelhésimo de segundo para a transição do menu do celular terminar
-          setTimeout(() => {
-            // Faz a animação suave e, quando terminar (callback), desativa o escudo
-            scrollY.value = withTiming(0, { duration: 450 }, () => {
-              isForcingAnimation.value = false;
-            });
-          }, 50);
-        }
-      }, [])
-    );
+  const [message, setMessage] = useState('');
+  const [chatHistory, setChatHistory] = useState<Message[]>([
+    { 
+      id: 1, 
+      text: "Olá, Elmo! Notei que estás perto da Avenida Paulista. Queres sugestões de restaurantes ou museus por aqui?", 
+      sender: 'ai' 
+    },
+  ]);
+
+  const handleSendMessage = () => {
+    if (message.trim() === '') return;
+
+    const newMessage: Message = {
+      id: Date.now(),
+      text: message,
+      sender: 'user',
+    };
+
+    setChatHistory([...chatHistory, newMessage]);
+    setMessage('');
+    
+    // Simulação de resposta da IA
+    setTimeout(() => {
+      const aiResponse: Message = {
+        id: Date.now() + 1,
+        text: "Excelente escolha. O Museu do MASP está a apenas 5 minutos de caminhada. Queres que eu trace a rota ou verifique o preço do bilhete?",
+        sender: 'ai',
+      };
+      setChatHistory(prev => [...prev, aiResponse]);
+    }, 1000);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
-      <StatusBar style="light" />
-      
-      <Animated.ScrollView 
-        ref={scrollViewRef}
-        showsVerticalScrollIndicator={false}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
-      >
-        <View style={[styles.darkHeader, { paddingTop: insets.top + 38 }]}>
-          <View style={{ height: 0 }} />
-
-          <Text style={styles.greeting}>Assistente</Text>
-          <Text style={styles.subtitle}>Página em construção...</Text>
-          
+      {/* Seção Superior (Preta) - Mantendo a Identidade */}
+      <View style={[styles.darkHeader, { paddingTop: insets.top + 20 }]}>
+        <View style={styles.headerInfo}>
+          <MagicWand size={24} color={colors.brand.primary} weight="duotone" />
+          <Text style={styles.headerSubtitle}>TRAVEL ASSISTANT</Text>
         </View>
-      </Animated.ScrollView>
+        <Text style={styles.mainTitle}>Explorar</Text>
+      </View>
 
-      <TopBar scrollY={scrollY} />
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+      >
+        {/* Área de Chat */}
+        <ScrollView 
+          ref={scrollViewRef}
+          style={styles.chatContainer}
+          contentContainerStyle={styles.chatContent}
+          onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+          showsVerticalScrollIndicator={false}
+        >
+          {chatHistory.map((item) => (
+            <View 
+              key={item.id} 
+              style={[
+                styles.messageBubble, 
+                item.sender === 'user' ? styles.userBubble : styles.aiBubble
+              ]}
+            >
+              <Text style={[
+                styles.messageText, 
+                item.sender === 'user' ? styles.userText : styles.aiText
+              ]}>
+                {item.text}
+              </Text>
+            </View>
+          ))}
+        </ScrollView>
+
+        {/* Input Area (Main Content Style) */}
+        <View style={[styles.inputContainer, { paddingBottom: insets.bottom + 10 }]}>
+          <View style={styles.inputWrapper}>
+            <MapPin size={20} color={colors.text.muted} style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Pergunte sobre locais próximos..."
+              placeholderTextColor="#999"
+              value={message}
+              onChangeText={setMessage}
+              multiline
+            />
+            <TouchableOpacity 
+              onPress={handleSendMessage}
+              style={styles.sendButton}
+              activeOpacity={0.7}
+            >
+              <PaperPlaneRight size={22} color={colors.brand.primary} weight="fill" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -84,21 +132,87 @@ const styles = StyleSheet.create({
   },
   darkHeader: {
     backgroundColor: colors.background.dark,
-    padding: 24,
-    paddingTop: 38,
-    height: 400, // Altura temporária só para ter o fundo preto
+    paddingHorizontal: 24,
+    paddingBottom: 30,
   },
-  greeting: {
-    color: colors.text.light,
-    fontSize: 20,
-    fontFamily: fonts.bold,
-    letterSpacing: -0.5,
+  headerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginBottom: 8,
-    textTransform: 'uppercase',
   },
-  subtitle: {
+  headerSubtitle: {
     color: colors.text.muted,
-    fontSize: 14,
+    fontSize: 12,
+    fontFamily: fonts.bold,
+    letterSpacing: 1.5,
+  },
+  mainTitle: {
+    color: colors.text.light,
+    fontSize: 48,
+    fontFamily: fonts.bold,
+    letterSpacing: -1.5,
+  },
+  chatContainer: {
+    flex: 1,
+  },
+  chatContent: {
+    padding: 24,
+    paddingBottom: 20,
+  },
+  messageBubble: {
+    maxWidth: '85%',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  userBubble: {
+    alignSelf: 'flex-end',
+    backgroundColor: colors.background.dark,
+    borderBottomRightRadius: 2,
+  },
+  aiBubble: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#E9E9EB', // Cinza neutro estilo iOS/Swiss
+    borderBottomLeftRadius: 2,
+  },
+  messageText: {
+    fontSize: 15,
+    lineHeight: 22,
     fontFamily: fonts.regular,
-  }
+  },
+  userText: {
+    color: colors.text.light,
+  },
+  aiText: {
+    color: colors.text.dark,
+  },
+  inputContainer: {
+    paddingHorizontal: 20,
+    backgroundColor: colors.background.light,
+    borderTopWidth: 1,
+    borderTopColor: '#EEE',
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 25,
+    paddingHorizontal: 15,
+    marginTop: 10,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 15,
+    fontFamily: fonts.regular,
+    color: colors.text.dark,
+    maxHeight: 100,
+  },
+  sendButton: {
+    padding: 8,
+  },
 });

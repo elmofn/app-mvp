@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { CallBell, CurrencyDollar, ShoppingBag, Wallet } from 'phosphor-react-native';
+import { CurrencyDollar, MapPinAreaIcon, ShoppingBag, Wallet } from 'phosphor-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -139,7 +139,7 @@ export default function HomeScreen() {
               <Text style={styles.assistantTitle}>Assistente de Viagem</Text>
               <Text style={styles.assistantDesc}>Converse com a Bia</Text>
             </View>
-            <CallBell size={28} color={colors.text.dark} />
+            <MapPinAreaIcon size={28} color={colors.text.dark} />
           </View>
 
           <View style={styles.sectionHeader}>

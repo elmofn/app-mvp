@@ -1,17 +1,17 @@
 import { StatusBar } from 'expo-status-bar';
 import {
-    AirplaneTilt,
-    CircleIcon,
-    ShieldCheck,
-    Tag
+  AirplaneTilt,
+  CircleIcon,
+  ShieldCheck,
+  Tag
 } from 'phosphor-react-native';
 import React from 'react';
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,7 +19,6 @@ import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
-// Mock de dados para as notificações
 const NOTIFICATIONS = [
   {
     id: 1,
@@ -66,23 +65,23 @@ export default function NotificationsScreen() {
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <StatusBar style="light" />
       
-      {/* Seção Superior (Preta) - Fixa */}
-      <View style={[styles.darkHeader, { paddingTop: insets.top }]}>
+      {/* 1. Header de Navegação Fixo */}
+      <View style={[styles.fixedHeader, { paddingTop: insets.top }]}>
         <ScreenHeader title="CENTRAL DE AVISOS" dark={true} />
-        
-        <View style={styles.headerContent}>
+      </View>
+
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* 2. Título e Descrição rolam com a página */}
+        <View style={styles.headerScrollExtension}>
           <Text style={styles.mainTitle}>Alertas</Text>
           <Text style={styles.pageDescription}>
             Fique por dentro das movimentações da sua conta e novidades da sua próxima viagem.
           </Text>
         </View>
-      </View>
 
-      {/* Lista de Notificações - Scrollable */}
-      <ScrollView 
-        showsVerticalScrollIndicator={false} 
-        contentContainerStyle={styles.scrollContent}
-      >
         <View style={styles.listContainer}>
           {NOTIFICATIONS.map((item) => (
             <TouchableOpacity 
@@ -121,13 +120,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.light,
   },
-  darkHeader: {
+  fixedHeader: {
     backgroundColor: colors.background.dark,
-    paddingBottom: 32,
   },
-  headerContent: {
+  headerScrollExtension: {
+    backgroundColor: colors.background.dark,
     paddingHorizontal: 24,
-    marginTop: -10,
+    paddingBottom: 32,
+    marginTop: -20, // Ajuste para colar no header fixo
   },
   mainTitle: {
     fontSize: 48,
@@ -162,8 +162,8 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   unreadCard: {
-    borderColor: colors.brand.primary + '30', // Azul com transparência
-    backgroundColor: colors.brand.primary + '05', // Fundo azulado bem leve
+    borderColor: colors.brand.primary + '30',
+    backgroundColor: colors.brand.primary + '05',
   },
   iconContainer: {
     width: 48,

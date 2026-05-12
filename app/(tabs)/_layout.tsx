@@ -1,6 +1,6 @@
 import { colors } from '@/src/theme/colors';
 import { Tabs } from 'expo-router';
-import { CallBell, House, Receipt, ShoppingBag } from 'phosphor-react-native';
+import { House, MapPinAreaIcon, Receipt, ShoppingBag } from 'phosphor-react-native';
 import React from 'react';
 
 export default function TabLayout() {
@@ -61,7 +61,7 @@ export default function TabLayout() {
         options={{
           title: 'Assistente',
           tabBarIcon: ({ color, focused }) => (
-            <CallBell size={26} color={color} weight={focused ? 'fill' : 'regular'} />
+            <MapPinAreaIcon size={26} color={color} weight={focused ? 'fill' : 'regular'} />
           ),
         }}
       />

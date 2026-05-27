@@ -25,6 +25,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 import { fetchHomeData, HomeData } from '@/src/services/api';
 import { fonts } from '@/src/theme/typography';
@@ -88,6 +89,7 @@ export default function HomeScreen() {
   });
 
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
 
   useFocusEffect(
     useCallback(() => {
@@ -123,7 +125,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: tabBarHeight + 24 }}
       >
         {/* --- HEADER SECTION --- */}
         <LinearGradient 

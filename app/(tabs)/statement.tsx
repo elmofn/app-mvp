@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 import { BalanceDisplay } from '@/src/components/BalanceDisplay';
 import { TopBar } from '@/src/components/Topbar';
@@ -36,6 +37,7 @@ export default function StatementScreen() {
   const monthOpacity = useSharedValue(0);
 
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
 
   useEffect(() => {
     fetchStatementData().then((res) => {
@@ -188,7 +190,7 @@ export default function StatementScreen() {
             </View>
           ))}
         </View>
-        <View style={{ height: 100 }} />
+        <View style={{ height: tabBarHeight + 24 }} />
       </Animated.ScrollView>
       <TopBar scrollY={scrollY} />
     </SafeAreaView>

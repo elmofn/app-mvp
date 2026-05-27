@@ -12,6 +12,7 @@ import Animated, {
   useSharedValue
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 import { TopBar } from '@/src/components/Topbar';
 import { colors } from '@/src/theme/colors';
@@ -19,7 +20,8 @@ import { fonts } from '@/src/theme/typography';
 
 export default function TravelShopScreen() {
   const insets = useSafeAreaInsets();
-  
+  const tabBarHeight = useBottomTabBarHeight();
+
   // Shared value para controlar a animação da TopBar
   const scrollY = useSharedValue(0);
 
@@ -38,7 +40,7 @@ export default function TravelShopScreen() {
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarHeight + 24 }]}
       >
         
         {/* Seção Superior (DarkHeader) */}

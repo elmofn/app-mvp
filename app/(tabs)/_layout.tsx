@@ -20,8 +20,8 @@ export default function TabLayout() {
           height: 65,
           paddingBottom: 10,
           paddingTop: 0,
-          borderTopLeftRadius: 30,
-          borderTopRightRadius: 30,
+          borderTopLeftRadius: 16,
+          borderTopRightRadius: 16,
           elevation: 0,
         },
         tabBarLabelStyle: {

@@ -1,4 +1,5 @@
 import { colors } from '@/src/theme/colors';
+import { fonts } from '@/src/theme/typography';
 import { Tabs } from 'expo-router';
 import { CoinsIcon, HouseIcon, SparkleIcon, SuitcaseRollingIcon } from 'phosphor-react-native';
 import React from 'react';
@@ -25,7 +26,7 @@ export default function TabLayout() {
           elevation: 0,
         },
         tabBarLabelStyle: {
-          fontFamily: 'Helvetica-Bold',
+          fontFamily: fonts.bold,
           fontSize: 10,
           textTransform: 'uppercase',
           paddingBottom: 10,

@@ -1,4 +1,10 @@
-import { useFonts } from 'expo-font';
+import {
+  useFonts,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_700Bold,
+  Inter_400Regular_Italic,
+} from '@expo-google-fonts/inter';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -14,8 +20,10 @@ export const unstable_settings = {
 export default function RootLayout() {
   // 2. Carrega os arquivos físicos da fonte
   const [fontsLoaded, error] = useFonts({
-    'Helvetica-Regular': require('../assets/fonts/Helvetica-Regular.ttf'),
-    'Helvetica-Bold': require('../assets/fonts/Helvetica-Bold.ttf'),
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_700Bold,
+    Inter_400Regular_Italic,
   });
 
   // 3. Monitora o carregamento

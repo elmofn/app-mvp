@@ -14,6 +14,7 @@ import Animated, {
   useSharedValue
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 import { TopBar } from '@/src/components/Topbar';
 import { colors } from '@/src/theme/colors';
@@ -27,6 +28,7 @@ interface Message {
 
 export default function AssistantScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const scrollViewRef = useRef<Animated.ScrollView>(null);
   const scrollY = useSharedValue(0);
 
@@ -109,7 +111,7 @@ export default function AssistantScreen() {
         </Animated.ScrollView>
 
         {/* INPUT DE MENSAGEM */}
-        <View style={[styles.inputContainer, { paddingBottom: insets.bottom + 10 }]}>
+        <View style={[styles.inputContainer, { paddingBottom: tabBarHeight + 10 }]}>
           <View style={styles.inputWrapper}>
             <MapPin size={20} color={colors.text.muted} style={styles.inputIcon} />
             <TextInput

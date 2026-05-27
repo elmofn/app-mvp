@@ -1,6 +1,6 @@
 import { colors } from '@/src/theme/colors';
 import { Tabs } from 'expo-router';
-import { House, MapPinAreaIcon, Receipt, ShoppingBag } from 'phosphor-react-native';
+import { CoinsIcon, HouseIcon, SparkleIcon, SuitcaseRollingIcon } from 'phosphor-react-native';
 import React from 'react';
 
 export default function TabLayout() {
@@ -16,6 +16,8 @@ export default function TabLayout() {
           height: 65,
           paddingBottom: 10,
           paddingTop: 0,
+          borderTopLeftRadius: 30,
+          borderTopRightRadius: 30,
         },
         tabBarLabelStyle: {
           fontFamily: 'Helvetica-Bold',
@@ -31,7 +33,7 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <House size={26} color={color} weight={focused ? 'fill' : 'regular'} />
+            <HouseIcon size={26} color={color} weight={focused ? 'fill' : 'regular'} />
           ),
         }}
       />
@@ -41,7 +43,7 @@ export default function TabLayout() {
         options={{
           title: 'Travelshop',
           tabBarIcon: ({ color, focused }) => (
-            <ShoppingBag size={26} color={color} weight={focused ? 'fill' : 'regular'} />
+            <SuitcaseRollingIcon size={26} color={color} weight={focused ? 'fill' : 'regular'} />
           ),
         }}
       />
@@ -51,7 +53,7 @@ export default function TabLayout() {
         options={{
           title: 'Extrato',
           tabBarIcon: ({ color, focused }) => (
-            <Receipt size={26} color={color} weight={focused ? 'fill' : 'regular'} />
+            <CoinsIcon size={26} color={color} weight={focused ? 'fill' : 'regular'} />
           ),
         }}
       />
@@ -61,7 +63,7 @@ export default function TabLayout() {
         options={{
           title: 'Assistente',
           tabBarIcon: ({ color, focused }) => (
-            <MapPinAreaIcon size={26} color={color} weight={focused ? 'fill' : 'regular'} />
+            <SparkleIcon size={26} color={color} weight={focused ? 'fill' : 'regular'} />
           ),
         }}
       />

@@ -1,18 +1,33 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { CurrencyDollar, MapPinAreaIcon, ShoppingBag, Wallet } from 'phosphor-react-native';
+import {
+  BellIcon,
+  CoinsIcon,
+  DotsThreeOutlineVerticalIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  QuestionMarkIcon,
+  SparkleIcon,
+  SuitcaseRollingIcon,
+  UserIcon
+} from 'phosphor-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeInLeft,
+  FadeInRight,
+  FadeOut,
+  useAnimatedScrollHandler,
+  useSharedValue,
+  withTiming
+} from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BalanceDisplay } from '@/src/components/BalanceDisplay';
-import { TopBar } from '@/src/components/Topbar';
-import { colors } from '@/src/theme/colors';
-import { fonts } from '@/src/theme/typography';
-
 import { fetchHomeData, HomeData } from '@/src/services/api';
+import { fonts } from '@/src/theme/typography';
 
 const FEATURED_EXPERIENCES = [
   { id: '1', title: 'Louvre Privé', tag: 'ARTE', image: 'https://images.unsplash.com/photo-1543332164-6e82f355badc?auto=format&fit=crop&w=600&q=80' },
@@ -20,9 +35,39 @@ const FEATURED_EXPERIENCES = [
   { id: '3', title: 'Ryokan Kyoto', tag: 'RELAX', image: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=600&q=80' },
 ];
 
+const STATIC_TRIPS = [
+  {
+    id: 'trip_1',
+    title: 'Gramado',
+    tag: 'ATÉ 400KM',
+    description: 'Famosa pelo clima serrano, arquitetura europeia, chocolates artesanais e o charme das hortênsias. Um refúgio perfeito na Serra Gaúcha.',
+    imageUrl: 'https://www.melhoresdestinos.com.br/wp-content/uploads/2022/09/onde-fica-gramado-capa.jpeg'
+  },
+  {
+    id: 'trip_2',
+    title: 'Curitiba',
+    tag: 'ATÉ 1000KM',
+    description: 'Capital paranaense com belos parques, o famoso Jardim Botânico, museus icônicos e uma infraestrutura urbana que encanta os visitantes.',
+    imageUrl: 'https://media-cdn.tripadvisor.com/media/attractions-splice-spp-674x446/12/3a/cb/39.jpg'
+  },
+  {
+    id: 'trip_3',
+    title: 'Buenos Aires',
+    tag: 'INTERNACIONAL',
+    description: 'A vibrante capital argentina oferece tango, arquitetura clássica, rica gastronomia, museus e os charmosos cafés do bairro da Recoleta.',
+    imageUrl: 'https://viagensforadocomum.com.br/blog/wp-content/uploads/2025/07/Tudo-sobre-Buenos-Aires-capa-840x400.jpg'
+  }
+];
+
 export default function HomeScreen() { 
   const router = useRouter();
   const [data, setData] = useState<HomeData | null>(null);
+  
+  // Controle de Saldo
+  const [isBalanceVisible, setIsBalanceVisible] = useState(true);
+  
+  // Controle do Menu Suspenso
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const scrollY = useSharedValue(0);
   const scrollViewRef = useRef<Animated.ScrollView>(null);
@@ -64,13 +109,13 @@ export default function HomeScreen() {
     return (
       <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]} edges={['left', 'right']}>
         <StatusBar style="light" />
-        <ActivityIndicator size="large" color={colors.text.light} />
+        <ActivityIndicator size="large" color="#5b32e0" />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+    <View style={styles.container}>
       <StatusBar style="light" />
       
       <Animated.ScrollView 
@@ -78,163 +123,640 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        contentContainerStyle={{ paddingBottom: 40 }}
       >
-        {/* Cabeçalho sólido original restaurado */}
-        <View style={[styles.darkHeader, { paddingTop: insets.top + 38 }]}>
-          <Text style={styles.greeting}>Olá, {data.user.firstName}</Text>
+        {/* --- HEADER SECTION --- */}
+        <LinearGradient 
+          colors={['#6444DA', '#4D2ACC', '#1B0F4A']} 
+          start={{ x: 0.1, y: 0.1 }}
+          end={{ x: 0.8, y: 1.2 }}
+          locations={[0, 0.2, 0.7]}
+          style={[styles.header, { paddingTop: insets.top + 20 }]}
+        >
+          {/* OVERLAY ESCURO */}
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0, 0, 0, 0.2)' }]} />
 
-          <BalanceDisplay 
-            balanceBRL={data.user.balanceBRL} 
-            balanceUSD={data.user.balanceUSD} 
-            showStatementLink={true}
-            showToggleIcon={true}
-          />
+          {/* Top bar: entra da esquerda */}
+  <Animated.View entering={FadeInLeft.delay(0).duration(500)} style={styles.topBar}>
+    <Image source={require('@/src/assets/logos/TravelBack Horizontal.png')} style={styles.logoImage} resizeMode="contain" />
+    <View style={styles.headerIcons}>
+      <TouchableOpacity style={styles.iconBtn} onPress={() => setIsMenuOpen(true)}>
+        <DotsThreeOutlineVerticalIcon size={20} color="#FFF" weight="bold" />
+      </TouchableOpacity>
+    </View>
+  </Animated.View>
 
-          <Text style={styles.highlightsLabel}>Atividade da Conta</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.highlightsContainer}>
-            {data.recentTransactions.map((tx) => (
-              <TouchableOpacity 
-                key={tx.id} 
-                style={styles.highlightCard} 
-                onPress={() => router.push('/statement')}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.highlightTitle}>{tx.title}</Text>
-                <Text style={styles.highlightDate}>{tx.dateLabel}</Text>
-                <Text style={styles.highlightAmount}>{tx.amount}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+  {/* Greeting: cai de cima */}
+  <Animated.Text entering={FadeInDown.delay(100).duration(500)} style={styles.greeting}>
+    Hello, <Text style={{ fontWeight: '700' }}>{data.user.firstName}</Text>
+  </Animated.Text>
+
+  {/* Balance: entra da esquerda com delay */}
+  <Animated.View entering={FadeInLeft.delay(200).duration(500)} style={styles.balanceSection}>
+    <View>
+      <Text style={styles.balanceLabel}>Available Balance</Text>
+      <View style={styles.balanceValueContainer}>
+        <Text style={styles.currency}>R$</Text>
+        <Text style={styles.balanceValue}>
+          {isBalanceVisible ? data.user.balanceBRL : '****'}
+        </Text>
+      </View>
+      <Text style={styles.balanceUsd}>
+        US$ {isBalanceVisible ? data.user.balanceUSD : '****'}
+      </Text>
+    </View>
+    <View style={styles.rightActions}>
+      <TouchableOpacity onPress={() => setIsBalanceVisible(!isBalanceVisible)} activeOpacity={0.7} style={styles.eyeButton}>
+        {isBalanceVisible
+          ? <EyeIcon size={24} color="rgba(255,255,255,0.5)" weight="bold" />
+          : <EyeSlashIcon size={24} color="rgba(255,255,255,0.5)" weight="bold" />
+        }
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.statementBtn} onPress={() => router.push('/statement')}>
+        <Text style={styles.statementBtnText}>STATEMENT</Text>
+      </TouchableOpacity>
+    </View>
+  </Animated.View>
+
+  {/* Activity: cai de baixo com delay maior */}
+  <Animated.View entering={FadeInDown.delay(350).duration(500)}>
+    <Text style={styles.activityTitle}>Account Activity Highlights</Text>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.activityScroll}>
+      {data.recentTransactions.map((tx) => (
+        <View key={tx.id} style={styles.activityCard}>
+          <Text style={styles.activityCardTitle}>{tx.title}</Text>
+          <Text style={styles.activityCardSub}>{tx.dateLabel}</Text>
+          <Text style={styles.activityCardVal}>{tx.amount}</Text>
         </View>
+      ))}
+      <View style={{ width: 20 }} />
+    </ScrollView>
+  </Animated.View>
+</LinearGradient>
 
-        <View style={styles.mainContent}>
-          <TouchableOpacity activeOpacity={0.8} style={styles.walletBanner}>
-            <View>
-              <Text style={styles.walletTitle}>Carteira</Text>
-              <Text style={styles.walletDesc}>Acesse sua carteira</Text>
-            </View>
-            <Wallet size={32} color={colors.text.light} weight="bold" />
-          </TouchableOpacity>
-
-          <View style={styles.actionGrid}>
-            <TouchableOpacity onPress={() => router.push('/travelshop')} style={styles.actionCard} activeOpacity={0.7}>
-              <ShoppingBag size={28} color={colors.text.dark} weight="bold" style={{ marginBottom: 16 }} />
-              <View>
-                <Text style={styles.actionCardTitle}>Travelshop</Text>
-                <Text style={styles.actionCardDesc}>Reserve sua viagem</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push('/subscriptions')} style={styles.actionCard} activeOpacity={0.7}>
-              <CurrencyDollar size={28} color={colors.text.dark} weight="bold" style={{ marginBottom: 16 }} />
-              <View>
-                <Text style={styles.actionCardTitle}>Assinaturas</Text>
-                <Text style={styles.actionCardDesc}>Membro Club</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/assistant')} style={styles.assistantCard}>
-            <View>
-              <Text style={styles.assistantTitle}>Assistente de Viagem</Text>
-              <Text style={styles.assistantDesc}>Converse com a Bia</Text>
-            </View>
-            <MapPinAreaIcon size={28} color={colors.text.dark} />
-          </TouchableOpacity>
-
-          <View style={styles.sectionHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>Inspirações de Viagem</Text>
-              <Text style={styles.sectionSubtitle}>Experiências selecionadas</Text>
-            </View>
-            <TouchableOpacity><Text style={styles.viewAllLink}>VER TUDO</Text></TouchableOpacity>
-          </View>
-
-          {data.curatedTrips.map((trip) => (
-            <View key={trip.id} style={styles.tripCard}>
-              <View style={styles.tripImageContainer}>
-                {/* resizeMode cover garante que a foto da API ocupe o espaço exato sem distorcer */}
-                <Image source={{ uri: trip.imageUrl }} style={styles.tripImage} resizeMode="cover" />
-                <LinearGradient colors={['rgba(0,0,0,0.75)', 'rgba(0,0,0,0)']} start={[0, 1]} end={[0, 0]} style={styles.tripGradient}>
-                    <View style={styles.tripTag}><Text style={styles.tripTagText}>{trip.tag}</Text></View>
-                </LinearGradient>
-              </View>
-              <Text style={styles.tripTitle}>{trip.title}</Text>
-              <Text style={styles.tripDesc}>{trip.description}</Text>
-            </View>
-          ))}
-
-          <View style={[styles.sectionHeader, { marginTop: 20 }]}>
-            <View>
-              <Text style={styles.sectionTitle}>Sugestões Premium</Text>
-              <Text style={styles.sectionSubtitle}>Resgatáveis com Cashback</Text>
-            </View>
-          </View>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.carouselContainer}>
-            {FEATURED_EXPERIENCES.map((exp) => (
-              <TouchableOpacity key={exp.id} activeOpacity={0.9} style={styles.carouselCard}>
-                {/* resizeMode cover força todos os cards a terem a mesma geometria física */}
-                <Image source={{ uri: exp.image }} style={styles.carouselImage} resizeMode="cover" />
-                <View style={styles.carouselOverlay}>
-                  <Text style={styles.carouselTag}>{exp.tag}</Text>
-                  <Text style={styles.carouselTitle}>{exp.title}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
+{/* --- QUICK ACTIONS: cada card com delay e lado alternado --- */}
+<View style={styles.quickActions}>
+  {/* TravelShop: entra da esquerda */}
+  <Animated.View entering={FadeInLeft.delay(450).duration(500)}>
+    <TouchableOpacity onPress={() => router.push('/travelshop')} activeOpacity={0.9}>
+      <LinearGradient
+        colors={['#6444DA', '#4D2ACC']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={[styles.actionCard, { backgroundColor: 'transparent' }]}
+      >
+        <View style={styles.actionInfo}>
+          <Text style={styles.actionTitlePurple}>TravelShop</Text>
+          <Text style={styles.actionDescPurple}>Explore destinos incríveis.</Text>
         </View>
+        <View style={styles.actionIconWrapper}>
+          <SuitcaseRollingIcon size={32} color="#85EDD3" weight="regular" />
+        </View>
+      </LinearGradient>
+    </TouchableOpacity>
+  </Animated.View>
+
+  {/* Balance: entra da direita */}
+  <Animated.View entering={FadeInRight.delay(550).duration(500)}>
+    <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/statement')} activeOpacity={0.8}>
+      <View style={styles.actionInfo}>
+        <Text style={styles.actionTitle}>Balance</Text>
+        <Text style={styles.actionDesc}>Gerencie seus Travel Credits.</Text>
+      </View>
+      <View style={styles.actionIconWrapper}>
+        <CoinsIcon size={32} color="#0F022D" weight="regular" />
+      </View>
+    </TouchableOpacity>
+  </Animated.View>
+
+  {/* AI Assistant: entra da esquerda */}
+  <Animated.View entering={FadeInLeft.delay(650).duration(500)}>
+    <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/assistant')} activeOpacity={0.8}>
+      <View style={styles.actionInfo}>
+        <Text style={styles.actionTitle}>AI Assistant</Text>
+        <Text style={styles.actionDesc}>Planeje sua próxima jornada.</Text>
+      </View>
+      <View style={styles.actionIconWrapper}>
+        <SparkleIcon size={32} color="#0F022D" weight="regular" />
+      </View>
+    </TouchableOpacity>
+  </Animated.View>
+</View>
+
+{/* --- NEXT TRIP IDEAS --- */}
+<View style={styles.tripsSection}>
+  {/* Header da seção: cai de cima */}
+  <Animated.View entering={FadeInDown.delay(750).duration(500)} style={styles.sectionHeader}>
+    <Text style={styles.sectionTitle}>Next Trip</Text>
+    <Text style={styles.sectionTitleItalic}>Ideas<Text style={styles.sectionTitle}>.</Text></Text>
+    <Text style={styles.sectionSubtitle}>BOOK YOUR TRIP</Text>
+  </Animated.View>
+
+  {/* Trip cards: alternando esquerda/direita com delay crescente */}
+  {STATIC_TRIPS.map((trip, index) => (
+    <React.Fragment key={trip.id}>
+      <Animated.View
+        entering={
+          index % 2 === 0
+            ? FadeInLeft.delay(850 + index * 100).duration(500)
+            : FadeInRight.delay(850 + index * 100).duration(500)
+        }
+      >
+        <TouchableOpacity style={styles.tripCard} activeOpacity={0.9}>
+          <View style={styles.tripImgBox}>
+            <Image source={{ uri: trip.imageUrl }} style={styles.tripImg} resizeMode="cover" />
+            <View style={styles.tripTag}>
+              <View style={styles.tripTagDot} />
+              <Text style={styles.tripTagText}>{trip.tag}</Text>
+            </View>
+          </View>
+          <View style={styles.tripInfo}>
+            <Text style={styles.tripInfoTitle}>{trip.title}</Text>
+            <Text style={styles.tripInfoDesc} numberOfLines={2}>{trip.description}</Text>
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+      {index < STATIC_TRIPS.length - 1 && <View style={styles.tripDivider} />}
+    </React.Fragment>
+  ))}
+</View>
+
+        {/* --- BANNERS SECTION --- */}
+        <Animated.View entering={FadeInRight.delay(1100).duration(600)}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bannersSection}>
+          <View style={styles.bannerPurple}>
+            <Text style={styles.bannerPurpleTitle}>Cashback that{'\n'}takes you places</Text>
+            <Image 
+              source={{ uri: 'https://images.unsplash.com/photo-1565026057447-bc90a3dceeee?auto=format&fit=crop&w=300&q=80' }} 
+              style={styles.bannerPurpleImg} 
+              resizeMode="contain"
+            />
+            <Text style={styles.bannerPurpleFoot}>TravelBACK</Text>
+          </View>
+
+          <View style={styles.bannerPhoto}>
+            <Image 
+              source={{ uri: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=300&q=80' }} 
+              style={styles.bannerPhotoImg} 
+              resizeMode="cover"
+            />
+            <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.bannerPhotoOverlay}>
+              <Text style={styles.bannerPhotoText}>Travel more.{'\n'}Get more BACK.</Text>
+            </LinearGradient>
+          </View>
+          <View style={{ width: 20 }} />
+        </ScrollView>
+        </Animated.View>
       </Animated.ScrollView>
-      <TopBar scrollY={scrollY} />
-    </SafeAreaView>
+
+      {/* --- MENU OVERLAY --- */}
+      {isMenuOpen && (
+        <Animated.View 
+          entering={FadeIn.duration(200)} 
+          exiting={FadeOut.duration(200)} 
+          style={styles.menuOverlay}
+        >
+          <TouchableOpacity 
+            style={{ flex: 1 }} 
+            activeOpacity={1} 
+            onPress={() => setIsMenuOpen(false)}
+          >
+            <Animated.View 
+              entering={FadeIn.duration(200)} 
+              exiting={FadeOut.duration(200)}
+              style={[styles.dropdownMenu, { top: insets.top + 65 }]}
+            >
+              
+              {/* Item 1: Profile */}
+              <TouchableOpacity style={styles.menuItem} onPress={() => { setIsMenuOpen(false); /* Redirecionar perfil */ }}>
+                <View style={styles.menuIconContainer}>
+                  <UserIcon size={18} color="#0F022D" weight="bold" />
+                </View>
+                <Text style={styles.menuItemText}>My Profile</Text>
+              </TouchableOpacity>
+              
+              <View style={styles.menuDivider} />
+
+              {/* Item 2: Notifications */}
+              <TouchableOpacity style={styles.menuItem} onPress={() => { setIsMenuOpen(false); /* Redirecionar notificações */ }}>
+                <View style={styles.menuIconContainer}>
+                  <BellIcon size={18} color="#0F022D" weight="bold" />
+                </View>
+                <Text style={styles.menuItemText}>Notifications</Text>
+              </TouchableOpacity>
+
+              <View style={styles.menuDivider} />
+
+              {/* Item 3: Support */}
+              <TouchableOpacity style={styles.menuItem} onPress={() => { setIsMenuOpen(false); router.push('/support'); }}>
+                <View style={styles.menuIconContainer}>
+                  <QuestionMarkIcon size={18} color="#0F022D" weight="bold" />
+                </View>
+                <Text style={styles.menuItemText}>Help & Support</Text>
+              </TouchableOpacity>
+
+            </Animated.View>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background.light },
+  container: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
   
-  // Voltando à cor sólida no cabeçalho
-  darkHeader: { backgroundColor: colors.background.dark, padding: 24, paddingBottom: 30 },
-  greeting: { color: colors.text.light, fontSize: 20, fontFamily: fonts.bold, marginBottom: 15, textTransform: 'uppercase' },
-  highlightsLabel: { color: colors.text.muted, fontSize: 15, fontFamily: fonts.regular, marginBottom: 10, marginTop: 20 },
-  highlightsContainer: { flexDirection: 'row', marginHorizontal: -24, paddingHorizontal: 24 },
+  // --- HEADER ---
+  header: {
+    backgroundColor: '#1B0F4A',
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    overflow: 'hidden',
+  },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+    zIndex: 2, 
+  },
+  logoImage: {
+    width: 130, 
+    height: 24,
+  },
+  headerIcons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  iconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  greeting: {
+    fontSize: 20,
+    fontFamily: fonts.regular,
+    color: 'rgb(255, 255, 255)',
+    marginBottom: 18,
+    zIndex: 2,
+  },
   
-  // Voltando à cor sólida no card
-  highlightCard: { backgroundColor: colors.background.cardDark, padding: 16, borderRadius: 0, width: 240, marginRight: 16, marginTop: -5, marginBottom: -5 },
-  highlightTitle: { color: colors.text.light, fontSize: 14, fontFamily: fonts.bold, marginBottom: 4 },
-  highlightDate: { color: colors.text.muted, fontSize: 10, fontFamily: fonts.bold, marginBottom: 16 },
-  highlightAmount: { color: colors.text.light, fontSize: 16, fontFamily: fonts.bold },
+  // --- BALANCE ---
+  balanceSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginBottom: 18,
+    zIndex: 2,
+  },
+  balanceLabel: {
+    fontSize: 14,
+    fontFamily: fonts.bold,
+    letterSpacing: 1.35,
+    color: 'rgba(255,255,255,0.5)',
+    marginBottom: 14, 
+  },
+  balanceValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+  },
+  currency: {
+    fontSize: 29,
+    color: '#FFF',
+    fontFamily: fonts.bold,
+  },
+  balanceValue: {
+    fontSize: 50,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+    letterSpacing: -1,
+    lineHeight: 50, 
+  },
+  balanceUsd: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.5)',
+    fontFamily: fonts.bold,
+    marginTop: -4, 
+  },
   
-  mainContent: { padding: 24, marginTop: -12, backgroundColor: colors.background.light },
-  walletBanner: { backgroundColor: colors.brand.primary, padding: 19, borderRadius: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  walletTitle: { color: colors.text.light, fontSize: 17, fontFamily: fonts.bold },
-  walletDesc: { color: colors.text.light, opacity: 0.8, fontSize: 10, marginTop: -5 },
-  actionGrid: { flexDirection: 'row', gap: 16, marginBottom: 16 },
-  actionCard: { backgroundColor: colors.background.cardLight, flex: 1, padding: 9, minHeight: 130, justifyContent: 'space-between', borderRadius: 0 },
-  actionCardTitle: { fontSize: 17, fontFamily: fonts.bold, color: colors.text.dark, letterSpacing: -0.5, marginBottom: -2 },
-  actionCardDesc: { fontSize: 11, fontFamily: fonts.regular, color: colors.text.muted },
-  assistantCard: { backgroundColor: colors.background.cardLight, padding: 19, borderRadius: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  assistantTitle: { fontSize: 17, fontFamily: fonts.bold, color: colors.text.dark, letterSpacing: -0.5, marginBottom: -5 },
-  assistantDesc: { fontSize: 11, fontFamily: fonts.regular, color: colors.text.muted },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 15 },
-  sectionTitle: { fontSize: 21, fontFamily: fonts.bold, color: colors.text.dark, letterSpacing: -0.9, marginBottom: -5 },
-  sectionSubtitle: { fontSize: 12, fontFamily: fonts.bold, color: colors.text.muted },
-  viewAllLink: { fontSize: 12, fontFamily: fonts.bold, color: colors.brand.primary, textTransform: 'uppercase' },
-  tripCard: { marginBottom: 32 },
-  tripImageContainer: { width: '100%', height: 380, backgroundColor: '#E5E5E5', marginBottom: 12, borderRadius: 0, overflow: 'hidden' },
-  tripImage: { width: '100%', height: '100%' },
-  tripGradient: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end', paddingBottom: 20 },
-  tripTag: { backgroundColor: 'rgba(255, 255, 255, 0.2)', paddingVertical: 6, paddingHorizontal: 12, marginLeft: 20, alignSelf: 'flex-start' },
-  tripTagText: { color: colors.text.light, fontSize: 10, fontFamily: fonts.bold },
-  tripTitle: { fontSize: 24, fontFamily: fonts.bold, color: colors.text.dark, marginBottom: 4, letterSpacing: -0.9 },
-  tripDesc: { fontSize: 14, fontFamily: fonts.regular, color: '#444', lineHeight: 20 },
-  
-  carouselContainer: { marginHorizontal: -24, paddingHorizontal: 24, paddingBottom: 20 },
-  
-  // Forçando tamanho fixo e uniforme (Proporção retrato)
-  carouselCard: { width: 180, height: 240, marginRight: 16, backgroundColor: '#EEE', overflow: 'hidden', borderRadius: 0 },
-  carouselImage: { width: '100%', height: '100%' },
-  carouselOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)', padding: 12, justifyContent: 'flex-end' },
-  carouselTag: { color: colors.text.light, fontSize: 9, fontFamily: fonts.bold, marginBottom: 4, letterSpacing: 1 },
-  carouselTitle: { color: colors.text.light, fontSize: 16, fontFamily: fonts.bold, letterSpacing: -0.5 }
+  // (Ícone do Olho e Botão Statement)
+  rightActions: {
+    alignItems: 'flex-end',
+    paddingBottom: 0,
+  },
+  eyeButton: {
+    marginBottom: 8, 
+    padding: 4,      
+  },
+  statementBtn: {
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 1, 
+  },
+  statementBtnText: {
+    fontSize: 14,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.9,
+    color: '#85EDD3',
+  },
+
+  // --- ACTIVITY ---
+  activityTitle: {
+    fontSize: 14,
+    fontFamily: fonts.bold,
+    color: 'rgba(255,255,255,0.5)',
+    marginBottom: 8,
+    letterSpacing: 0.5,
+    zIndex: 2,
+  },
+  activityScroll: {
+    marginHorizontal: -20,
+    paddingHorizontal: 20,
+    overflow: 'visible',
+    zIndex: 2,
+  },
+  activityCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 12,
+    padding: 12,
+    paddingHorizontal: 16,
+    minWidth: 180,
+    marginRight: 12,
+    marginBottom: 8,
+  },
+  activityCardTitle: {
+    fontSize: 13,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+    marginBottom: -2,
+  },
+  activityCardSub: {
+    fontSize: 9,
+    fontFamily: fonts.bold,
+    color: 'rgba(255,255,255,0.5)',
+    marginBottom: 12,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  activityCardVal: {
+    fontSize: 14,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+  },
+
+  // --- QUICK ACTIONS ---
+  quickActions: {
+    paddingHorizontal: 20,
+    marginTop: -20,
+    zIndex: 10,
+    gap: 12,
+  },
+  actionCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: '#EDEDF2',
+  },
+  actionInfo: {
+    flex: 1,
+  },
+  actionTitle: {
+    fontSize: 21,
+    fontFamily: fonts.bold,
+    color: '#0F022D',
+    letterSpacing: -0.5, 
+    marginBottom: -2,
+  },
+  actionDesc: {
+    fontSize: 11,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.9,
+    paddingBottom: 4,
+    color: '#0F022D',
+  },
+  actionTitlePurple: {
+    fontSize: 21,
+    fontFamily: fonts.bold,
+    color: '#85EDD3',
+    marginBottom: -2,
+    letterSpacing: -0.5, 
+  },
+  actionDescPurple: {
+    fontSize: 11,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.9,
+    paddingBottom: 5,
+    color: 'rgb(255, 255, 255)',
+  },
+  actionIconWrapper: {
+    marginLeft: 16,
+  },
+
+  // --- TRIPS SECTION ---
+  tripsSection: {
+    padding: 20,
+    paddingTop: 72,
+  },
+  sectionHeader: {
+    marginBottom: 42,
+  },
+  sectionTitle: {
+    fontSize: 45,
+    fontFamily: fonts.bold,
+    color: '#1a1a1a',
+    lineHeight: 36,
+  },
+  sectionTitleItalic: {
+    fontSize: 45,
+    fontFamily: fonts.regular, 
+    fontStyle: 'italic',
+    color: '#f07167',
+    lineHeight: 36,
+  },
+  sectionSubtitle: {
+    fontSize: 15,
+    fontFamily: fonts.regular,
+    color: '#6c757d',
+    marginTop: 4,
+    letterSpacing: 1,
+  },
+  tripCard: {
+    marginBottom: 24, 
+  },
+  tripImgBox: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 16,
+    backgroundColor: '#CCC',
+  },
+  tripImg: {
+    width: '100%',
+    height: '100%',
+  },
+  tripTag: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    backgroundColor: 'rgba(20, 10, 50, 0.9)',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  tripTagDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#ffd166',
+  },
+  tripTagText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontFamily: fonts.bold,
+  },
+  tripInfo: {
+    marginBottom: 4,
+  },
+  tripInfoTitle: {
+    fontSize: 26,
+    fontFamily: fonts.bold,
+    color: '#1a1a1a',
+    marginBottom: 6,
+    letterSpacing: -0.6,
+  },
+  tripInfoDesc: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: '#6c757d',
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  tripDivider: {
+    height: 2,
+    width: 60,
+    backgroundColor: '#7D7BFE',
+    marginBottom: 40,
+  },
+
+  // --- BANNERS SECTION ---
+  bannersSection: {
+    paddingLeft: 20,
+    marginBottom: 20,
+  },
+  bannerPurple: {
+    width: 200,
+    height: 260,
+    borderRadius: 12,
+    backgroundColor: '#5b32e0',
+    padding: 20,
+    marginRight: 16,
+    justifyContent: 'space-between',
+    overflow: 'hidden',
+  },
+  bannerPurpleTitle: {
+    color: '#FFF',
+    fontSize: 16,
+    fontFamily: fonts.bold,
+    lineHeight: 20,
+    zIndex: 2,
+  },
+  bannerPurpleImg: {
+    position: 'absolute',
+    bottom: 0,
+    left: '10%',
+    width: '80%',
+    height: '60%',
+    opacity: 0.8,
+  },
+  bannerPurpleFoot: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 10,
+    fontFamily: fonts.bold,
+    zIndex: 2,
+  },
+  bannerPhoto: {
+    width: 200,
+    height: 260,
+    borderRadius: 12,
+    marginRight: 16,
+    overflow: 'hidden',
+    backgroundColor: '#333',
+  },
+  bannerPhotoImg: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+  },
+  bannerPhotoOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 20,
+    paddingTop: 40,
+  },
+  bannerPhotoText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontFamily: fonts.bold,
+    lineHeight: 18,
+  },
+
+  // --- MENU OVERLAY ESTILOS ---
+  menuOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(27, 15, 74, 0.25)', 
+    zIndex: 100,
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    right: 20,
+    backgroundColor: 'rgba(255, 255, 255, 1)', // Fundo alinhado aos action cards
+    borderRadius: 12, // Um pouco mais arredondado para casar com os cards
+    width: 200,
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 14,
+  },
+  menuIconContainer: {
+    width: 28,
+    alignItems: 'center',
+  },
+  menuItemText: {
+    fontSize: 14,
+    fontFamily: fonts.bold,
+    color: '#0F022D',
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: 'rgba(15, 2, 45, 0.08)', // Divisória super sutil e elegante
+    marginHorizontal: 16,
+  },
 });

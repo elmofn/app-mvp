@@ -27,7 +27,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { fetchHomeData, HomeData } from '@/src/services/api';
+import { useAuth } from '@/src/contexts/AuthContext';
+import { fetchHomeData, formatCurrency, HomeData } from '@/src/services/api';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -61,9 +62,15 @@ const STATIC_TRIPS = [
   }
 ];
 
-export default function HomeScreen() { 
+export default function HomeScreen() {
   const router = useRouter();
+  const { account } = useAuth();
   const [data, setData] = useState<HomeData | null>(null);
+
+  const firstName = account?.accountDetails.name?.trim().split(/\s+/)[0] ?? '';
+  const exchangeRate = account?.setups.currency.currentExchangeRate || 1;
+  const balanceBRL = account ? formatCurrency(account.balance.available) : '0,00';
+  const balanceUSD = account ? formatCurrency(account.balance.available / exchangeRate) : '0,00';
   
   // Controle de Saldo
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
@@ -151,7 +158,7 @@ export default function HomeScreen() {
 
   {/* Greeting: cai de cima */}
   <Animated.Text entering={FadeInDown.delay(100).duration(500)} style={styles.greeting}>
-    Hello, <Text style={styles.firstName}>{data.user.firstName}</Text>
+    Hello, <Text style={styles.firstName}>{firstName || data.user.firstName}</Text>
   </Animated.Text>
 
   {/* Balance: entra da esquerda com delay */}
@@ -161,11 +168,11 @@ export default function HomeScreen() {
       <View style={styles.balanceValueContainer}>
         <Text style={styles.currency}>R$</Text>
         <Text style={styles.balanceValue}>
-          {isBalanceVisible ? data.user.balanceBRL : '****'}
+          {isBalanceVisible ? balanceBRL : '****'}
         </Text>
       </View>
       <Text style={styles.balanceUsd}>
-        US$ {isBalanceVisible ? data.user.balanceUSD : '****'}
+        US$ {isBalanceVisible ? balanceUSD : '****'}
       </Text>
     </View>
     <View style={styles.rightActions}>

@@ -19,8 +19,21 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/src/components/ScreenHeader';
+import { useAuth } from '@/src/contexts/AuthContext';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
+
+function formatPhone(raw: string): string {
+  if (!raw) return '';
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 13 && digits.startsWith('55')) {
+    return `+55 ${digits.slice(2, 4)} ${digits.slice(4, 9)}-${digits.slice(9)}`;
+  }
+  if (digits.length === 11) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  }
+  return raw;
+}
 
 const CURRENCIES = [
   { label: 'US Dollar', value: 'USD' },
@@ -37,20 +50,32 @@ const LANGUAGES = [
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { account, signOut } = useAuth();
 
-  const [name, setName] = useState('João Silva');
-  const [phone, setPhone] = useState('+55 11 99999-9999');
-  const [email, setEmail] = useState('joao.silva@email.com');
+  const [name, setName] = useState(account?.accountDetails.name ?? '');
+  const [phone, setPhone] = useState(formatPhone(account?.accountDetails.phoneNumber ?? ''));
+  const [email, setEmail] = useState(account?.accountDetails.email ?? '');
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  const [currency, setCurrency] = useState(CURRENCIES[0]);
-  const [language, setLanguage] = useState(LANGUAGES[0]);
+  const [currency, setCurrency] = useState(
+    CURRENCIES.find((c) => c.value === account?.setups.currency.code) ?? CURRENCIES[0],
+  );
+  const [language, setLanguage] = useState(
+    LANGUAGES.find((l) => l.value === account?.setups.lang) ?? LANGUAGES[0],
+  );
   const [modalVisible, setModalVisible] = useState<{ type: 'currency' | 'language' | null }>({ type: null });
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Do you want to end your TravelCash session?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: () => router.replace('/') },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: () => {
+          signOut();
+          router.replace('/');
+        },
+      },
     ]);
   };
 

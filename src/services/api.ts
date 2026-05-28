@@ -50,6 +50,8 @@ const formatCurrency = (value: number) => {
   return value.toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
 };
 
+export { formatCurrency };
+
 // Cálculo do saldo: Começa com um bônus de 1500 + cashback - resgates
 const calculateCurrentBalance = () => {
   const baseBonus = 1500;

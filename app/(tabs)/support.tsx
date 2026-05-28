@@ -3,11 +3,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import {
   ArrowRightIcon,
-  ChatTextIcon,
   FileTextIcon,
-  MapPinIcon,
   ShieldCheckIcon,
+  SparkleIcon,
   VideoCameraIcon,
+  WhatsappLogoIcon,
 } from 'phosphor-react-native';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -59,7 +59,7 @@ export default function SupportScreen() {
                 <Text style={[styles.contactCardTitle, { color: '#85EDD3' }]}>Whatsapp</Text>
                 <Text style={styles.contactCardSubtitle}>Direct Support</Text>
               </View>
-              <ChatTextIcon size={28} color="#85EDD3" weight="regular" />
+              <WhatsappLogoIcon size={32} color="#85EDD3" weight="regular" />
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.contactCard} activeOpacity={0.85}>
@@ -67,7 +67,7 @@ export default function SupportScreen() {
                 <Text style={styles.contactCardTitle}>Video Call</Text>
                 <Text style={styles.contactCardSubtitle}>Lorem Ipsum, Lorem Ipsum.</Text>
               </View>
-              <VideoCameraIcon size={28} color={colors.text.light} weight="regular" />
+              <VideoCameraIcon size={32} color={colors.text.light} weight="regular" />
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.contactCard} activeOpacity={0.85}>
@@ -75,7 +75,7 @@ export default function SupportScreen() {
                 <Text style={styles.contactCardTitle}>Travel Assistant</Text>
                 <Text style={styles.contactCardSubtitle}>Lorem Ipsum.</Text>
               </View>
-              <MapPinIcon size={28} color={colors.text.light} weight="regular" />
+              <SparkleIcon size={32} color={colors.text.light} weight="regular" />
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -83,7 +83,7 @@ export default function SupportScreen() {
         <View style={styles.faqSection}>
           <Text style={styles.faqTitle}>
             Frequent{'\n'}
-            <Text style={styles.faqTitleAccent}>Questions.</Text>
+            <Text style={styles.faqTitleAccent}>Questions<Text style={styles.faqTitle}>.</Text></Text>
           </Text>
           <Text style={styles.faqSubtitle}>KNOWLEDGE BASE</Text>
 
@@ -101,14 +101,14 @@ export default function SupportScreen() {
           <View style={styles.bottomButtons}>
             <TouchableOpacity style={styles.darkButton} activeOpacity={0.85}>
               <View style={[styles.darkButtonIcon, { backgroundColor: '#85EDD3' }]}>
-                <ShieldCheckIcon size={16} color="#0F022D" weight="bold" />
+                <ShieldCheckIcon size={24} color="#0F022D" weight="bold" />
               </View>
               <Text style={styles.darkButtonText}>About the app</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.darkButton} activeOpacity={0.85}>
               <View style={[styles.darkButtonIcon, { backgroundColor: '#f07167' }]}>
-                <FileTextIcon size={16} color="#0F022D" weight="bold" />
+                <FileTextIcon size={24} color="#0F022D" weight="bold" />
               </View>
               <Text style={styles.darkButtonText}>Terms and Conditions</Text>
             </TouchableOpacity>
@@ -131,15 +131,15 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   mainTitle: {
-    fontSize: 48,
+    fontSize: 50,
     fontFamily: fonts.bold,
     color: colors.text.light,
-    letterSpacing: -1.5,
+    letterSpacing: -2,
     lineHeight: 52,
   },
   mainTitleAccent: {
     color: '#85EDD3',
-    fontFamily: fonts.bold_italic,
+    fontFamily: fonts.italic,
   },
 
   contactCards: {
@@ -149,7 +149,9 @@ const styles = StyleSheet.create({
   contactCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
     borderRadius: 14,
     paddingVertical: 20,
     paddingHorizontal: 20,
@@ -178,19 +180,19 @@ const styles = StyleSheet.create({
     fontSize: 48,
     fontFamily: fonts.bold,
     color: colors.text.dark,
-    letterSpacing: -1.5,
+    letterSpacing: 0,
     lineHeight: 52,
   },
   faqTitleAccent: {
     color: '#f07167',
-    fontFamily: fonts.bold_italic,
+    fontFamily: fonts.italic,
   },
   faqSubtitle: {
-    fontSize: 11,
-    fontFamily: fonts.bold,
+    fontSize: 15,
+    fontFamily: fonts.italic,
     color: colors.text.muted,
     letterSpacing: 1.5,
-    marginTop: 8,
+    marginTop: 1,
     marginBottom: 28,
   },
 
@@ -208,11 +210,13 @@ const styles = StyleSheet.create({
   },
   faqItemText: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 16,
     fontFamily: fonts.regular,
     color: colors.text.dark,
     lineHeight: 20,
+    maxWidth: '80%',
     paddingRight: 16,
+    paddingLeft: 16,
   },
 
   divider: {

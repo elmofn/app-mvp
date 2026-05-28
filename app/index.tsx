@@ -29,10 +29,10 @@ export default function LoginScreen() {
 
   return (
     <LinearGradient
-      colors={['#6444DA', '#4D2ACC', '#1B0F4A']}
+      colors={['#4D2ACC', '#6444DA', '#4D2ACC', '#1B0F4A']}
       start={{ x: 0.1, y: 0.1 }}
       end={{ x: 0.8, y: 1.2 }}
-      locations={[0, 0.2, 0.7]}
+      locations={[0, 0.35, 0.55, 0.95]}
       style={styles.gradient}
     >
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
@@ -43,11 +43,10 @@ export default function LoginScreen() {
 
         <View style={styles.logoSection}>
           <Image
-            source={require('@/src/assets/logos/TravelBack Horizontal.png')}
+            source={require('@/src/assets/logos/logo_horizontal_completo.png')}
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={styles.tagline}>Get BACK. Travel. Repeat.</Text>
         </View>
 
         <View style={styles.middleSpacer} />
@@ -68,6 +67,14 @@ export default function LoginScreen() {
           <TouchableOpacity style={styles.helpButton} onPress={handleHelp} activeOpacity={0.7}>
             <Text style={styles.helpLink}>Help</Text>
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.brandMark}>
+          <Image
+            source={require('@/src/assets/logos/logo_purple.png')}
+            style={styles.brandMarkImage}
+            resizeMode="contain"
+          />
         </View>
 
         <View style={styles.bottomSpacer} />
@@ -91,15 +98,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    width: 280,
-    height: 56,
-  },
-  tagline: {
-    color: colors.text.light,
-    fontSize: 17,
-    fontFamily: fonts.regular,
-    marginTop: 10,
-    letterSpacing: -0.2,
+    width: 300,
+    height: 110,
   },
 
   actionsSection: {
@@ -143,5 +143,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fonts.regular,
     textDecorationLine: 'underline',
+  },
+
+  brandMark: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  brandMarkImage: {
+    width: 28,
+    height: 28,
   },
 });

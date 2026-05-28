@@ -11,7 +11,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 
-import { AuthProvider } from '@/src/contexts/AuthContext';
+import { AuthProvider, useAuth } from '@/src/contexts/AuthContext';
 
 // 1. Impede que a tela de splash inicial feche antes de carregarmos os assets
 SplashScreen.preventAutoHideAsync();
@@ -30,24 +30,36 @@ export default function RootLayout() {
     Inter_700Bold_Italic,
   });
 
-  // 3. Monitora o carregamento
   useEffect(() => {
     if (error) throw error;
-    
-    // Se terminou de carregar, esconde a tela de splash e libera o app
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, error]);
+  }, [error]);
 
   // Se as fontes ainda não carregaram, segura a tela em branco/splash
   if (!fontsLoaded) {
     return null;
   }
 
-  // 4. Se chegou aqui, as fontes estão prontas e o app renderiza normalmente
   return (
     <AuthProvider>
+      <AppShell />
+    </AuthProvider>
+  );
+}
+
+function AppShell() {
+  const { isRestoring } = useAuth();
+
+  // 3. Segura o splash enquanto a sessao ainda esta sendo restaurada do storage
+  useEffect(() => {
+    if (!isRestoring) {
+      SplashScreen.hideAsync();
+    }
+  }, [isRestoring]);
+
+  if (isRestoring) return null;
+
+  return (
+    <>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
@@ -57,6 +69,6 @@ export default function RootLayout() {
         <Stack.Screen name="support" options={{ presentation: 'modal' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
-    </AuthProvider>
+    </>
   );
 }

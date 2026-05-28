@@ -68,9 +68,11 @@ export default function HomeScreen() {
   const [data, setData] = useState<HomeData | null>(null);
 
   const firstName = account?.accountDetails.name?.trim().split(/\s+/)[0] ?? '';
+  // available vem sempre em USD; convertemos para a moeda local multiplicando
+  // pelo currentExchangeRate (cotacao da moeda do usuario por 1 USD).
   const exchangeRate = account?.setups.currency.currentExchangeRate || 1;
-  const balanceBRL = account ? formatCurrency(account.balance.available) : '0,00';
-  const balanceUSD = account ? formatCurrency(account.balance.available / exchangeRate) : '0,00';
+  const balanceUSD = account ? formatCurrency(account.balance.available) : '0,00';
+  const balanceBRL = account ? formatCurrency(account.balance.available * exchangeRate) : '0,00';
   
   // Controle de Saldo
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);

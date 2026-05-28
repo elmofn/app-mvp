@@ -1,16 +1,26 @@
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
+import { useAuth } from '@/src/contexts/AuthContext';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { account } = useAuth();
   const { width, height } = useWindowDimensions();
+
+  useEffect(() => {
+    if (account) {
+      router.replace('/(tabs)/home');
+    }
+  }, [account, router]);
+
+  if (account) return null;
 
   // epicentro do gradiente radial = ~30% da altura, alinhado com o logo
   const cx = width / 2;

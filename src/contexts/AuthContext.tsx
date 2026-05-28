@@ -1,10 +1,11 @@
-import React, { createContext, ReactNode, useContext, useState } from 'react';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 import {
   signIn as apiSignIn,
   SignInAccountDetails,
   SignInResponse,
 } from '@/src/services/auth';
+import { clearSession, loadSession, saveSession } from '@/src/services/storage';
 
 type AuthState = {
   account: SignInAccountDetails | null;
@@ -12,16 +13,28 @@ type AuthState = {
 };
 
 type AuthContextValue = AuthState & {
+  isRestoring: boolean;
   isSigningIn: boolean;
   signIn: (login: string, password: string) => Promise<SignInResponse>;
-  signOut: () => void;
+  signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ account: null, token: null });
+  const [isRestoring, setIsRestoring] = useState(true);
   const [isSigningIn, setIsSigningIn] = useState(false);
+
+  useEffect(() => {
+    loadSession()
+      .then((session) => {
+        if (session) {
+          setState({ account: session.account, token: session.token });
+        }
+      })
+      .finally(() => setIsRestoring(false));
+  }, []);
 
   const signIn = async (login: string, password: string) => {
     setIsSigningIn(true);
@@ -32,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           account: response.accountDetails,
           token: response.token,
         });
+        await saveSession(response.token, response.accountDetails);
       }
       return response;
     } finally {
@@ -39,12 +53,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signOut = () => {
+  const signOut = async () => {
     setState({ account: null, token: null });
+    await clearSession();
   };
 
   return (
-    <AuthContext.Provider value={{ ...state, isSigningIn, signIn, signOut }}>
+    <AuthContext.Provider value={{ ...state, isRestoring, isSigningIn, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

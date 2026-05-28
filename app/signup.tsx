@@ -1,6 +1,7 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Check } from 'phosphor-react-native'; // Ícone para a checkbox
+import { CheckIcon, EyeIcon, EyeSlashIcon } from 'phosphor-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -10,14 +11,14 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import Animated, {
   interpolate,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withTiming
+  withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -25,35 +26,99 @@ import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
-const STEPS = [
-  { id: 1, title: 'Nova Conta', description: 'Para começar, informe o seu nome completo como consta nos seus documentos.', label: 'NOME COMPLETO', placeholder: 'DIGITE SEU NOME' },
-  { id: 2, title: 'E-mail', description: 'Agora informe o e-mail que deseja utilizar para aceder à sua conta TravelCash.', label: 'E-MAIL', placeholder: 'DIGITE SEU E-MAIL' },
-  { id: 3, title: 'Telefone', description: 'Informe o seu número de telemóvel com o código do país para mantermos a sua conta segura.', label: 'NÚMERO DE TELEFONE', placeholder: '+351 9XX XXX XXX' },
-  { id: 4, title: 'Revisão', description: 'Verifique se todos os seus dados estão corretos e aceite os termos para prosseguir.', label: 'RESUMO DOS DADOS', placeholder: '' },
-  { id: 5, title: 'Verificação', description: 'Enviámos um código de 6 dígitos para o seu e-mail. Digite-o abaixo para validar.', label: 'CÓDIGO DE VERIFICAÇÃO', placeholder: '0 0 0 0 0 0' },
-  { id: 6, title: 'Senha', description: 'Para finalizar, crie uma senha forte para proteger os seus dados e as suas viagens.', label: 'SUA SENHA', placeholder: '••••••••' },
+type StepKey = 'name' | 'email' | 'phone' | 'code' | 'password';
+
+type Step = {
+  id: number;
+  titleFirst: string;
+  titleAccent: string;
+  description: string;
+  label: string;
+  placeholder: string;
+  key?: StepKey;
+};
+
+const STEPS: Step[] = [
+  {
+    id: 1,
+    titleFirst: 'Full',
+    titleAccent: 'name',
+    description: 'To get started, share your full name exactly as it appears on your ID.',
+    label: 'Full Name',
+    placeholder: 'Your full name',
+    key: 'name',
+  },
+  {
+    id: 2,
+    titleFirst: 'Your',
+    titleAccent: 'e-mail',
+    description: 'Now share the e-mail you want to use to access your TravelBACK account.',
+    label: 'E-mail',
+    placeholder: 'you@email.com',
+    key: 'email',
+  },
+  {
+    id: 3,
+    titleFirst: 'Phone',
+    titleAccent: 'number',
+    description: 'Enter your mobile number with country code so we can keep your account safe.',
+    label: 'Phone Number',
+    placeholder: '+55 11 99999-9999',
+    key: 'phone',
+  },
+  {
+    id: 4,
+    titleFirst: 'Review',
+    titleAccent: 'details',
+    description: 'Make sure everything is correct and accept the terms to continue.',
+    label: 'Account Summary',
+    placeholder: '',
+  },
+  {
+    id: 5,
+    titleFirst: 'Verify',
+    titleAccent: 'e-mail',
+    description: 'We sent a 6-digit code to your e-mail. Enter it below to validate your address.',
+    label: 'Verification Code',
+    placeholder: '0 0 0 0 0 0',
+    key: 'code',
+  },
+  {
+    id: 6,
+    titleFirst: 'Create',
+    titleAccent: 'password',
+    description: 'Last step: choose a strong password to protect your data and your trips.',
+    label: 'Password',
+    placeholder: 'At least 8 characters',
+    key: 'password',
+  },
 ];
 
 export default function SignupScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  
+
   const [currentStep, setCurrentStep] = useState(1);
   const [focusedField, setFocusedField] = useState(false);
-  const [acceptedTerms, setAcceptedTerms] = useState(false); // 👈 Estado da Checkbox
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    name: '', email: '', phone: '', code: '', password: ''
+    name: '',
+    email: '',
+    phone: '',
+    code: '',
+    password: '',
   });
 
-  const progressWidth = useSharedValue(1 / 6);
+  const progressWidth = useSharedValue(1 / STEPS.length);
   const contentOpacity = useSharedValue(1);
 
   useEffect(() => {
-    progressWidth.value = withTiming(currentStep / 6, { duration: 500 });
+    progressWidth.value = withTiming(currentStep / STEPS.length, { duration: 500 });
   }, [currentStep]);
 
   const animatedProgressStyle = useAnimatedStyle(() => ({
-    width: `${progressWidth.value * 100}%`
+    width: `${progressWidth.value * 100}%`,
   }));
 
   const animatedContentStyle = useAnimatedStyle(() => {
@@ -64,10 +129,9 @@ export default function SignupScreen() {
   const changeStep = (newStep: number) => setCurrentStep(newStep);
 
   const handleNext = () => {
-    // Bloqueia se estiver na revisão e não aceitou os termos
     if (currentStep === 4 && !acceptedTerms) return;
 
-    if (currentStep < 6) {
+    if (currentStep < STEPS.length) {
       contentOpacity.value = withTiming(0, { duration: 200 }, (finished) => {
         if (finished) {
           runOnJS(changeStep)(currentStep + 1);
@@ -79,99 +143,169 @@ export default function SignupScreen() {
     }
   };
 
-  const stepData = STEPS[currentStep - 1];
+  const step = STEPS[currentStep - 1];
+  const isReview = currentStep === 4;
+  const isPassword = currentStep === 6;
+  const isCode = currentStep === 5;
+
+  const inputValue = step.key ? formData[step.key] : '';
+  const setInputValue = (val: string) => {
+    if (step.key) setFormData({ ...formData, [step.key]: val });
+  };
+
+  const ctaLabel = isReview ? 'Create Account' : currentStep === STEPS.length ? 'Finish' : 'Next';
+  const disabled = isReview && !acceptedTerms;
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <StatusBar style="light" />
-      
-      {/* Header Fixo */}
-      <View style={[styles.fixedHeader, { paddingTop: insets.top }]}>
-        <ScreenHeader title="CADASTRO" dark={true} />
-        <View style={styles.progressContainer}>
+
+      <LinearGradient
+        colors={['#6444DA', '#4D2ACC', '#1B0F4A']}
+        start={{ x: 0.1, y: 0.1 }}
+        end={{ x: 0.8, y: 1.2 }}
+        locations={[0, 0.2, 0.7]}
+        style={[styles.headerGradient, { paddingTop: insets.top }]}
+      >
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
+
+        <ScreenHeader title="Sign Up" dark={true} />
+
+        <View style={styles.progressTrack}>
           <Animated.View style={[styles.progressBar, animatedProgressStyle]} />
         </View>
-      </View>
 
-      <KeyboardAvoidingView 
+        <Animated.View style={[styles.headerBody, animatedContentStyle]}>
+          <Text style={styles.stepCounter}>
+            STEP {String(currentStep).padStart(2, '0')} OF {String(STEPS.length).padStart(2, '0')}
+          </Text>
+          <Text style={styles.mainTitle}>
+            {step.titleFirst} <Text style={styles.mainTitleAccent}>{step.titleAccent}</Text>
+          </Text>
+          <Text style={styles.pageDescription}>{step.description}</Text>
+        </Animated.View>
+      </LinearGradient>
+
+      <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView 
+        <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Título e Descrição no Scroll conforme pedido */}
-          <View style={styles.headerScrollExtension}>
-            <Animated.View style={animatedContentStyle}>
-              <Text style={styles.progressText}>
-                {String(currentStep).padStart(2, '0')} 
-                <Text style={styles.progressTotal}> / 06</Text>
-              </Text>
-              <Text style={styles.mainTitle}>{stepData.title}</Text>
-              <Text style={styles.pageDescription}>{stepData.description}</Text>
-            </Animated.View>
-          </View>
-
-          {/* Área do Formulário */}
           <View style={styles.formContainer}>
             <Animated.View style={[styles.formGroup, animatedContentStyle]}>
-              <Text style={styles.inputLabel}>{stepData.label}</Text>
-              
-              {currentStep === 4 ? (
+              <Text style={styles.inputLabel}>{step.label}</Text>
+
+              {isReview ? (
                 <View>
-                  <View style={styles.reviewContainer}>
-                    <Text style={styles.reviewText}><Text style={styles.fontsBold}>Nome:</Text> {formData.name}</Text>
-                    <Text style={styles.reviewText}><Text style={styles.fontsBold}>E-mail:</Text> {formData.email}</Text>
-                    <Text style={styles.reviewText}><Text style={styles.fontsBold}>Telefone:</Text> {formData.phone}</Text>
+                  <View style={styles.reviewCard}>
+                    <View style={styles.reviewRow}>
+                      <Text style={styles.reviewLabel}>Name</Text>
+                      <Text style={styles.reviewValue}>{formData.name || '—'}</Text>
+                    </View>
+                    <View style={styles.reviewRow}>
+                      <Text style={styles.reviewLabel}>E-mail</Text>
+                      <Text style={styles.reviewValue}>{formData.email || '—'}</Text>
+                    </View>
+                    <View style={styles.reviewRow}>
+                      <Text style={styles.reviewLabel}>Phone</Text>
+                      <Text style={styles.reviewValue}>{formData.phone || '—'}</Text>
+                    </View>
                   </View>
 
-                  {/* 👈 CHECKBOX DE TERMOS */}
-                  <TouchableOpacity 
-                    style={styles.checkboxWrapper} 
-                    onPress={() => setAcceptedTerms(!acceptedTerms)}
+                  <TouchableOpacity
+                    style={styles.checkboxWrapper}
+                    onPress={() => setAcceptedTerms((v) => !v)}
                     activeOpacity={0.7}
                   >
                     <View style={[styles.checkbox, acceptedTerms && styles.checkboxActive]}>
-                      {acceptedTerms && <Check size={14} color={colors.text.light} weight="bold" />}
+                      {acceptedTerms && <CheckIcon size={14} color={colors.text.light} weight="bold" />}
                     </View>
                     <Text style={styles.checkboxText}>
-                      Aceito os <Text style={styles.linkText}>Termos e Condições</Text> de uso e a <Text style={styles.linkText}>política de privacidade</Text> dos dados.
+                      I accept the <Text style={styles.linkText}>Terms and Conditions</Text> and the{' '}
+                      <Text style={styles.linkText}>Privacy Policy</Text>.
                     </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : isPassword ? (
+                <View
+                  style={[styles.passwordRow, focusedField && styles.inputFieldFocused]}
+                >
+                  <TextInput
+                    style={styles.passwordInput}
+                    placeholder={step.placeholder}
+                    placeholderTextColor="#B5B5BD"
+                    onFocus={() => setFocusedField(true)}
+                    onBlur={() => setFocusedField(false)}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="password-new"
+                    value={inputValue}
+                    onChangeText={setInputValue}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeButton}
+                    onPress={() => setShowPassword((v) => !v)}
+                    activeOpacity={0.6}
+                    hitSlop={8}
+                  >
+                    {showPassword ? (
+                      <EyeSlashIcon size={20} color={colors.text.muted} weight="regular" />
+                    ) : (
+                      <EyeIcon size={20} color={colors.text.muted} weight="regular" />
+                    )}
                   </TouchableOpacity>
                 </View>
               ) : (
                 <TextInput
                   style={[styles.inputField, focusedField && styles.inputFieldFocused]}
-                  placeholder={stepData.placeholder}
-                  placeholderTextColor="#D0D0D0"
+                  placeholder={step.placeholder}
+                  placeholderTextColor="#B5B5BD"
                   onFocus={() => setFocusedField(true)}
                   onBlur={() => setFocusedField(false)}
-                  secureTextEntry={currentStep === 6}
-                  value={currentStep === 1 ? formData.name : currentStep === 2 ? formData.email : currentStep === 3 ? formData.phone : currentStep === 5 ? formData.code : formData.password}
-                  onChangeText={(val) => {
-                    const keys = ['name', 'email', 'phone', '', 'code', 'password'];
-                    const key = keys[currentStep - 1];
-                    if (key) setFormData({...formData, [key]: val});
-                  }}
+                  value={inputValue}
+                  onChangeText={setInputValue}
+                  keyboardType={
+                    currentStep === 2
+                      ? 'email-address'
+                      : currentStep === 3
+                      ? 'phone-pad'
+                      : isCode
+                      ? 'number-pad'
+                      : 'default'
+                  }
+                  autoCapitalize={
+                    currentStep === 1 ? 'words' : currentStep === 2 ? 'none' : 'sentences'
+                  }
+                  autoCorrect={currentStep !== 2 && currentStep !== 3}
+                  autoComplete={
+                    currentStep === 1
+                      ? 'name'
+                      : currentStep === 2
+                      ? 'email'
+                      : currentStep === 3
+                      ? 'tel'
+                      : isCode
+                      ? 'one-time-code'
+                      : 'off'
+                  }
+                  maxLength={isCode ? 6 : undefined}
                 />
               )}
             </Animated.View>
 
             <View style={styles.buttonContainer}>
-              <TouchableOpacity 
-                style={[
-                  styles.primaryButton, 
-                  (currentStep === 4 && !acceptedTerms) && { opacity: 0.5 }
-                ]} 
+              <TouchableOpacity
+                style={[styles.primaryButton, disabled && styles.primaryButtonDisabled]}
                 onPress={handleNext}
-                activeOpacity={0.8}
+                activeOpacity={0.85}
+                disabled={disabled}
               >
-                {/* 👈 TROCA DINÂMICA DO TEXTO DO BOTÃO */}
-                <Text style={styles.primaryButtonText}>
-                  {currentStep === 4 ? 'CRIAR CONTA' : 'PRÓXIMO'}
-                </Text>
+                <Text style={styles.primaryButtonText}>{ctaLabel}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -182,30 +316,163 @@ export default function SignupScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background.light },
-  fixedHeader: { backgroundColor: colors.background.dark },
-  progressContainer: { height: 2, backgroundColor: '#333', width: '100%', marginBottom: 15 },
-  progressBar: { height: '100%', backgroundColor: colors.text.light },
-  headerScrollExtension: { backgroundColor: colors.background.dark, paddingHorizontal: 24, paddingBottom: 32 },
-  progressText: { fontSize: 28, fontFamily: fonts.bold, color: colors.text.light },
-  progressTotal: { fontSize: 12, color: colors.text.muted },
-  mainTitle: { fontSize: 48, fontFamily: fonts.bold, color: colors.text.light, letterSpacing: -1.5, marginTop: 20, marginBottom: 15 },
-  pageDescription: { fontSize: 16, fontFamily: fonts.regular, color: '#aaaaaa', lineHeight: 24, maxWidth: '90%' },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   scrollContent: { flexGrow: 1 },
-  formContainer: { padding: 24, flex: 1, justifyContent: 'space-between' },
-  formGroup: { marginBottom: 25 },
-  inputLabel: { fontSize: 12, fontFamily: fonts.bold, color: colors.text.muted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
-  inputField: { width: '100%', borderBottomWidth: 1, borderBottomColor: '#e0e0e0', fontSize: 16, fontFamily: fonts.regular, color: colors.text.dark, paddingVertical: 12 },
-  inputFieldFocused: { borderBottomWidth: 2, borderBottomColor: colors.brand.primary },
-  reviewContainer: { backgroundColor: '#F9F9F9', padding: 20, borderRadius: 8, gap: 12, marginBottom: 24 },
-  reviewText: { fontSize: 15, fontFamily: fonts.regular, color: colors.text.dark },
-  fontsBold: { fontFamily: fonts.bold },
-  checkboxWrapper: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginTop: 10 },
-  checkbox: { width: 22, height: 22, borderRadius: 4, borderWidth: 1, borderColor: '#e0e0e0', backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', marginTop: 2 },
-  checkboxActive: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
-  checkboxText: { flex: 1, fontSize: 13, color: colors.text.muted, lineHeight: 18, fontFamily: fonts.regular },
-  linkText: { color: colors.brand.primary, fontFamily: fonts.bold },
-  buttonContainer: { marginTop: 40 },
-  primaryButton: { backgroundColor: colors.brand.primary, paddingVertical: 18, borderRadius: 4, alignItems: 'center' },
-  primaryButtonText: { color: colors.text.light, fontSize: 14, fontFamily: fonts.bold, textTransform: 'uppercase', letterSpacing: 1 },
+
+  headerGradient: { paddingBottom: 32 },
+  progressTrack: {
+    height: 3,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: '100%',
+    marginBottom: 24,
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#85EDD3',
+  },
+  headerBody: {
+    paddingHorizontal: 24,
+  },
+  stepCounter: {
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 1.5,
+    marginBottom: 12,
+  },
+  mainTitle: {
+    fontSize: 48,
+    fontFamily: fonts.bold,
+    color: colors.text.light,
+    letterSpacing: -1.5,
+    marginBottom: 12,
+  },
+  mainTitleAccent: {
+    color: '#85EDD3',
+    fontFamily: fonts.bold_italic,
+  },
+  pageDescription: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: 'rgba(255,255,255,0.7)',
+    lineHeight: 20,
+    maxWidth: '95%',
+  },
+
+  formContainer: {
+    padding: 24,
+    paddingTop: 32,
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  formGroup: { marginBottom: 22 },
+  inputLabel: {
+    fontSize: 13,
+    fontFamily: fonts.bold,
+    color: colors.text.dark,
+    marginBottom: 6,
+  },
+  inputField: {
+    width: '100%',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+    fontSize: 17,
+    fontFamily: fonts.regular,
+    color: colors.text.dark,
+    paddingVertical: 10,
+  },
+  inputFieldFocused: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#0F022D',
+  },
+
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+  },
+  passwordInput: {
+    flex: 1,
+    fontSize: 17,
+    fontFamily: fonts.regular,
+    color: colors.text.dark,
+    paddingVertical: 10,
+  },
+  eyeButton: {
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+
+  reviewCard: {
+    backgroundColor: '#F4F4F5',
+    borderRadius: 12,
+    padding: 20,
+    gap: 14,
+    marginBottom: 8,
+  },
+  reviewRow: {
+    flexDirection: 'column',
+    gap: 2,
+  },
+  reviewLabel: {
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    color: colors.text.muted,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  reviewValue: {
+    fontSize: 16,
+    fontFamily: fonts.regular,
+    color: colors.text.dark,
+  },
+
+  checkboxWrapper: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginTop: 18,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#D5D5DB',
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  checkboxActive: {
+    backgroundColor: '#0F022D',
+    borderColor: '#0F022D',
+  },
+  checkboxText: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.text.muted,
+    lineHeight: 18,
+    fontFamily: fonts.regular,
+  },
+  linkText: {
+    color: colors.text.dark,
+    fontFamily: fonts.bold,
+  },
+
+  buttonContainer: { marginTop: 32 },
+  primaryButton: {
+    backgroundColor: '#0F022D',
+    borderRadius: 8,
+    paddingVertical: 18,
+    alignItems: 'center',
+  },
+  primaryButtonDisabled: { opacity: 0.4 },
+  primaryButtonText: {
+    color: colors.text.light,
+    fontSize: 15,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.5,
+  },
 });

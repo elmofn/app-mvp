@@ -62,7 +62,7 @@ export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <StatusBar style="light" />
       
       {/* 1. Header de Navegação Fixo */}

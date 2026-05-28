@@ -1,137 +1,179 @@
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { width, height } = useWindowDimensions();
+
+  // epicentro do gradiente radial = ~30% da altura, alinhado com o logo
+  const cx = width / 2;
+  const cy = height * 0.3;
+  const radius = Math.hypot(Math.max(cx, width - cx), Math.max(cy, height - cy));
 
   const handleLogin = () => {
-    // Por enquanto, apenas navega para as abas principais
-    router.replace('/(tabs)/home');
+    router.push('/login');
   };
 
   const handleSignup = () => {
-    // Por enquanto, apenas navega para as abas principais
-    router.replace('/signup');
+    router.push('/signup');
   };
 
-  //const handleActivateAccount = () => {
-    // Por enquanto, apenas navega para as abas principais
-    //router.replace('/accountactivation');
-  //};
+  const handleActivate = () => {
+    router.push('/activate');
+  };
+
+  const handleHelp = () => {
+    router.push('/help');
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.gradient}>
+      <Svg width={width} height={height} style={StyleSheet.absoluteFillObject}>
+        <Defs>
+          <RadialGradient
+            id="loginGrad"
+            cx={cx}
+            cy={cy}
+            rx={radius}
+            ry={radius}
+            fx={cx}
+            fy={cy}
+            gradientUnits="userSpaceOnUse"
+          >
+            <Stop offset="0" stopColor="#6444DA" stopOpacity="1" />
+            <Stop offset="0.2" stopColor="#4D2ACC" stopOpacity="1" />
+            <Stop offset="0.8" stopColor="#1B0F4A" stopOpacity="1" />
+          </RadialGradient>
+        </Defs>
+        <Rect x="0" y="0" width={width} height={height} fill="url(#loginGrad)" />
+      </Svg>
       <StatusBar style="light" />
 
-      {/* Cabeçalho */}
-      <View style={styles.header}>
-        <Text style={styles.title}>TRAVELBACK</Text>
-        <Text style={styles.subtitle}>SUA WALLET DE VIAGENS</Text>
-      </View>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
+        <View style={styles.topSpacer} />
 
-      {/* Grupo de Botões */}
-      <View style={styles.buttonGroup}>
-        <TouchableOpacity 
-          style={styles.btnBorder} 
-          onPress={handleLogin}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.btnText}>LOGIN</Text>
-        </TouchableOpacity>
+        <View style={styles.logoSection}>
+          <Image
+            source={require('@/src/assets/logos/logo_horizontal_completo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
 
-        <TouchableOpacity 
-          style={styles.btnBorder} 
-          onPress={handleSignup}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.btnText}>CADASTRO</Text>
-        </TouchableOpacity>
+        <View style={styles.middleSpacer} />
 
-        <TouchableOpacity 
-          style={styles.btnFilled} 
-          //onPress={handleActivateAccount}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.btnText}>ATIVAR CONTA</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.actionsSection}>
+          <TouchableOpacity style={styles.button} onPress={handleLogin} activeOpacity={0.8}>
+            <Text style={styles.buttonText}>Login</Text>
+          </TouchableOpacity>
 
-      {/* Rodapé */}
-      <View style={styles.footer}>
-        <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/support')}>
-          <Text style={styles.footerLink}>AJUDA</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+          <TouchableOpacity style={styles.button} onPress={handleSignup} activeOpacity={0.8}>
+            <Text style={styles.buttonText}>Sign Up</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.buttonAccent} onPress={handleActivate} activeOpacity={0.8}>
+            <Text style={styles.buttonAccentText}>Activate Account</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.helpButton} onPress={handleHelp} activeOpacity={0.7}>
+            <Text style={styles.helpLink}>Help</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.brandMark}>
+          <Image
+            source={require('@/src/assets/logos/logo_purple.png')}
+            style={styles.brandMarkImage}
+            resizeMode="contain"
+          />
+        </View>
+
+        <View style={styles.bottomSpacer} />
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  gradient: { flex: 1 },
+  safeArea: {
     flex: 1,
-    backgroundColor: colors.background.dark,
     paddingHorizontal: 24,
-    justifyContent: 'space-around', // Mantém o espaçamento proporcional do HTML
+  },
+
+  topSpacer: { flex: 0.6 },
+  middleSpacer: { flex: 0.4 },
+  bottomSpacer: { flex: 0.15 },
+
+  logoSection: {
     alignItems: 'center',
   },
-  header: {
+  logo: {
+    width: 297,
+    height: 73,
+  },
+
+  actionsSection: {
+    gap: 20,
+  },
+  button: {
+    width: '94%',
+    paddingVertical: 18,
+    alignSelf: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     alignItems: 'center',
-    marginTop: 40,
   },
-  title: {
+  buttonText: {
     color: colors.text.light,
-    fontSize: 42,
+    fontSize: 16,
+    fontFamily: fonts.medium,
+  },
+  buttonAccent: {
+    width: '94%',
+    paddingVertical: 18,
+    alignSelf: 'center',
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(133, 237, 211, 0.25)',
+    alignItems: 'center',
+  },
+  buttonAccentText: {
+    color: '#85EDD3',
+    fontSize: 16,
     fontFamily: fonts.bold,
-    letterSpacing: -0.5, // 0.1em do HTML
-    textAlign: 'center',
   },
-  subtitle: {
-    color: colors.text.muted,
-    fontSize: 12,
-    fontFamily: fonts.bold,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-    marginTop: -15,
-    alignSelf: 'flex-start',
+
+  helpButton: {
+    alignSelf: 'center',
+    marginTop: 18,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
-  buttonGroup: {
-    width: '100%',
-    gap: 16,
-  },
-  btnText: {
-    color: colors.text.light,
+  helpLink: {
+    color: 'rgba(255, 255, 255, 0.3)',
     fontSize: 14,
-    fontFamily: fonts.bold,
-    letterSpacing: 1,
-    textAlign: 'center',
+    fontFamily: fonts.regular,
+    letterSpacing: -0.35,
+    textDecorationLine: 'underline',
   },
-  btnBorder: {
-    width: '100%',
-    paddingVertical: 20,
-    borderWidth: 2,
-    borderColor: colors.text.light,
-    borderRadius: 4,
+
+  brandMark: {
+    alignItems: 'center',
+    marginTop: 64,
   },
-  btnFilled: {
-    width: '100%',
-    paddingVertical: 20,
-    backgroundColor: colors.brand.primary,
-    borderRadius: 4,
-  },
-  footer: {
-    marginBottom: 20,
-  },
-  footerLink: {
-    color: colors.text.muted,
-    fontSize: 12,
-    fontFamily: fonts.bold,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+  brandMarkImage: {
+    width: 28,
+    height: 28,
   },
 });

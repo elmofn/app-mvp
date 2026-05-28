@@ -6,12 +6,13 @@ export const colors = {
     cardLight: '#E5E5E5',
   },
   brand: {
-    primary: '#0066FF',
-    details: '#cfcfcf',
+    primary: '#7458E3',
+    details: '#85EDD3',
   },
   text: {
     light: '#FFFFFF',
-    dark: '#1A1A1A',
+    dark: '#1B1B1B',
+    medium: '#0F022D',
     muted: '#888888',
   }
 };

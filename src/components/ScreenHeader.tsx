@@ -25,7 +25,7 @@ export function ScreenHeader({ title, dark = true }: ScreenHeaderProps) {
         onPress={() => router.back()}
         activeOpacity={0.7}
       >
-        <ArrowLeftIcon size={30} color={iconColor} weight="bold" />
+        <ArrowLeftIcon size={29} color={iconColor} weight="bold" />
       </TouchableOpacity>
       <Text style={[styles.title, { color: textColor }]}>
         {title}
@@ -48,9 +48,9 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text.light,
-    fontSize: 18,
+    fontSize: 14,
     fontFamily: fonts.bold,
-    letterSpacing: - 0.5,
+    letterSpacing: - 0.7,
     textTransform: 'uppercase',
   },
 });

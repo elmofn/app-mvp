@@ -1,4 +1,3 @@
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { StyleSheet } from 'react-native';
@@ -6,13 +5,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SupportContent } from '@/src/components/SupportContent';
 
-export default function SupportScreen() {
-  const tabBarHeight = useBottomTabBarHeight();
-
+export default function HelpScreen() {
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <StatusBar style="light" />
-      <SupportContent bottomInset={tabBarHeight + 24} />
+      <SupportContent
+        showTravelAssistant={false}
+        titleFirst="Need "
+        titleAccent="Help"
+        titleAfter="?"
+      />
     </SafeAreaView>
   );
 }

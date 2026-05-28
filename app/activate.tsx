@@ -43,7 +43,7 @@ const STEPS: Step[] = [
   {
     id: 1,
     titleFirst: 'Activation',
-    titleAccent: 'code',
+    titleAccent: 'Code',
     description:
       'We sent a 6-digit code to your e-mail. Enter it below to activate your TravelBACK account.',
     label: 'Activation Code',
@@ -53,7 +53,7 @@ const STEPS: Step[] = [
   {
     id: 2,
     titleFirst: 'Create',
-    titleAccent: 'password',
+    titleAccent: 'Password',
     description:
       'Set a strong password to protect your data and your future trips with TravelBACK.',
     label: 'Password',
@@ -63,7 +63,7 @@ const STEPS: Step[] = [
   {
     id: 3,
     titleFirst: 'Review',
-    titleAccent: 'details',
+    titleAccent: 'Details',
     description:
       'Check your account details and accept the terms to finish the activation.',
     label: 'Account Summary',
@@ -286,25 +286,25 @@ const styles = StyleSheet.create({
   headerGradient: { paddingBottom: 32 },
   stepCounter: {
     paddingHorizontal: 24,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   stepCurrent: {
     fontSize: 24,
     fontFamily: fonts.bold,
     color: colors.text.light,
-    letterSpacing: -0.5,
+    letterSpacing: -1.2,
   },
   stepTotal: {
     fontSize: 12,
     fontFamily: fonts.bold,
-    color: colors.text.muted,
+    color: 'rgba(255, 255, 255, 0.6)',
   },
   progressTrack: {
     height: 3,
     backgroundColor: 'rgba(255,255,255,0.2)',
     marginHorizontal: 24,
     borderRadius: 2,
-    marginBottom: 24,
+    marginBottom: 8,
     overflow: 'hidden',
   },
   progressBar: {
@@ -318,12 +318,12 @@ const styles = StyleSheet.create({
     fontSize: 48,
     fontFamily: fonts.bold,
     color: colors.text.light,
-    letterSpacing: -1.5,
-    marginBottom: 12,
+    letterSpacing: -2.8,
+    marginBottom: 8,
   },
   mainTitleAccent: {
     color: '#85EDD3',
-    fontFamily: fonts.bold_italic,
+    fontFamily: fonts.italic,
   },
   pageDescription: {
     fontSize: 14,
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
   },
   inputFieldFocused: {
     borderBottomWidth: 2,
-    borderBottomColor: '#0F022D',
+    borderBottomColor: colors.brand.primary,
   },
 
   passwordRow: {
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
 
   buttonContainer: { marginTop: 32 },
   primaryButton: {
-    backgroundColor: '#0F022D',
+    backgroundColor: colors.brand.primary,
     borderRadius: 8,
     paddingVertical: 18,
     alignItems: 'center',

@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     fontSize: 48,
     fontFamily: fonts.bold,
     color: colors.text.light,
-    letterSpacing: -1.5,
+    letterSpacing: -2.2,
     marginBottom: 12,
   },
   mainTitleAccent: {

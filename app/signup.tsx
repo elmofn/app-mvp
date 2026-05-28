@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
   pageDescription: {
     fontSize: 14,
     fontFamily: fonts.regular,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 255, 255, 0.7)',
     lineHeight: 20,
     maxWidth: '95%',
   },

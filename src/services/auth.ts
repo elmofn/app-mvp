@@ -65,6 +65,17 @@ export type SignInResponse = {
   errorMessage: string;
 };
 
+export class SignInError extends Error {
+  status: number;
+  body: string;
+  constructor(message: string, status: number, body: string) {
+    super(message);
+    this.name = 'SignInError';
+    this.status = status;
+    this.body = body;
+  }
+}
+
 export async function signIn(login: string, password: string): Promise<SignInResponse> {
   const body: SignInRequest = {
     login,
@@ -74,7 +85,8 @@ export async function signIn(login: string, password: string): Promise<SignInRes
     devInfo: `${Platform.OS} ${Platform.Version}`,
   };
 
-  const response = await fetch(`${API_BASE_URL}/api/Security/SignIn`, {
+  const url = `${API_BASE_URL}/api/Security/SignIn`;
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -83,16 +95,26 @@ export async function signIn(login: string, password: string): Promise<SignInRes
     body: JSON.stringify(body),
   });
 
+  const rawBody = await response.text();
+
   if (!response.ok) {
     let message = `Sign in failed (${response.status})`;
-    try {
-      const errBody = await response.json();
-      message = errBody.errorMessage || errBody.message || message;
-    } catch {
-      // resposta sem JSON: mantem a mensagem padrao com o status code
+    if (rawBody) {
+      try {
+        const parsed = JSON.parse(rawBody);
+        message = parsed.errorMessage || parsed.message || parsed.title || rawBody.slice(0, 300);
+      } catch {
+        message = rawBody.slice(0, 300);
+      }
     }
-    throw new Error(message);
+    console.warn('[signIn] HTTP', response.status, 'body:', rawBody);
+    throw new SignInError(message, response.status, rawBody);
   }
 
-  return response.json();
+  try {
+    return JSON.parse(rawBody) as SignInResponse;
+  } catch (err) {
+    console.warn('[signIn] could not parse 200 body:', rawBody);
+    throw new SignInError('Invalid response from server', response.status, rawBody);
+  }
 }

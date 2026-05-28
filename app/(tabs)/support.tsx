@@ -2,12 +2,12 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import {
-  ArrowRight,
-  ChatText,
-  FileText,
-  MapPin,
-  ShieldCheck,
-  VideoCamera,
+  ArrowRightIcon,
+  ChatTextIcon,
+  FileTextIcon,
+  MapPinIcon,
+  ShieldCheckIcon,
+  VideoCameraIcon,
 } from 'phosphor-react-native';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -59,7 +59,7 @@ export default function SupportScreen() {
                 <Text style={[styles.contactCardTitle, { color: '#85EDD3' }]}>Whatsapp</Text>
                 <Text style={styles.contactCardSubtitle}>Direct Support</Text>
               </View>
-              <ChatText size={28} color="#85EDD3" weight="regular" />
+              <ChatTextIcon size={28} color="#85EDD3" weight="regular" />
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.contactCard} activeOpacity={0.85}>
@@ -67,7 +67,7 @@ export default function SupportScreen() {
                 <Text style={styles.contactCardTitle}>Video Call</Text>
                 <Text style={styles.contactCardSubtitle}>Lorem Ipsum, Lorem Ipsum.</Text>
               </View>
-              <VideoCamera size={28} color={colors.text.light} weight="regular" />
+              <VideoCameraIcon size={28} color={colors.text.light} weight="regular" />
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.contactCard} activeOpacity={0.85}>
@@ -75,7 +75,7 @@ export default function SupportScreen() {
                 <Text style={styles.contactCardTitle}>Travel Assistant</Text>
                 <Text style={styles.contactCardSubtitle}>Lorem Ipsum.</Text>
               </View>
-              <MapPin size={28} color={colors.text.light} weight="regular" />
+              <MapPinIcon size={28} color={colors.text.light} weight="regular" />
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -91,7 +91,7 @@ export default function SupportScreen() {
             {FAQS.map((faq) => (
               <TouchableOpacity key={faq.id} style={styles.faqItem} activeOpacity={0.7}>
                 <Text style={styles.faqItemText}>{faq.question}</Text>
-                <ArrowRight size={20} color={colors.text.dark} weight="regular" />
+                <ArrowRightIcon size={20} color={colors.text.dark} weight="regular" />
               </TouchableOpacity>
             ))}
           </View>
@@ -101,14 +101,14 @@ export default function SupportScreen() {
           <View style={styles.bottomButtons}>
             <TouchableOpacity style={styles.darkButton} activeOpacity={0.85}>
               <View style={[styles.darkButtonIcon, { backgroundColor: '#85EDD3' }]}>
-                <ShieldCheck size={16} color="#0F022D" weight="bold" />
+                <ShieldCheckIcon size={16} color="#0F022D" weight="bold" />
               </View>
               <Text style={styles.darkButtonText}>About the app</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.darkButton} activeOpacity={0.85}>
               <View style={[styles.darkButtonIcon, { backgroundColor: '#f07167' }]}>
-                <FileText size={16} color="#0F022D" weight="bold" />
+                <FileTextIcon size={16} color="#0F022D" weight="bold" />
               </View>
               <Text style={styles.darkButtonText}>Terms and Conditions</Text>
             </TouchableOpacity>

@@ -71,7 +71,7 @@ export default function LoginFormScreen() {
 
             <View style={styles.headerBody}>
               <Text style={styles.mainTitle}>
-                Welcome <Text style={styles.mainTitleAccent}>back</Text>
+                Welcome <Text style={styles.mainTitleAccent}>Back</Text>
               </Text>
               <Text style={styles.pageDescription}>
                 Enter your credentials to access your TravelBACK account.
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   },
   mainTitleAccent: {
     color: '#85EDD3',
-    fontFamily: fonts.bold_italic,
+    fontFamily: fonts.italic,
   },
   pageDescription: {
     fontSize: 14,
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   },
   inputFieldFocused: {
     borderBottomWidth: 2,
-    borderBottomColor: '#0F022D',
+    borderBottomColor: colors.brand.primary,
   },
 
   passwordRow: {
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   },
 
   primaryButton: {
-    backgroundColor: '#0F022D',
+    backgroundColor: colors.brand.primary,
     borderRadius: 8,
     paddingVertical: 18,
     alignItems: 'center',

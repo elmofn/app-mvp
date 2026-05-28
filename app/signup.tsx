@@ -42,7 +42,7 @@ const STEPS: Step[] = [
   {
     id: 1,
     titleFirst: 'Full',
-    titleAccent: 'name',
+    titleAccent: 'Name',
     description: 'To get started, share your full name exactly as it appears on your ID.',
     label: 'Full Name',
     placeholder: 'Your full name',
@@ -51,7 +51,7 @@ const STEPS: Step[] = [
   {
     id: 2,
     titleFirst: 'Your',
-    titleAccent: 'e-mail',
+    titleAccent: 'E-mail',
     description: 'Now share the e-mail you want to use to access your TravelBACK account.',
     label: 'E-mail',
     placeholder: 'you@email.com',
@@ -60,7 +60,7 @@ const STEPS: Step[] = [
   {
     id: 3,
     titleFirst: 'Phone',
-    titleAccent: 'number',
+    titleAccent: 'Number',
     description: 'Enter your mobile number with country code so we can keep your account safe.',
     label: 'Phone Number',
     placeholder: '+55 11 99999-9999',
@@ -69,7 +69,7 @@ const STEPS: Step[] = [
   {
     id: 4,
     titleFirst: 'Review',
-    titleAccent: 'details',
+    titleAccent: 'Details',
     description: 'Make sure everything is correct and accept the terms to continue.',
     label: 'Account Summary',
     placeholder: '',
@@ -77,7 +77,7 @@ const STEPS: Step[] = [
   {
     id: 5,
     titleFirst: 'Verify',
-    titleAccent: 'e-mail',
+    titleAccent: 'E-mail',
     description: 'We sent a 6-digit code to your e-mail. Enter it below to validate your address.',
     label: 'Verification Code',
     placeholder: '0 0 0 0 0 0',
@@ -86,7 +86,7 @@ const STEPS: Step[] = [
   {
     id: 6,
     titleFirst: 'Create',
-    titleAccent: 'password',
+    titleAccent: 'Password',
     description: 'Last step: choose a strong password to protect your data and your trips.',
     label: 'Password',
     placeholder: 'At least 8 characters',
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
   headerGradient: { paddingBottom: 32 },
   stepCounter: {
     paddingHorizontal: 24,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   stepCurrent: {
     fontSize: 24,
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     marginHorizontal: 24,
     borderRadius: 2,
-    marginBottom: 24,
+    marginBottom: 16,
     overflow: 'hidden',
   },
   progressBar: {
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
   },
   mainTitleAccent: {
     color: '#85EDD3',
-    fontFamily: fonts.bold_italic,
+    fontFamily: fonts.italic,
   },
   pageDescription: {
     fontSize: 14,
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
   },
   inputFieldFocused: {
     borderBottomWidth: 2,
-    borderBottomColor: '#0F022D',
+    borderBottomColor: colors.brand.primary,
   },
 
   passwordRow: {
@@ -481,7 +481,7 @@ const styles = StyleSheet.create({
 
   buttonContainer: { marginTop: 32 },
   primaryButton: {
-    backgroundColor: '#0F022D',
+    backgroundColor: colors.brand.primary,
     borderRadius: 8,
     paddingVertical: 18,
     alignItems: 'center',

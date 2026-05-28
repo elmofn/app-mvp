@@ -25,9 +25,18 @@ const FAQS = [
 type Props = {
   showTravelAssistant?: boolean;
   bottomInset?: number;
+  titleFirst?: string;
+  titleAccent?: string;
+  titleAfter?: string;
 };
 
-export function SupportContent({ showTravelAssistant = true, bottomInset = 24 }: Props) {
+export function SupportContent({
+  showTravelAssistant = true,
+  bottomInset = 24,
+  titleFirst = 'How Can\nWe ',
+  titleAccent = 'Assist',
+  titleAfter = '\nYou?',
+}: Props) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -48,7 +57,9 @@ export function SupportContent({ showTravelAssistant = true, bottomInset = 24 }:
 
         <View style={styles.headerBody}>
           <Text style={styles.mainTitle}>
-            How Can{'\n'}We <Text style={styles.mainTitleAccent}>Assist</Text>{'\n'}You?
+            {titleFirst}
+            <Text style={styles.mainTitleAccent}>{titleAccent}</Text>
+            {titleAfter}
           </Text>
         </View>
 

@@ -9,7 +9,12 @@ export default function HelpScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <StatusBar style="light" />
-      <SupportContent showTravelAssistant={false} />
+      <SupportContent
+        showTravelAssistant={false}
+        titleFirst="Need "
+        titleAccent="Help"
+        titleAfter="?"
+      />
     </SafeAreaView>
   );
 }

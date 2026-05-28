@@ -46,7 +46,7 @@ export default function LoginFormScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <StatusBar style="light" />
 
       <KeyboardAvoidingView

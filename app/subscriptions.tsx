@@ -18,7 +18,7 @@ export default function SubscriptionsScreen() {
   const insets = useSafeAreaInsets();
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <StatusBar style="light" />
       
       {/* Seção Superior (Preta) */}

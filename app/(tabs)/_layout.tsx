@@ -3,8 +3,11 @@ import { fonts } from '@/src/theme/typography';
 import { Tabs } from 'expo-router';
 import { CoinsIcon, HouseIcon, QuestionMarkIcon, SuitcaseRollingIcon } from 'phosphor-react-native';
 import React from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
@@ -18,8 +21,8 @@ export default function TabLayout() {
           bottom: 0,
           backgroundColor: colors.background.light,
           borderTopColor: '#E5E5E5',
-          height: 65,
-          paddingBottom: 10,
+          height: 65 + insets.bottom,
+          paddingBottom: 10 + insets.bottom,
           paddingTop: 0,
           borderTopLeftRadius: 30,
           borderTopRightRadius: 30,

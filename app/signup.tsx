@@ -171,14 +171,22 @@ export default function SignupScreen() {
 
         <ScreenHeader title="Sign Up" dark={true} />
 
+        <View style={styles.stepCounter}>
+          <Text>
+            <Text style={styles.stepCurrent}>
+              {String(currentStep).padStart(2, '0')}
+            </Text>
+            <Text style={styles.stepTotal}>
+              {` / ${String(STEPS.length).padStart(2, '0')}`}
+            </Text>
+          </Text>
+        </View>
+
         <View style={styles.progressTrack}>
           <Animated.View style={[styles.progressBar, animatedProgressStyle]} />
         </View>
 
         <Animated.View style={[styles.headerBody, animatedContentStyle]}>
-          <Text style={styles.stepCounter}>
-            STEP {String(currentStep).padStart(2, '0')} OF {String(STEPS.length).padStart(2, '0')}
-          </Text>
           <Text style={styles.mainTitle}>
             {step.titleFirst} <Text style={styles.mainTitleAccent}>{step.titleAccent}</Text>
           </Text>
@@ -320,11 +328,28 @@ const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1 },
 
   headerGradient: { paddingBottom: 32 },
+  stepCounter: {
+    paddingHorizontal: 24,
+    marginBottom: 10,
+  },
+  stepCurrent: {
+    fontSize: 24,
+    fontFamily: fonts.bold,
+    color: colors.text.light,
+    letterSpacing: -0.5,
+  },
+  stepTotal: {
+    fontSize: 12,
+    fontFamily: fonts.bold,
+    color: colors.text.muted,
+  },
   progressTrack: {
     height: 3,
     backgroundColor: 'rgba(255,255,255,0.2)',
-    width: '100%',
+    marginHorizontal: 24,
+    borderRadius: 2,
     marginBottom: 24,
+    overflow: 'hidden',
   },
   progressBar: {
     height: '100%',
@@ -332,13 +357,6 @@ const styles = StyleSheet.create({
   },
   headerBody: {
     paddingHorizontal: 24,
-  },
-  stepCounter: {
-    fontSize: 11,
-    fontFamily: fonts.bold,
-    color: 'rgba(255,255,255,0.7)',
-    letterSpacing: 1.5,
-    marginBottom: 12,
   },
   mainTitle: {
     fontSize: 48,

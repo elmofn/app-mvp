@@ -1,7 +1,8 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/src/theme/colors';
@@ -11,127 +12,136 @@ export default function LoginScreen() {
   const router = useRouter();
 
   const handleLogin = () => {
-    // Por enquanto, apenas navega para as abas principais
     router.replace('/(tabs)/home');
   };
 
   const handleSignup = () => {
-    // Por enquanto, apenas navega para as abas principais
-    router.replace('/signup');
+    router.push('/signup');
   };
 
-  //const handleActivateAccount = () => {
-    // Por enquanto, apenas navega para as abas principais
-    //router.replace('/accountactivation');
-  //};
+  const handleActivate = () => {
+    router.push('/activate');
+  };
+
+  const handleHelp = () => {
+    router.push('/support');
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <LinearGradient
+      colors={['#6444DA', '#4D2ACC', '#1B0F4A']}
+      start={{ x: 0.1, y: 0.1 }}
+      end={{ x: 0.8, y: 1.2 }}
+      locations={[0, 0.2, 0.7]}
+      style={styles.gradient}
+    >
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
       <StatusBar style="light" />
 
-      {/* Cabeçalho */}
-      <View style={styles.header}>
-        <Text style={styles.title}>TRAVELBACK</Text>
-        <Text style={styles.subtitle}>SUA WALLET DE VIAGENS</Text>
-      </View>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
+        <View style={styles.topSpacer} />
 
-      {/* Grupo de Botões */}
-      <View style={styles.buttonGroup}>
-        <TouchableOpacity 
-          style={styles.btnBorder} 
-          onPress={handleLogin}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.btnText}>LOGIN</Text>
-        </TouchableOpacity>
+        <View style={styles.logoSection}>
+          <Image
+            source={require('@/src/assets/logos/TravelBack Horizontal.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.tagline}>Get BACK. Travel. Repeat.</Text>
+        </View>
 
-        <TouchableOpacity 
-          style={styles.btnBorder} 
-          onPress={handleSignup}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.btnText}>CADASTRO</Text>
-        </TouchableOpacity>
+        <View style={styles.middleSpacer} />
 
-        <TouchableOpacity 
-          style={styles.btnFilled} 
-          //onPress={handleActivateAccount}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.btnText}>ATIVAR CONTA</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.actionsSection}>
+          <TouchableOpacity style={styles.button} onPress={handleLogin} activeOpacity={0.8}>
+            <Text style={styles.buttonText}>Login</Text>
+          </TouchableOpacity>
 
-      {/* Rodapé */}
-      <View style={styles.footer}>
-        <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/support')}>
-          <Text style={styles.footerLink}>AJUDA</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+          <TouchableOpacity style={styles.button} onPress={handleSignup} activeOpacity={0.8}>
+            <Text style={styles.buttonText}>Sign Up</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.buttonAccent} onPress={handleActivate} activeOpacity={0.8}>
+            <Text style={styles.buttonAccentText}>Activate Account</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.helpButton} onPress={handleHelp} activeOpacity={0.7}>
+            <Text style={styles.helpLink}>Help</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.bottomSpacer} />
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  gradient: { flex: 1 },
+  safeArea: {
     flex: 1,
-    backgroundColor: colors.background.dark,
     paddingHorizontal: 24,
-    justifyContent: 'space-around', // Mantém o espaçamento proporcional do HTML
+  },
+
+  topSpacer: { flex: 0.6 },
+  middleSpacer: { flex: 0.4 },
+  bottomSpacer: { flex: 0.15 },
+
+  logoSection: {
     alignItems: 'center',
   },
-  header: {
-    alignItems: 'center',
-    marginTop: 40,
+  logo: {
+    width: 280,
+    height: 56,
   },
-  title: {
+  tagline: {
     color: colors.text.light,
-    fontSize: 42,
-    fontFamily: fonts.bold,
-    letterSpacing: -0.5, // 0.1em do HTML
-    textAlign: 'center',
+    fontSize: 17,
+    fontFamily: fonts.regular,
+    marginTop: 10,
+    letterSpacing: -0.2,
   },
-  subtitle: {
-    color: colors.text.muted,
-    fontSize: 12,
-    fontFamily: fonts.bold,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-    marginTop: -15,
-    alignSelf: 'flex-start',
+
+  actionsSection: {
+    gap: 14,
   },
-  buttonGroup: {
+  button: {
     width: '100%',
-    gap: 16,
+    paddingVertical: 18,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    alignItems: 'center',
   },
-  btnText: {
+  buttonText: {
+    color: colors.text.light,
+    fontSize: 16,
+    fontFamily: fonts.medium,
+  },
+  buttonAccent: {
+    width: '100%',
+    paddingVertical: 18,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    borderWidth: 1.5,
+    borderColor: '#85EDD3',
+    alignItems: 'center',
+  },
+  buttonAccentText: {
+    color: '#85EDD3',
+    fontSize: 16,
+    fontFamily: fonts.bold,
+  },
+
+  helpButton: {
+    alignSelf: 'center',
+    marginTop: 18,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  helpLink: {
     color: colors.text.light,
     fontSize: 14,
-    fontFamily: fonts.bold,
-    letterSpacing: 1,
-    textAlign: 'center',
-  },
-  btnBorder: {
-    width: '100%',
-    paddingVertical: 20,
-    borderWidth: 2,
-    borderColor: colors.text.light,
-    borderRadius: 4,
-  },
-  btnFilled: {
-    width: '100%',
-    paddingVertical: 20,
-    backgroundColor: colors.brand.primary,
-    borderRadius: 4,
-  },
-  footer: {
-    marginBottom: 20,
-  },
-  footerLink: {
-    color: colors.text.muted,
-    fontSize: 12,
-    fontFamily: fonts.bold,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    fontFamily: fonts.regular,
+    textDecorationLine: 'underline',
   },
 });

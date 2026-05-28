@@ -30,7 +30,7 @@ export default function LoginScreen() {
   };
 
   const handleHelp = () => {
-    router.push('/support');
+    router.push('/help');
   };
 
   return (

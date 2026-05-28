@@ -336,19 +336,19 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontFamily: fonts.bold,
     color: colors.text.light,
-    letterSpacing: -0.5,
+    letterSpacing: -1.2,
   },
   stepTotal: {
     fontSize: 12,
     fontFamily: fonts.bold,
-    color: colors.text.muted,
+    color: 'rgba(255, 255, 255, 0.6)',
   },
   progressTrack: {
     height: 3,
     backgroundColor: 'rgba(255,255,255,0.2)',
     marginHorizontal: 24,
     borderRadius: 2,
-    marginBottom: 16,
+    marginBottom: 8,
     overflow: 'hidden',
   },
   progressBar: {
@@ -362,8 +362,8 @@ const styles = StyleSheet.create({
     fontSize: 48,
     fontFamily: fonts.bold,
     color: colors.text.light,
-    letterSpacing: -1.5,
-    marginBottom: 12,
+    letterSpacing: -2.8,
+    marginBottom: 8,
   },
   mainTitleAccent: {
     color: '#85EDD3',
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
   pageDescription: {
     fontSize: 14,
     fontFamily: fonts.regular,
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255, 255, 255, 0.6)',
     lineHeight: 20,
     maxWidth: '95%',
   },

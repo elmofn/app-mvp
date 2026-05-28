@@ -108,7 +108,7 @@ export default function ActivationScreen() {
   const stepData = ACTIVATION_STEPS[currentStep - 1];
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <StatusBar style="light" />
       
       {/* Header Fixo com StatusBar Dinâmica */}

@@ -157,7 +157,7 @@ export default function SignupScreen() {
   const disabled = isReview && !acceptedTerms;
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <StatusBar style="light" />
 
       <LinearGradient

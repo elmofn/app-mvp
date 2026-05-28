@@ -1,15 +1,21 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { width, height } = useWindowDimensions();
+
+  // epicentro do gradiente radial = ~30% da altura, alinhado com o logo
+  const cx = width / 2;
+  const cy = height * 0.3;
+  const radius = Math.hypot(Math.max(cx, width - cx), Math.max(cy, height - cy));
 
   const handleLogin = () => {
     router.replace('/(tabs)/home');
@@ -28,14 +34,26 @@ export default function LoginScreen() {
   };
 
   return (
-    <LinearGradient
-      colors={['#4D2ACC', '#6444DA', '#4D2ACC', '#1B0F4A']}
-      start={{ x: 0.1, y: 0.1 }}
-      end={{ x: 0.8, y: 1.2 }}
-      locations={[0, 0.35, 0.55, 0.95]}
-      style={styles.gradient}
-    >
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
+    <View style={styles.gradient}>
+      <Svg width={width} height={height} style={StyleSheet.absoluteFillObject}>
+        <Defs>
+          <RadialGradient
+            id="loginGrad"
+            cx={cx}
+            cy={cy}
+            rx={radius}
+            ry={radius}
+            fx={cx}
+            fy={cy}
+            gradientUnits="userSpaceOnUse"
+          >
+            <Stop offset="0" stopColor="#6444DA" stopOpacity="1" />
+            <Stop offset="0.5" stopColor="#4D2ACC" stopOpacity="1" />
+            <Stop offset="1" stopColor="#1B0F4A" stopOpacity="1" />
+          </RadialGradient>
+        </Defs>
+        <Rect x="0" y="0" width={width} height={height} fill="url(#loginGrad)" />
+      </Svg>
       <StatusBar style="light" />
 
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
@@ -79,7 +97,7 @@ export default function LoginScreen() {
 
         <View style={styles.bottomSpacer} />
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 

@@ -48,8 +48,8 @@ export default function LoginScreen() {
             gradientUnits="userSpaceOnUse"
           >
             <Stop offset="0" stopColor="#6444DA" stopOpacity="1" />
-            <Stop offset="0.5" stopColor="#4D2ACC" stopOpacity="1" />
-            <Stop offset="1" stopColor="#1B0F4A" stopOpacity="1" />
+            <Stop offset="0.2" stopColor="#4D2ACC" stopOpacity="1" />
+            <Stop offset="0.8" stopColor="#1B0F4A" stopOpacity="1" />
           </RadialGradient>
         </Defs>
         <Rect x="0" y="0" width={width} height={height} fill="url(#loginGrad)" />
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(133, 237, 211, 0.3)',
+    borderColor: 'rgba(133, 237, 211, 0.25)',
     alignItems: 'center',
   },
   buttonAccentText: {
@@ -161,9 +161,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   helpLink: {
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: 'rgba(255, 255, 255, 0.3)',
     fontSize: 14,
     fontFamily: fonts.regular,
+    letterSpacing: -0.35,
     textDecorationLine: 'underline',
   },
 

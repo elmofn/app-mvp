@@ -18,7 +18,7 @@ export default function LoginScreen() {
   const radius = Math.hypot(Math.max(cx, width - cx), Math.max(cy, height - cy));
 
   const handleLogin = () => {
-    router.replace('/(tabs)/home');
+    router.push('/login');
   };
 
   const handleSignup = () => {

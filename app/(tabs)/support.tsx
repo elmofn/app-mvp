@@ -1,213 +1,250 @@
-import { useRouter } from 'expo-router';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowRight, Robot, VideoCamera, WhatsappLogo } from 'phosphor-react-native';
+import {
+  ArrowRight,
+  ChatText,
+  FileText,
+  MapPin,
+  ShieldCheck,
+  VideoCamera,
+} from 'phosphor-react-native';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
-export default function SupportScreen() {
-  const router = useRouter();
+const FAQS = [
+  { id: '1', question: 'How do I freeze my physical card?' },
+  { id: '2', question: 'Travel Insurance Coverage Limits' },
+  { id: '3', question: 'International ATM Withdraw fees' },
+  { id: '4', question: 'Adding Funds via Swift Transfer' },
+];
 
-  const faqs = [
-    { id: '1', question: 'HOW DO I FREEZE MY PHYSICAL CARD?' },
-    { id: '2', question: 'TRAVEL INSURANCE COVERAGE LIMITS' },
-    { id: '3', question: 'INTERNATIONAL ATM WITHDRAWAL FEES' },
-    { id: '4', question: 'ADDING FUNDS VIA SWIFT TRANSFER' },
-  ];
+export default function SupportScreen() {
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Mantém a barra de status branca já que o topo é preto */}
-      <StatusBar style="light" /> 
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+      <StatusBar style="light" />
 
-      <ScreenHeader title="Suporte" />
-      
-      <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
-        
-        {/* === SEÇÃO SUPERIOR ESCURA === */}
-        <View style={styles.headerSection}>
-          
-          <Text style={styles.mainTitle}>How Can{'\n'}We Assist{'\n'}You?</Text>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: tabBarHeight + 24 }}
+      >
+        <LinearGradient
+          colors={['#6444DA', '#4D2ACC', '#1B0F4A']}
+          start={{ x: 0.1, y: 0.1 }}
+          end={{ x: 0.8, y: 1.2 }}
+          locations={[0, 0.2, 0.7]}
+          style={[styles.headerGradient, { paddingTop: insets.top }]}
+        >
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
+
+          <ScreenHeader title="Support" dark={true} />
+
+          <View style={styles.headerBody}>
+            <Text style={styles.mainTitle}>
+              How Can{'\n'}We <Text style={styles.mainTitleAccent}>Assist</Text>{'\n'}You?
+            </Text>
+          </View>
 
           <View style={styles.contactCards}>
-            
-            {/* Card 1: Whatsapp (Azul) */}
-            <TouchableOpacity style={[styles.card, styles.cardBlue]} activeOpacity={0.8}>
-              <View>
-                <Text style={[styles.cardTitle, { color: colors.text.light }]}>Whatsapp</Text>
-                <Text style={[styles.cardSubtitle, { color: colors.text.light }]}>DIRECT SUPPORT</Text>
+            <TouchableOpacity style={styles.contactCard} activeOpacity={0.85}>
+              <View style={styles.contactCardBody}>
+                <Text style={[styles.contactCardTitle, { color: '#85EDD3' }]}>Whatsapp</Text>
+                <Text style={styles.contactCardSubtitle}>Direct Support</Text>
               </View>
-              <WhatsappLogo size={28} color={colors.text.light} weight="fill" />
+              <ChatText size={28} color="#85EDD3" weight="regular" />
             </TouchableOpacity>
 
-            {/* Card 2: Video Call (Branco) */}
-            <TouchableOpacity style={[styles.card, styles.cardWhite]} activeOpacity={0.8}>
-              <View>
-                <Text style={[styles.cardTitle, { color: colors.text.dark }]}>Video Call</Text>
-                <Text style={[styles.cardSubtitle, { color: '#888888' }]}>VISUAL ASSISTANT</Text>
+            <TouchableOpacity style={styles.contactCard} activeOpacity={0.85}>
+              <View style={styles.contactCardBody}>
+                <Text style={styles.contactCardTitle}>Video Call</Text>
+                <Text style={styles.contactCardSubtitle}>Lorem Ipsum, Lorem Ipsum.</Text>
               </View>
-              <VideoCamera size={28} color={colors.text.dark} weight="fill" />
+              <VideoCamera size={28} color={colors.text.light} weight="regular" />
             </TouchableOpacity>
 
-            {/* Card 3: Travel Assistant (Branco) */}
-            <TouchableOpacity style={[styles.card, styles.cardWhite]} activeOpacity={0.8}>
-              <View>
-                <Text style={[styles.cardTitle, { color: colors.text.dark }]}>Travel Assistant</Text>
-                <Text style={[styles.cardSubtitle, { color: '#888888' }]}>AI ASSISTANT</Text>
+            <TouchableOpacity style={styles.contactCard} activeOpacity={0.85}>
+              <View style={styles.contactCardBody}>
+                <Text style={styles.contactCardTitle}>Travel Assistant</Text>
+                <Text style={styles.contactCardSubtitle}>Lorem Ipsum.</Text>
               </View>
-              <Robot size={28} color={colors.text.dark} weight="fill" />
+              <MapPin size={28} color={colors.text.light} weight="regular" />
             </TouchableOpacity>
-
           </View>
-        </View>
+        </LinearGradient>
 
-        {/* === SEÇÃO INFERIOR CLARA (FAQ) === */}
         <View style={styles.faqSection}>
+          <Text style={styles.faqTitle}>
+            Frequent{'\n'}
+            <Text style={styles.faqTitleAccent}>Questions.</Text>
+          </Text>
           <Text style={styles.faqSubtitle}>KNOWLEDGE BASE</Text>
-          <Text style={styles.faqTitle}>FREQUENT{'\n'}QUESTIONS</Text>
 
           <View style={styles.faqList}>
-            {faqs.map((faq) => (
+            {FAQS.map((faq) => (
               <TouchableOpacity key={faq.id} style={styles.faqItem} activeOpacity={0.7}>
                 <Text style={styles.faqItemText}>{faq.question}</Text>
-                <ArrowRight size={20} color={colors.text.dark} weight="bold" />
+                <ArrowRight size={20} color={colors.text.dark} weight="regular" />
               </TouchableOpacity>
             ))}
           </View>
 
-          <TouchableOpacity style={styles.aboutAppButton} activeOpacity={0.7}>
-            <Text style={styles.aboutAppText}>ABOUT THE APP</Text>
-          </TouchableOpacity>
-        </View>
+          <View style={styles.divider} />
 
+          <View style={styles.bottomButtons}>
+            <TouchableOpacity style={styles.darkButton} activeOpacity={0.85}>
+              <View style={[styles.darkButtonIcon, { backgroundColor: '#85EDD3' }]}>
+                <ShieldCheck size={16} color="#0F022D" weight="bold" />
+              </View>
+              <Text style={styles.darkButtonText}>About the app</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.darkButton} activeOpacity={0.85}>
+              <View style={[styles.darkButtonIcon, { backgroundColor: '#f07167' }]}>
+                <FileText size={16} color="#0F022D" weight="bold" />
+              </View>
+              <Text style={styles.darkButtonText}>Terms and Conditions</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.dark, // Previne que o overscroll no topo revele cor clara
-  },
-  
-  /* --- ESTILOS DO TOPO (ESCURO) --- */
-  headerSection: {
-    backgroundColor: colors.background.dark,
-    paddingHorizontal: 24,
-    paddingTop: 0,
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
+
+  headerGradient: {
     paddingBottom: 32,
   },
-  backNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 35,
-    gap: 4,
-  },
-  backNavText: {
-    color: colors.text.light,
-    fontSize: 18,
-    fontFamily: fonts.bold,
-    letterSpacing: - 0.5,
-    textTransform: 'uppercase',
+  headerBody: {
+    paddingHorizontal: 24,
+    marginTop: -12,
+    marginBottom: 28,
   },
   mainTitle: {
+    fontSize: 48,
+    fontFamily: fonts.bold,
     color: colors.text.light,
-    fontSize: 42,
-    fontFamily: fonts.bold,
-    lineHeight: 44, // Equivalente ao 1.05 do CSS
-    marginBottom: 32,
-    letterSpacing: -1,
+    letterSpacing: -1.5,
+    lineHeight: 52,
   },
-  contactCards: {
-    gap: 12,
-  },
-  card: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 24,
-    borderRadius: 0,
-  },
-  cardBlue: {
-    backgroundColor: '#1A56FF', // Azul vibrante do seu CSS
-  },
-  cardWhite: {
-    backgroundColor: colors.background.light, // Branco
-  },
-  cardTitle: {
-    fontSize: 22,
-    fontFamily: fonts.bold,
-    marginBottom: 4,
-    letterSpacing: -0.5,
-  },
-  cardSubtitle: {
-    fontSize: 9,
-    fontFamily: fonts.bold,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
+  mainTitleAccent: {
+    color: '#85EDD3',
+    fontFamily: fonts.bold_italic,
   },
 
-  /* --- ESTILOS DA BASE (CLARO) --- */
-  faqSection: {
-    backgroundColor: '#F7F7F7', // Cinza bem claro do CSS
+  contactCards: {
     paddingHorizontal: 24,
-    paddingVertical: 40,
-    minHeight: 500, // Garante que preencha a tela em celulares grandes
+    gap: 10,
   },
-  faqSubtitle: {
-    color: '#1A56FF', // Azul da marca
-    fontSize: 10,
+  contactCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    borderRadius: 14,
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+  },
+  contactCardBody: {
+    flex: 1,
+  },
+  contactCardTitle: {
+    fontSize: 22,
     fontFamily: fonts.bold,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    marginBottom: 8,
+    color: colors.text.light,
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  contactCardSubtitle: {
+    fontSize: 12,
+    fontFamily: fonts.regular,
+    color: 'rgba(255,255,255,0.7)',
+  },
+
+  faqSection: {
+    padding: 24,
+    paddingTop: 44,
   },
   faqTitle: {
-    color: colors.text.dark,
-    fontSize: 32,
+    fontSize: 48,
     fontFamily: fonts.bold,
-    lineHeight: 35, // Equivalente ao 1.1 do CSS
-    marginBottom: 32,
-    letterSpacing: -1,
+    color: colors.text.dark,
+    letterSpacing: -1.5,
+    lineHeight: 52,
   },
+  faqTitleAccent: {
+    color: '#f07167',
+    fontFamily: fonts.bold_italic,
+  },
+  faqSubtitle: {
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    color: colors.text.muted,
+    letterSpacing: 1.5,
+    marginTop: 8,
+    marginBottom: 28,
+  },
+
   faqList: {
-    gap: 12,
+    gap: 10,
   },
   faqItem: {
-    backgroundColor: colors.background.light, // Cartão branco
-    paddingVertical: 24,
-    paddingHorizontal: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    // Sombra sutil como no CSS (box-shadow)
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 5,
-    elevation: 1, // Para Android
+    backgroundColor: '#EDEDF2',
+    borderRadius: 8,
+    paddingVertical: 22,
+    paddingHorizontal: 20,
   },
   faqItemText: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: fonts.regular,
     color: colors.text.dark,
-    fontSize: 14,
-    fontFamily: fonts.bold,
-    lineHeight: 19, // Equivalente ao 1.4
-    maxWidth: '85%',
+    lineHeight: 20,
+    paddingRight: 16,
   },
-  aboutAppButton: {
-    backgroundColor: '#D1D1D1',
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    marginTop: 40,
+
+  divider: {
+    width: 56,
+    height: 2,
+    backgroundColor: '#f07167',
+    marginTop: 24,
+    marginBottom: 20,
   },
-  aboutAppText: {
-    color: colors.text.dark,
-    fontSize: 18,
+
+  bottomButtons: {
+    gap: 10,
+  },
+  darkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F022D',
+    borderRadius: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  darkButtonIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  darkButtonText: {
+    fontSize: 15,
     fontFamily: fonts.bold,
+    color: colors.text.light,
   },
 });

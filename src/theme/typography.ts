@@ -1,4 +1,7 @@
 export const fonts = {
-  regular: 'Helvetica-Regular',
-  bold: 'Helvetica-Bold',
+  regular: 'Inter_400Regular',
+  medium: 'Inter_500Medium',
+  bold: 'Inter_700Bold',
+  italic: 'Inter_400Regular_Italic',
+  bold_italic: 'Inter_700Bold_Italic',
 };

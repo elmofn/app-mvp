@@ -5,9 +5,9 @@ import { StatusBar } from 'expo-status-bar';
 import {
   BellIcon,
   CoinsIcon,
-  DotsThreeOutlineVerticalIcon,
   EyeIcon,
   EyeSlashIcon,
+  ListIcon,
   QuestionMarkIcon,
   SparkleIcon,
   SuitcaseRollingIcon,
@@ -144,7 +144,7 @@ export default function HomeScreen() {
     <Image source={require('@/src/assets/logos/TravelBack Horizontal.png')} style={styles.logoImage} resizeMode="contain" />
     <View style={styles.headerIcons}>
       <TouchableOpacity style={styles.iconBtn} onPress={() => setIsMenuOpen(true)}>
-        <DotsThreeOutlineVerticalIcon size={20} color="#FFF" weight="bold" />
+        <ListIcon size={20} color="#FFF" weight="bold" />
       </TouchableOpacity>
     </View>
   </Animated.View>

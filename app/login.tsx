@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { EyeIcon, EyeSlashIcon } from 'phosphor-react-native';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -17,20 +18,41 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/src/components/ScreenHeader';
+import { useAuth } from '@/src/contexts/AuthContext';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
 export default function LoginFormScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { signIn, isSigningIn } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  const handleSignIn = () => {
-    router.replace('/(tabs)/home');
+  const handleSignIn = async () => {
+    const login = email.trim();
+    if (!login || !password) {
+      Alert.alert('Missing information', 'Please enter your e-mail and password to continue.');
+      return;
+    }
+
+    try {
+      const response = await signIn(login, password);
+      if (response.success && response.token) {
+        router.replace('/(tabs)/home');
+      } else {
+        Alert.alert(
+          'Login failed',
+          response.errorMessage || response.message || 'Invalid e-mail or password.',
+        );
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unexpected error. Please try again.';
+      Alert.alert('Login failed', message);
+    }
   };
 
   const handleForgotPassword = () => {
@@ -142,11 +164,16 @@ export default function LoginFormScreen() {
             </View>
 
             <TouchableOpacity
-              style={styles.primaryButton}
+              style={[styles.primaryButton, isSigningIn && styles.primaryButtonDisabled]}
               onPress={handleSignIn}
               activeOpacity={0.85}
+              disabled={isSigningIn}
             >
-              <Text style={styles.primaryButtonText}>Sign In</Text>
+              {isSigningIn ? (
+                <ActivityIndicator color={colors.text.light} />
+              ) : (
+                <Text style={styles.primaryButtonText}>Sign In</Text>
+              )}
             </TouchableOpacity>
 
             <View style={styles.signupRow}>
@@ -257,6 +284,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 24,
   },
+  primaryButtonDisabled: { opacity: 0.6 },
   primaryButtonText: {
     color: colors.text.light,
     fontSize: 15,

@@ -11,6 +11,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 
+import { AuthProvider } from '@/src/contexts/AuthContext';
+
 // 1. Impede que a tela de splash inicial feche antes de carregarmos os assets
 SplashScreen.preventAutoHideAsync();
 
@@ -45,16 +47,16 @@ export default function RootLayout() {
 
   // 4. Se chegou aqui, as fontes estão prontas e o app renderiza normalmente
   return (
-    <>
+    <AuthProvider>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" /> 
+        <Stack.Screen name="index" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="signup" />
         <Stack.Screen name="settings" />
         <Stack.Screen name="support" options={{ presentation: 'modal' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
-    </>
+    </AuthProvider>
   );
 }

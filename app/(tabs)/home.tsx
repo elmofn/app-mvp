@@ -1,3 +1,4 @@
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -25,7 +26,6 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 import { fetchHomeData, HomeData } from '@/src/services/api';
 import { fonts } from '@/src/theme/typography';
@@ -150,7 +150,7 @@ export default function HomeScreen() {
 
   {/* Greeting: cai de cima */}
   <Animated.Text entering={FadeInDown.delay(100).duration(500)} style={styles.greeting}>
-    Hello, <Text style={{ fontWeight: '700' }}>{data.user.firstName}</Text>
+    Hello, <Text style={styles.firstName}>{data.user.firstName}</Text>
   </Animated.Text>
 
   {/* Balance: entra da esquerda com delay */}
@@ -235,7 +235,7 @@ export default function HomeScreen() {
   <Animated.View entering={FadeInLeft.delay(650).duration(500)}>
     <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/assistant')} activeOpacity={0.8}>
       <View style={styles.actionInfo}>
-        <Text style={styles.actionTitle}>AI Assistant</Text>
+        <Text style={styles.actionTitle}>CashIA</Text>
         <Text style={styles.actionDesc}>Planeje sua próxima jornada.</Text>
       </View>
       <View style={styles.actionIconWrapper}>
@@ -406,7 +406,13 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: fonts.regular,
     color: 'rgb(255, 255, 255)',
-    marginBottom: 18,
+    marginBottom: 30,
+    zIndex: 2,
+  },
+  firstName: {
+    fontSize: 20,
+    fontFamily: fonts.bold,
+    color: 'rgb(255, 255, 255)',
     zIndex: 2,
   },
   
@@ -415,15 +421,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    marginBottom: 18,
+    marginBottom: 30,
     zIndex: 2,
   },
   balanceLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: fonts.bold,
     letterSpacing: 1.35,
     color: 'rgba(255,255,255,0.5)',
-    marginBottom: 14, 
+    marginBottom: 5, 
   },
   balanceValueContainer: {
     flexDirection: 'row',
@@ -431,12 +437,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   currency: {
-    fontSize: 29,
+    fontSize: 30,
     color: '#FFF',
     fontFamily: fonts.bold,
   },
   balanceValue: {
-    fontSize: 50,
+    fontSize: 40,
     fontFamily: fonts.bold,
     color: '#FFF',
     letterSpacing: -1,
@@ -446,6 +452,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255,255,255,0.5)',
     fontFamily: fonts.bold,
+    letterSpacing: -0.7,
     marginTop: -4, 
   },
   
@@ -464,7 +471,7 @@ const styles = StyleSheet.create({
     marginBottom: 1, 
   },
   statementBtnText: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: fonts.bold,
     letterSpacing: 0.9,
     color: '#85EDD3',
@@ -472,10 +479,10 @@ const styles = StyleSheet.create({
 
   // --- ACTIVITY ---
   activityTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: fonts.bold,
     color: 'rgba(255,255,255,0.5)',
-    marginBottom: 8,
+    marginBottom: 7,
     letterSpacing: 0.5,
     zIndex: 2,
   },
@@ -497,14 +504,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   activityCardTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: fonts.bold,
     color: '#FFF',
-    marginBottom: -2,
+    marginBottom: 1,
   },
   activityCardSub: {
-    fontSize: 9,
-    fontFamily: fonts.bold,
+    fontSize: 8,
+    fontFamily: fonts.medium,
     color: 'rgba(255,255,255,0.5)',
     marginBottom: 12,
     letterSpacing: 0.8,
@@ -512,7 +519,7 @@ const styles = StyleSheet.create({
   },
   activityCardVal: {
     fontSize: 14,
-    fontFamily: fonts.bold,
+    fontFamily: fonts.bold_italic,
     color: '#FFF',
   },
 
@@ -540,10 +547,10 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     color: '#0F022D',
     letterSpacing: -0.5, 
-    marginBottom: -2,
+    marginBottom: 2,
   },
   actionDesc: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: fonts.regular,
     letterSpacing: 0.9,
     paddingBottom: 4,
@@ -553,14 +560,14 @@ const styles = StyleSheet.create({
     fontSize: 21,
     fontFamily: fonts.bold,
     color: '#85EDD3',
-    marginBottom: -2,
+    marginBottom: 2,
     letterSpacing: -0.5, 
   },
   actionDescPurple: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: fonts.regular,
     letterSpacing: 0.9,
-    paddingBottom: 5,
+    paddingBottom: 4,
     color: 'rgb(255, 255, 255)',
   },
   actionIconWrapper: {
@@ -583,14 +590,13 @@ const styles = StyleSheet.create({
   },
   sectionTitleItalic: {
     fontSize: 45,
-    fontFamily: fonts.regular, 
-    fontStyle: 'italic',
+    fontFamily: fonts.italic, 
     color: '#f07167',
     lineHeight: 36,
   },
   sectionSubtitle: {
     fontSize: 15,
-    fontFamily: fonts.regular,
+    fontFamily: fonts.italic,
     color: '#6c757d',
     marginTop: 4,
     letterSpacing: 1,
@@ -626,7 +632,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#ffd166',
+    backgroundColor: '#85EDD3',
   },
   tripTagText: {
     color: '#FFF',

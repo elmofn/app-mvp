@@ -3,4 +3,5 @@ export const fonts = {
   medium: 'Inter_500Medium',
   bold: 'Inter_700Bold',
   italic: 'Inter_400Regular_Italic',
+  bold_italic: 'Inter_700Bold_Italic',
 };

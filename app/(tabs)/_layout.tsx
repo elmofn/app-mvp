@@ -1,7 +1,7 @@
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 import { Tabs } from 'expo-router';
-import { CoinsIcon, HouseIcon, SparkleIcon, SuitcaseRollingIcon } from 'phosphor-react-native';
+import { CoinsIcon, HouseIcon, QuestionMarkIcon, SuitcaseRollingIcon } from 'phosphor-react-native';
 import React from 'react';
 
 export default function TabLayout() {
@@ -65,11 +65,11 @@ export default function TabLayout() {
       />
       
       <Tabs.Screen
-        name="assistant"
+        name="support"
         options={{
-          title: 'Assistente',
+          title: 'Ajuda',
           tabBarIcon: ({ color, focused }) => (
-            <SparkleIcon size={26} color={color} weight={focused ? 'fill' : 'regular'} />
+            <QuestionMarkIcon size={26} color={color} weight={focused ? 'fill' : 'regular'} />
           ),
         }}
       />

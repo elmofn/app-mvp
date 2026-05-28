@@ -1,9 +1,10 @@
 import {
-  useFonts,
   Inter_400Regular,
+  Inter_400Regular_Italic,
   Inter_500Medium,
   Inter_700Bold,
-  Inter_400Regular_Italic,
+  Inter_700Bold_Italic,
+  useFonts,
 } from '@expo-google-fonts/inter';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -24,6 +25,7 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_700Bold,
     Inter_400Regular_Italic,
+    Inter_700Bold_Italic,
   });
 
   // 3. Monitora o carregamento

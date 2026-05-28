@@ -24,8 +24,8 @@ export default function TabLayout() {
           height: 42 + insets.bottom,
           paddingBottom: 10 + insets.bottom,
           paddingTop: 0,
-          borderTopLeftRadius: 30,
-          borderTopRightRadius: 30,
+          borderTopLeftRadius: 16,
+          borderTopRightRadius: 16,
           elevation: 0,
         },
         tabBarLabelStyle: {

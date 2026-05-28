@@ -98,18 +98,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    width: 300,
-    height: 110,
+    width: 297,
+    height: 73,
   },
 
   actionsSection: {
-    gap: 14,
+    gap: 20,
   },
   button: {
-    width: '100%',
+    width: '94%',
     paddingVertical: 18,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    alignSelf: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     alignItems: 'center',
   },
   buttonText: {
@@ -118,12 +121,13 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
   },
   buttonAccent: {
-    width: '100%',
+    width: '94%',
     paddingVertical: 18,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0,0,0,0.25)',
-    borderWidth: 1.5,
-    borderColor: '#85EDD3',
+    alignSelf: 'center',
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(133, 237, 211, 0.3)',
     alignItems: 'center',
   },
   buttonAccentText: {
@@ -139,7 +143,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   helpLink: {
-    color: colors.text.light,
+    color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 14,
     fontFamily: fonts.regular,
     textDecorationLine: 'underline',
@@ -147,7 +151,7 @@ const styles = StyleSheet.create({
 
   brandMark: {
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 64,
   },
   brandMarkImage: {
     width: 28,

@@ -77,12 +77,20 @@ export class SignInError extends Error {
 }
 
 export async function signIn(login: string, password: string): Promise<SignInResponse> {
+  // devInfo eh declarado como string no contrato, mas o controller faz
+  // JsonConvert.DeserializeObject internamente, entao o conteudo precisa
+  // ser um JSON serializado (objeto com dados do device).
+  const devInfo = JSON.stringify({
+    os: Platform.OS,
+    version: String(Platform.Version),
+  });
+
   const body: SignInRequest = {
     login,
     password,
     timeoutInMinutes: 0,
     geolocation: '',
-    devInfo: `${Platform.OS} ${Platform.Version}`,
+    devInfo,
   };
 
   const url = `${API_BASE_URL}/api/Security/SignIn`;

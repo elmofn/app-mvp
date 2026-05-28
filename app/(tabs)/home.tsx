@@ -28,6 +28,7 @@ import Animated, {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { fetchHomeData, HomeData } from '@/src/services/api';
+import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
 const FEATURED_EXPERIENCES = [
@@ -330,7 +331,7 @@ export default function HomeScreen() {
             >
               
               {/* Item 1: Profile */}
-              <TouchableOpacity style={styles.menuItem} onPress={() => { setIsMenuOpen(false); /* Redirecionar perfil */ }}>
+              <TouchableOpacity style={styles.menuItem} onPress={() => { setIsMenuOpen(false); router.push('/settings'); }}>
                 <View style={styles.menuIconContainer}>
                   <UserIcon size={18} color="#0F022D" weight="bold" />
                 </View>
@@ -340,7 +341,7 @@ export default function HomeScreen() {
               <View style={styles.menuDivider} />
 
               {/* Item 2: Notifications */}
-              <TouchableOpacity style={styles.menuItem} onPress={() => { setIsMenuOpen(false); /* Redirecionar notificações */ }}>
+              <TouchableOpacity style={styles.menuItem} onPress={() => { setIsMenuOpen(false); router.push('/notifications'); }}>
                 <View style={styles.menuIconContainer}>
                   <BellIcon size={18} color="#0F022D" weight="bold" />
                 </View>
@@ -568,7 +569,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     letterSpacing: 0.9,
     paddingBottom: 4,
-    color: 'rgb(255, 255, 255)',
+    color: colors.text.light,
   },
   actionIconWrapper: {
     marginLeft: 16,
@@ -760,7 +761,7 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: 14,
     fontFamily: fonts.bold,
-    color: '#0F022D',
+    color: colors.text.medium,
   },
   menuDivider: {
     height: 1,

@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { CaretDown } from 'phosphor-react-native';
+import { CaretDownIcon } from 'phosphor-react-native';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -77,7 +77,7 @@ export default function SettingsScreen() {
         colors={['#6444DA', '#4D2ACC', '#1B0F4A']}
         start={{ x: 0.1, y: 0.1 }}
         end={{ x: 0.8, y: 1.2 }}
-        locations={[0, 0.2, 0.7]}
+        locations={[0.1, 0.2, 0.7]}
         style={[styles.headerGradient, { paddingTop: insets.top }]}
       >
         <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
@@ -148,7 +148,7 @@ export default function SettingsScreen() {
               <Text style={styles.inputLabel}>Currency</Text>
               <View style={styles.selectField}>
                 <Text style={styles.selectValue}>{currency.label}</Text>
-                <CaretDown size={16} color={colors.text.muted} />
+                <CaretDownIcon size={16} color={colors.text.muted} />
               </View>
             </TouchableOpacity>
 
@@ -160,7 +160,7 @@ export default function SettingsScreen() {
               <Text style={styles.inputLabel}>Language</Text>
               <View style={styles.selectField}>
                 <Text style={styles.selectValue}>{language.label}</Text>
-                <CaretDown size={16} color={colors.text.muted} />
+                <CaretDownIcon size={16} color={colors.text.muted} />
               </View>
             </TouchableOpacity>
 
@@ -242,20 +242,20 @@ const styles = StyleSheet.create({
     marginTop: -16,
   },
   mainTitle: {
-    fontSize: 48,
+    fontSize: 50,
     fontFamily: fonts.bold,
     color: colors.text.light,
-    letterSpacing: -1.5,
-    marginBottom: 12,
+    letterSpacing: -2.4,
+    marginBottom: 16,
   },
   mainTitleAccent: {
     color: '#85EDD3',
-    fontFamily: fonts.bold_italic,
+    fontFamily: fonts.italic,
   },
   pageDescription: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: fonts.regular,
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.6)',
     lineHeight: 20,
     maxWidth: '90%',
   },
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
 
   formGroup: { marginBottom: 22 },
   inputLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: fonts.bold,
     color: colors.text.dark,
     marginBottom: 6,
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
   buttonOutlined: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#D5D5DB',
+    borderColor: 'rgba(71, 71, 71, 0.15)',
     paddingVertical: 18,
     borderRadius: 8,
     alignItems: 'center',

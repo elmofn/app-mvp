@@ -3,8 +3,8 @@ import * as SecureStore from 'expo-secure-store';
 
 import { SignInAccountDetails } from '@/src/services/auth';
 
-const TOKEN_KEY = 'travelback.token';
-const ACCOUNT_KEY = 'travelback.account';
+const TOKEN_KEY = 'travelback.token.v2';
+const ACCOUNT_KEY = 'travelback.account.v2';
 
 export type StoredSession = {
   token: string;

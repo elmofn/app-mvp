@@ -53,6 +53,41 @@ export type SignInAccountDetails = {
   account: SignInAccount;
   balance: SignInBalance;
   setups: SignInSetups;
+  statements?: SignInStatement[];
+};
+
+export type SignInStatementDetails = {
+  id: string;
+  transactionId: string;
+  productId: number;
+  complement: string;
+  internalCode: string;
+  locatorCode: string;
+  saleValue: number;
+  purchaseValue: number;
+  cashBackPercente: number;
+  marginPercent: number;
+  marginCashback: number;
+  marginValue: number;
+  idclientUnit?: number;
+  productName?: string;
+  unitName?: string;
+  voucherURL?: string;
+};
+
+export type SignInStatement = {
+  id: string;
+  accountId: string;
+  originCurrencyId: string;
+  title: string;
+  type: number;
+  value: number;
+  creationTime: string;
+  updateTime?: string;
+  exchangeRate: number;
+  originValue: number;
+  status: number;
+  details: SignInStatementDetails;
 };
 
 export type SignInResponse = {

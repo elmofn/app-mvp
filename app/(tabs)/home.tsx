@@ -13,7 +13,7 @@ import {
   SuitcaseRollingIcon,
   UserIcon
 } from 'phosphor-react-native';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   FadeIn,
@@ -37,6 +37,14 @@ const FEATURED_EXPERIENCES = [
   { id: '2', title: 'Safari Serengeti', tag: 'AVENTURA', image: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=600&q=80' },
   { id: '3', title: 'Ryokan Kyoto', tag: 'RELAX', image: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=600&q=80' },
 ];
+
+const PT_MONTHS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+
+function formatStatementDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${String(d.getDate()).padStart(2, '0')} ${PT_MONTHS[d.getMonth()]}`;
+}
 
 const STATIC_TRIPS = [
   {
@@ -73,6 +81,25 @@ export default function HomeScreen() {
   const exchangeRate = account?.setups.currency.currentExchangeRate || 1;
   const balanceUSD = account ? formatCurrency(account.balance.available) : '0,00';
   const balanceBRL = account ? formatCurrency(account.balance.available * exchangeRate) : '0,00';
+
+  // Account Activity Highlights: 4 transacoes mais recentes vindas do payload
+  // do login. type 1 = entrada (cashback) e type 2 = saida (resgate).
+  const highlights = useMemo(() => {
+    const stmts = account?.statements;
+    if (!stmts || stmts.length === 0) return null;
+    return stmts.slice(0, 4).map((tx) => {
+      const isPositive = tx.type === 1;
+      const valueBRL = tx.value * exchangeRate;
+      const productName = tx.details?.productName ?? '';
+      const date = formatStatementDate(tx.creationTime);
+      return {
+        id: tx.id,
+        title: tx.details?.unitName ?? '—',
+        dateLabel: productName ? `${productName} • ${date}` : date,
+        amount: `${isPositive ? '+' : '-'} R$ ${formatCurrency(valueBRL)}`,
+      };
+    });
+  }, [account, exchangeRate]);
   
   // Controle de Saldo
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
@@ -194,7 +221,7 @@ export default function HomeScreen() {
   <Animated.View entering={FadeInDown.delay(350).duration(500)}>
     <Text style={styles.activityTitle}>Account Activity Highlights</Text>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.activityScroll}>
-      {data.recentTransactions.map((tx) => (
+      {(highlights ?? data.recentTransactions).map((tx) => (
         <View key={tx.id} style={styles.activityCard}>
           <Text style={styles.activityCardTitle}>{tx.title}</Text>
           <Text style={styles.activityCardSub}>{tx.dateLabel}</Text>

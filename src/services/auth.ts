@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { z } from 'zod';
 
 const API_BASE_URL = 'https://travelcash-api-stg.azurewebsites.net';
 
@@ -10,85 +11,102 @@ export type SignInRequest = {
   devInfo: string;
 };
 
-export type SignInUser = {
-  id: string;
-  name: string;
-  email: string;
-  phoneNumber: string;
-  picture: string;
-  accountId: string;
-  role: string;
-  validEmail: boolean;
-  validPhoneNumber: boolean;
-};
+// ----------------------------------------------------------------------------
+// Schemas Zod do payload de SignIn.
+// Sao a unica fonte da verdade do shape esperado: o storage roda safeParse
+// contra o cache, e os tipos TypeScript abaixo vem de z.infer<typeof Schema>.
+// Quando voce comecar a ler um campo novo no app, adicione ele aqui (assim
+// caches antigos sem esse campo sao invalidados automaticamente).
+// ----------------------------------------------------------------------------
 
-export type SignInBalance = {
-  available: number;
-  accumulation: number;
-  spentPoints: number;
-};
+export const SignInUserSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string(),
+  phoneNumber: z.string(),
+  picture: z.string(),
+  accountId: z.string(),
+  role: z.string(),
+  validEmail: z.boolean(),
+  validPhoneNumber: z.boolean(),
+});
 
-export type SignInCurrency = {
-  id: string;
-  name: string;
-  code: string;
-  symbol: string;
-  currentExchangeRate: number;
-};
+export const SignInBalanceSchema = z.object({
+  available: z.number(),
+  accumulation: z.number(),
+  spentPoints: z.number(),
+});
 
-export type SignInSetups = {
-  lang: string;
-  defaultCurrencyId: string;
-  currency: SignInCurrency;
-};
+export const SignInCurrencySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  code: z.string(),
+  symbol: z.string(),
+  currentExchangeRate: z.number(),
+});
 
-export type SignInAccount = {
-  id: string;
-  legalId: string;
-  status: number;
-};
+export const SignInSetupsSchema = z.object({
+  lang: z.string(),
+  defaultCurrencyId: z.string(),
+  currency: SignInCurrencySchema,
+});
 
-export type SignInAccountDetails = {
-  accountDetails: SignInUser;
-  account: SignInAccount;
-  balance: SignInBalance;
-  setups: SignInSetups;
-  statements?: SignInStatement[];
-};
+export const SignInAccountSchema = z.object({
+  id: z.string(),
+  legalId: z.string(),
+  status: z.number(),
+});
 
-export type SignInStatementDetails = {
-  id: string;
-  transactionId: string;
-  productId: number;
-  complement: string;
-  internalCode: string;
-  locatorCode: string;
-  saleValue: number;
-  purchaseValue: number;
-  cashBackPercente: number;
-  marginPercent: number;
-  marginCashback: number;
-  marginValue: number;
-  idclientUnit?: number;
-  productName?: string;
-  unitName?: string;
-  voucherURL?: string;
-};
+export const SignInStatementDetailsSchema = z.object({
+  id: z.string(),
+  transactionId: z.string(),
+  productId: z.number(),
+  complement: z.string(),
+  internalCode: z.string(),
+  locatorCode: z.string(),
+  saleValue: z.number(),
+  purchaseValue: z.number(),
+  cashBackPercente: z.number(),
+  marginPercent: z.number(),
+  marginCashback: z.number(),
+  marginValue: z.number(),
+  idclientUnit: z.number().optional(),
+  productName: z.string(),
+  unitName: z.string(),
+  voucherURL: z.string().optional(),
+});
 
-export type SignInStatement = {
-  id: string;
-  accountId: string;
-  originCurrencyId: string;
-  title: string;
-  type: number;
-  value: number;
-  creationTime: string;
-  updateTime?: string;
-  exchangeRate: number;
-  originValue: number;
-  status: number;
-  details: SignInStatementDetails;
-};
+export const SignInStatementSchema = z.object({
+  id: z.string(),
+  accountId: z.string(),
+  originCurrencyId: z.string(),
+  title: z.string(),
+  type: z.number(),
+  value: z.number(),
+  creationTime: z.string(),
+  updateTime: z.string().optional(),
+  exchangeRate: z.number(),
+  originValue: z.number(),
+  status: z.number(),
+  details: SignInStatementDetailsSchema,
+});
+
+export const SignInAccountDetailsSchema = z.object({
+  accountDetails: SignInUserSchema,
+  account: SignInAccountSchema,
+  balance: SignInBalanceSchema,
+  setups: SignInSetupsSchema,
+  statements: z.array(SignInStatementSchema).optional(),
+});
+
+export type SignInUser = z.infer<typeof SignInUserSchema>;
+export type SignInBalance = z.infer<typeof SignInBalanceSchema>;
+export type SignInCurrency = z.infer<typeof SignInCurrencySchema>;
+export type SignInSetups = z.infer<typeof SignInSetupsSchema>;
+export type SignInAccount = z.infer<typeof SignInAccountSchema>;
+export type SignInStatementDetails = z.infer<typeof SignInStatementDetailsSchema>;
+export type SignInStatement = z.infer<typeof SignInStatementSchema>;
+export type SignInAccountDetails = z.infer<typeof SignInAccountDetailsSchema>;
 
 export type SignInResponse = {
   accountDetails?: SignInAccountDetails;

@@ -137,7 +137,6 @@ export default function StatementScreen() {
           <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
 
           <View style={styles.headerInner}>
-            <Text style={styles.headerLabel}>STATEMENT</Text>
             <Text style={styles.mainTitle}>
               Travel <Text style={styles.mainTitleAccent}>history</Text>
             </Text>
@@ -253,13 +252,6 @@ const styles = StyleSheet.create({
   headerInner: {
     paddingHorizontal: 24,
   },
-  headerLabel: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 11,
-    fontFamily: fonts.bold,
-    letterSpacing: 2,
-    marginBottom: 8,
-  },
   mainTitle: {
     fontSize: 38,
     fontFamily: fonts.bold,
@@ -276,27 +268,30 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   balanceLabel: {
-    color: 'rgba(255,255,255,0.6)',
     fontSize: 12,
-    fontFamily: fonts.regular,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 6,
+    fontFamily: fonts.bold,
+    letterSpacing: 1.35,
+    color: 'rgba(255,255,255,0.5)',
+    marginBottom: 5,
   },
   balanceMain: {
-    color: colors.text.light,
-    fontSize: 38,
+    fontSize: 40,
     fontFamily: fonts.bold,
-    letterSpacing: -0.5,
+    color: '#FFF',
+    letterSpacing: -1,
+    lineHeight: 50,
   },
   balanceCurrency: {
-    fontSize: 22,
+    fontSize: 30,
+    color: '#FFF',
+    fontFamily: fonts.bold,
   },
   balanceUsd: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 13,
-    fontFamily: fonts.regular,
-    marginTop: 2,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.5)',
+    fontFamily: fonts.bold,
+    letterSpacing: -0.7,
+    marginTop: -4,
   },
 
   yearContainer: {
@@ -346,7 +341,7 @@ const styles = StyleSheet.create({
 
   timelineGroup: {
     flexDirection: 'row',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   dateColumn: {
     width: 44,

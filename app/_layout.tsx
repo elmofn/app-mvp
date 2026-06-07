@@ -66,7 +66,6 @@ function AppShell() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="signup" />
         <Stack.Screen name="settings" />
-        <Stack.Screen name="support" options={{ presentation: 'modal' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </>

@@ -1,51 +1,62 @@
-import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BalanceDisplay } from '@/src/components/BalanceDisplay';
-import { TopBar } from '@/src/components/Topbar';
-import { fetchStatementData, Transaction } from '@/src/services/api';
+import { useAuth } from '@/src/contexts/AuthContext';
+import { formatCurrency } from '@/src/services/api';
+import { SignInStatement } from '@/src/services/auth';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
-const MONTH_ABBR: Record<string, string> = {
-  '01': 'JAN', '02': 'FEV', '03': 'MAR', '04': 'ABR', '05': 'MAI', '06': 'JUN',
-  '07': 'JUL', '08': 'AGO', '09': 'SET', '10': 'OUT', '11': 'NOV', '12': 'DEZ'
+const MONTH_ABBR = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+type StatementGroup = {
+  date: string;
+  day: string;
+  month: string;
+  items: SignInStatement[];
 };
 
-const MONTH_NAMES: Record<string, string> = {
-  '01': 'Janeiro', '02': 'Fevereiro', '03': 'Março', '04': 'Abril', '05': 'Maio', '06': 'Junho',
-  '07': 'Julho', '08': 'Agosto', '09': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro'
-};
+function parseDate(iso: string) {
+  const datePart = iso.split('T')[0]; // 2025-11-06
+  const [year, month, day] = datePart.split('-');
+  return { year, month, day, date: datePart };
+}
 
 export default function StatementScreen() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [balance, setBalance] = useState({ brl: '0,00', usd: '0,00' });
-  
-  const scrollY = useSharedValue(0);
-  const scrollViewRef = useRef<Animated.ScrollView>(null);
-  const isForcingAnimation = useSharedValue(false);
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
+  const { account } = useAuth();
 
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedMonth, setSelectedMonth] = useState<string>('');
 
+  const exchangeRate = account?.setups.currency.currentExchangeRate || 1;
+  const balanceUSD = account ? formatCurrency(account.balance.available) : '0,00';
+  const balanceBRL = account ? formatCurrency(account.balance.available * exchangeRate) : '0,00';
+
+  const statements = useMemo(() => account?.statements ?? [], [account]);
+
   const monthHeight = useSharedValue(0);
   const monthOpacity = useSharedValue(0);
-
-  const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
-
-  useEffect(() => {
-    fetchStatementData().then((res) => {
-      setTransactions(res.transactions);
-      setBalance({ brl: res.balanceBRL, usd: res.balanceUSD });
-      setIsLoading(false);
-    });
-  }, []);
 
   useEffect(() => {
     monthHeight.value = withTiming(selectedYear ? 44 : 0, { duration: 350 });
@@ -55,8 +66,48 @@ export default function StatementScreen() {
   const animatedMonthStyle = useAnimatedStyle(() => ({
     height: monthHeight.value,
     opacity: monthOpacity.value,
-    marginTop: monthHeight.value > 0 ? 16 : 0,
+    marginTop: monthHeight.value > 0 ? 14 : 0,
   }));
+
+  const availableYears = useMemo(() => {
+    const years = new Set<string>();
+    for (const tx of statements) years.add(parseDate(tx.creationTime).year);
+    return [...years].sort((a, b) => b.localeCompare(a));
+  }, [statements]);
+
+  const availableMonths = useMemo(() => {
+    if (!selectedYear) return [] as string[];
+    const months = new Set<string>();
+    for (const tx of statements) {
+      const { year, month } = parseDate(tx.creationTime);
+      if (year === selectedYear) months.add(month);
+    }
+    return [...months].sort((a, b) => b.localeCompare(a));
+  }, [statements, selectedYear]);
+
+  const groupedStatements = useMemo<StatementGroup[]>(() => {
+    const filtered = statements.filter((tx) => {
+      const { year, month } = parseDate(tx.creationTime);
+      const matchYear = selectedYear ? year === selectedYear : true;
+      const matchMonth = selectedMonth ? month === selectedMonth : true;
+      return matchYear && matchMonth;
+    });
+
+    const groups: Record<string, StatementGroup> = {};
+    for (const tx of filtered) {
+      const { date, month, day } = parseDate(tx.creationTime);
+      if (!groups[date]) {
+        groups[date] = {
+          date,
+          day,
+          month: MONTH_ABBR[parseInt(month, 10) - 1] ?? month,
+          items: [],
+        };
+      }
+      groups[date].items.push(tx);
+    }
+    return Object.values(groups).sort((a, b) => b.date.localeCompare(a.date));
+  }, [statements, selectedYear, selectedMonth]);
 
   const handleYearSelect = (year: string) => {
     if (selectedYear === year) {
@@ -68,271 +119,307 @@ export default function StatementScreen() {
     }
   };
 
-  const availableYears = useMemo(() => 
-    [...new Set(transactions.map(tx => tx.date.split('-')[0]))].sort((a, b) => b.localeCompare(a)),
-  [transactions]);
-
-  const availableMonths = useMemo(() => {
-    if (!selectedYear) return [];
-    return [...new Set(transactions
-      .filter(tx => tx.date.startsWith(selectedYear))
-      .map(tx => tx.date.split('-')[1]))].sort((a, b) => b.localeCompare(a));
-  }, [selectedYear, transactions]);
-
-  const groupedTransactions = useMemo(() => {
-    const filtered = transactions.filter(tx => {
-      const matchYear = selectedYear ? tx.date.startsWith(selectedYear) : true;
-      const matchMonth = selectedMonth ? tx.date.split('-')[1] === selectedMonth : true;
-      return matchYear && matchMonth;
-    });
-
-    const groups: Record<string, any> = {};
-    filtered.forEach(tx => {
-      const key = tx.date;
-      const [,, dd] = tx.date.split('-');
-      if (!groups[key]) {
-        groups[key] = { 
-          date: key, 
-          day: dd, 
-          month: MONTH_ABBR[tx.date.split('-')[1]], 
-          items: [] 
-        };
-      }
-      groups[key].items.push(tx);
-    });
-    return Object.values(groups).sort((a: any, b: any) => b.date.localeCompare(a.date));
-  }, [selectedYear, selectedMonth, transactions]);
-
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (e) => { 
-      if (!isForcingAnimation.value) scrollY.value = e.contentOffset.y; 
-    }
-  });
-
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.text.light} />
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <StatusBar style="light" />
-      <Animated.ScrollView 
-        ref={scrollViewRef} 
-        onScroll={scrollHandler} 
-        scrollEventThrottle={16} 
+
+      <ScrollView
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: tabBarHeight + 24 }}
       >
-        <View style={[styles.darkHeader, { paddingTop: insets.top + 13}]} >
-          <View style={{ height: 25 }} />
-          <View style={styles.titleRow}>
-            <Text style={styles.greeting}>EXTRATO</Text>
-          </View>
+        <LinearGradient
+          colors={['#6444DA', '#4D2ACC', '#1B0F4A']}
+          start={{ x: 0.1, y: 0.1 }}
+          end={{ x: 0.8, y: 1.2 }}
+          locations={[0, 0.2, 0.7]}
+          style={[styles.headerGradient, { paddingTop: insets.top + 16 }]}
+        >
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
 
-          {/* O NOVO COMPONENTE DE SALDO ENTRA AQUI */}
-          <View style={styles.balanceWrapper}>
-            <BalanceDisplay 
-              balanceBRL={balance.brl} 
-              balanceUSD={balance.usd}
-              showToggleIcon={false}
-            />
-          </View>
+          <View style={styles.headerInner}>
+            <Text style={styles.headerLabel}>STATEMENT</Text>
+            <Text style={styles.mainTitle}>
+              Travel <Text style={styles.mainTitleAccent}>history</Text>
+            </Text>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.yearContainer}>
-            {availableYears.map(year => (
-              <TouchableOpacity key={year} onPress={() => handleYearSelect(year)} activeOpacity={0.7}>
-                <Text style={[styles.yearText, selectedYear === year && styles.yearTextActive]}>{year}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+            <View style={styles.balanceSection}>
+              <Text style={styles.balanceLabel}>Available Balance</Text>
+              <Text style={styles.balanceMain}>
+                <Text style={styles.balanceCurrency}>R$ </Text>
+                {balanceBRL}
+              </Text>
+              <Text style={styles.balanceUsd}>US$ {balanceUSD}</Text>
+            </View>
 
-          <Animated.View style={[animatedMonthStyle, { overflow: 'hidden' }]}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.monthContainer}>
-              {availableMonths.map(m => (
-                <TouchableOpacity 
-                  key={m} 
-                  style={[styles.monthPill, selectedMonth === m && styles.monthPillActive]} 
-                  onPress={() => setSelectedMonth(selectedMonth === m ? '' : m)}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.yearContainer}
+            >
+              {availableYears.map((year) => (
+                <TouchableOpacity
+                  key={year}
+                  onPress={() => handleYearSelect(year)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.monthText, selectedMonth === m && styles.monthTextActive]}>{MONTH_NAMES[m]}</Text>
+                  <Text style={[styles.yearText, selectedYear === year && styles.yearTextActive]}>
+                    {year}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
-          </Animated.View>
-        </View>
 
-        <View style={styles.mainContent}>
-          {groupedTransactions.map((group: any, idx) => (
-            <View key={idx} style={styles.timelineGroup}>
-              <View style={styles.dateColumn}>
-                <Text style={styles.dateDay}>{group.day}</Text>
-                <Text style={styles.dateMonth}>{group.month}</Text>
-              </View>
-              <View style={styles.transactionsColumn}>
-                {group.items.map((tx: Transaction) => (
-                  <TouchableOpacity 
-                    key={tx.id} 
-                    style={styles.transactionItem} 
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.textContainer}>
-                      <Text style={styles.txTitle}>{tx.title}</Text>
-                      <Text style={styles.txSubtitle}>{tx.type}</Text>
-                    </View>
-                    <Text style={[styles.txAmount, tx.isPositive && styles.amountPositive]}>{tx.amount}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+            <Animated.View style={[animatedMonthStyle, { overflow: 'hidden' }]}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.monthContainer}
+              >
+                {availableMonths.map((m) => {
+                  const idx = parseInt(m, 10) - 1;
+                  const label = MONTH_NAMES[idx] ?? m;
+                  const isActive = selectedMonth === m;
+                  return (
+                    <TouchableOpacity
+                      key={m}
+                      style={[styles.monthPill, isActive && styles.monthPillActive]}
+                      onPress={() => setSelectedMonth(isActive ? '' : m)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.monthText, isActive && styles.monthTextActive]}>
+                        {label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </Animated.View>
+          </View>
+        </LinearGradient>
+
+        <View style={styles.timelineSection}>
+          {groupedStatements.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>No transactions yet</Text>
+              <Text style={styles.emptyText}>
+                When you start earning cashback or making redemptions, your activity will show up here.
+              </Text>
             </View>
-          ))}
+          ) : (
+            groupedStatements.map((group) => (
+              <View key={group.date} style={styles.timelineGroup}>
+                <View style={styles.dateColumn}>
+                  <Text style={styles.dateDay}>{group.day}</Text>
+                  <Text style={styles.dateMonth}>{group.month}</Text>
+                </View>
+                <View style={styles.transactionsColumn}>
+                  {group.items.map((tx) => {
+                    const isPositive = tx.type === 1;
+                    const valueBRL = tx.value * exchangeRate;
+                    return (
+                      <TouchableOpacity
+                        key={tx.id}
+                        style={styles.transactionItem}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.txTextContainer}>
+                          <Text style={styles.txTitle}>{tx.details?.unitName ?? '—'}</Text>
+                          {tx.details?.productName ? (
+                            <Text style={styles.txSubtitle}>{tx.details.productName}</Text>
+                          ) : null}
+                        </View>
+                        <Text style={[styles.txAmount, isPositive && styles.amountPositive]}>
+                          {isPositive ? '+' : '-'} R$ {formatCurrency(valueBRL)}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            ))
+          )}
         </View>
-        <View style={{ height: tabBarHeight + 24 }} />
-      </Animated.ScrollView>
-      <TopBar scrollY={scrollY} />
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: colors.background.light 
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
+
+  headerGradient: {
+    paddingBottom: 28,
   },
-  loadingContainer: { 
-    flex: 1, 
-    backgroundColor: colors.background.dark, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+  headerInner: {
+    paddingHorizontal: 24,
   },
-  darkHeader: { 
-    backgroundColor: colors.background.dark, 
-    paddingTop: 13, 
-    paddingBottom: 24, 
-    paddingHorizontal: 24 
+  headerLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    letterSpacing: 2,
+    marginBottom: 8,
   },
-  titleRow: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center' 
+  mainTitle: {
+    fontSize: 38,
+    fontFamily: fonts.bold,
+    color: colors.text.light,
+    letterSpacing: -1.5,
+    marginBottom: 24,
   },
-  greeting: { 
-    color: colors.text.light, 
-    fontSize: 20, 
-    fontFamily: fonts.bold, 
-    letterSpacing: -0.5 
+  mainTitleAccent: {
+    color: '#85EDD3',
+    fontFamily: fonts.bold_italic,
   },
-  actionButtons: { 
-    flexDirection: 'row', 
-    gap: 12 
+
+  balanceSection: {
+    marginBottom: 22,
   },
-  
-  // Wrapper para o BalanceDisplay manter as margens da página do Extrato
-  balanceWrapper: {  
-    marginTop: 15, 
-    marginBottom: 10 
+  balanceLabel: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
+    fontFamily: fonts.regular,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 6,
   },
-  
-  yearContainer: {  
-    gap: 24 
+  balanceMain: {
+    color: colors.text.light,
+    fontSize: 38,
+    fontFamily: fonts.bold,
+    letterSpacing: -0.5,
   },
-  yearText: { 
-    color: colors.text.muted, 
-    fontSize: 16, 
-    fontFamily: fonts.bold 
+  balanceCurrency: {
+    fontSize: 22,
   },
-  yearTextActive: { 
-    color: colors.text.light 
+  balanceUsd: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+    fontFamily: fonts.regular,
+    marginTop: 2,
   },
-  monthContainer: { 
-    gap: 8, 
-    paddingVertical: 3 
+
+  yearContainer: {
+    gap: 22,
+    paddingVertical: 4,
   },
-  monthPill: { 
-    paddingVertical: 6, 
-    paddingHorizontal: 12, 
-    borderRadius: 0, 
-    borderWidth: 0.5, 
-    borderColor: colors.text.muted 
+  yearText: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 15,
+    fontFamily: fonts.bold,
+    letterSpacing: -0.2,
   },
-  monthPillActive: { 
-    backgroundColor: colors.text.light, 
-    borderColor: colors.text.light 
+  yearTextActive: {
+    color: colors.text.light,
   },
-  monthText: { 
-    color: colors.text.muted, 
-    fontSize: 12, 
-    paddingTop: 3, 
-    fontFamily: fonts.bold, 
-    textTransform: 'uppercase' 
+
+  monthContainer: {
+    gap: 8,
+    paddingVertical: 4,
   },
-  monthTextActive: { 
-    color: colors.background.dark 
+  monthPill: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
-  mainContent: { 
-    padding: 24, 
-    marginTop: 8 
+  monthPillActive: {
+    backgroundColor: '#85EDD3',
+    borderColor: '#85EDD3',
   },
-  timelineGroup: { 
-    flexDirection: 'row', 
-    marginBottom: 16 
+  monthText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.3,
   },
-  dateColumn: { 
-    width: 35, 
-    alignItems: 'center', 
-    marginRight: 20, 
-    paddingTop: 8 
+  monthTextActive: {
+    color: '#0F022D',
   },
-  dateDay: { 
-    fontFamily: fonts.bold, 
-    fontSize: 32, 
-    color: colors.text.dark, 
-    letterSpacing: -1, 
-    lineHeight: 32 
+
+  timelineSection: {
+    padding: 24,
+    paddingTop: 28,
   },
-  dateMonth: { 
-    fontFamily: fonts.bold, 
-    fontSize: 10, 
-    color: colors.text.muted, 
-    textTransform: 'uppercase' 
+
+  timelineGroup: {
+    flexDirection: 'row',
+    marginBottom: 4,
   },
-  transactionsColumn: { 
-    flex: 1, 
-    borderLeftWidth: 1, 
-    borderLeftColor: colors.text.muted, 
-    paddingLeft: 20, 
-    paddingBottom: 24 
+  dateColumn: {
+    width: 44,
+    alignItems: 'center',
+    marginRight: 16,
+    paddingTop: 4,
   },
-  transactionItem: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginBottom: 24 
+  dateDay: {
+    fontFamily: fonts.bold,
+    fontSize: 30,
+    color: colors.text.dark,
+    letterSpacing: -1,
+    lineHeight: 32,
   },
-  textContainer: { 
-    flex: 1, 
-    paddingRight: 8
-   },
-  txTitle: { 
-    color: colors.text.dark, 
-    fontSize: 15, 
-    fontFamily: fonts.bold, 
-    marginBottom: 2 
+  dateMonth: {
+    fontFamily: fonts.bold,
+    fontSize: 10,
+    color: colors.text.muted,
+    letterSpacing: 1,
   },
-  txSubtitle: { 
-    color: colors.text.muted, 
-    fontSize: 10, 
-    fontFamily: fonts.bold, 
-    textTransform: 'uppercase' 
+  transactionsColumn: {
+    flex: 1,
+    borderLeftWidth: 1,
+    borderLeftColor: '#E5E5E5',
+    paddingLeft: 18,
+    paddingBottom: 22,
   },
-  txAmount: { 
-    color: colors.text.dark, 
-    fontSize: 16, 
-    fontFamily: fonts.bold 
+  transactionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
   },
-  amountPositive: { 
-    color: '#00A86B' 
+  txTextContainer: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  txTitle: {
+    color: colors.text.dark,
+    fontSize: 15,
+    fontFamily: fonts.bold,
+    marginBottom: 2,
+  },
+  txSubtitle: {
+    color: colors.text.muted,
+    fontSize: 11,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
+  txAmount: {
+    color: colors.text.dark,
+    fontSize: 15,
+    fontFamily: fonts.bold,
+  },
+  amountPositive: {
+    color: '#00A86B',
+  },
+
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontFamily: fonts.bold,
+    color: colors.text.dark,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: colors.text.muted,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

@@ -137,8 +137,9 @@ export default function StatementScreen() {
           <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
 
           <View style={styles.headerInner}>
+            <Text style={styles.headerLabel}>EXTRATO</Text>
             <Text style={styles.mainTitle}>
-              Travel <Text style={styles.mainTitleAccent}>History</Text>
+              Balance & <Text style={styles.mainTitleAccent}>Statement</Text>
             </Text>
 
             <View style={styles.balanceSection}>
@@ -252,8 +253,15 @@ const styles = StyleSheet.create({
   headerInner: {
     paddingHorizontal: 24,
   },
+  headerLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
   mainTitle: {
-    fontSize: 50,
+    fontSize: 38,
     fontFamily: fonts.bold,
     color: colors.text.light,
     letterSpacing: -1.5,

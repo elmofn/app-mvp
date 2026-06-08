@@ -53,6 +53,7 @@ export function SupportContent({
         <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
 
         <View style={styles.headerBody}>
+          <Text style={styles.headerLabel}>SUPPORT</Text>
           <Text style={styles.mainTitle}>
             {titleFirst}
             <Text style={styles.mainTitleAccent}>{titleAccent}</Text>
@@ -135,6 +136,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     marginTop: 18,
     marginBottom: 28,
+  },
+  headerLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    letterSpacing: 2,
+    marginBottom: 8,
   },
   mainTitle: {
     fontSize: 50,

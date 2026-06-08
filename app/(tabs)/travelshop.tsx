@@ -254,7 +254,7 @@ export default function TravelShopScreen() {
           <View style={styles.headerInner}>
             <Text style={styles.headerLabel}>TRAVELSHOP</Text>
             <Text style={styles.mainTitle}>
-              Find your <Text style={styles.mainTitleAccent}>stay</Text>
+              Find Your <Text style={styles.mainTitleAccent}>Stay</Text>
             </Text>
             <Text style={styles.pageDescription}>
               Search hotels, compare deals and book your next trip with TravelBACK cashback.
@@ -299,7 +299,7 @@ export default function TravelShopScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            Hotéis <Text style={styles.sectionTitleAccent}>recomendados</Text>
+            Hotéis <Text style={styles.sectionTitleAccent}>Recomendados</Text>
           </Text>
         </View>
         <ScrollView
@@ -314,7 +314,7 @@ export default function TravelShopScreen() {
 
         <View style={[styles.section, { marginTop: 24 }]}>
           <Text style={styles.sectionTitle}>
-            Hotéis <Text style={styles.sectionTitleAccent}>próximos</Text>
+            Hotéis <Text style={styles.sectionTitleAccent}>Próximos</Text>
           </Text>
         </View>
         <ScrollView
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
   },
   mainTitleAccent: {
     color: '#85EDD3',
-    fontFamily: fonts.bold_italic,
+    fontFamily: fonts.italic,
   },
   pageDescription: {
     fontSize: 14,
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
   },
   sectionTitleAccent: {
     color: '#f07167',
-    fontFamily: fonts.bold_italic,
+    fontFamily: fonts.italic,
   },
 
   carousel: {

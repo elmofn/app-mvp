@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   mainTitle: {
-    fontSize: 38,
+    fontSize: 50,
     fontFamily: fonts.bold,
     color: colors.text.light,
     letterSpacing: -1.5,

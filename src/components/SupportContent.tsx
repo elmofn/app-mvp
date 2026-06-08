@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: fonts.bold,
     letterSpacing: 2,
-    marginBottom: 8,
+    marginBottom: 16,
   },
   mainTitle: {
     fontSize: 50,

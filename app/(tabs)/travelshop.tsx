@@ -1,321 +1,556 @@
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
+import {
+  CalendarIcon,
+  MagnifyingGlassIcon,
+  MapPinIcon,
+  StarIcon,
+  UsersIcon,
+} from 'phosphor-react-native';
 import React from 'react';
 import {
   Image,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
-import Animated, {
-  useAnimatedScrollHandler,
-  useSharedValue
-} from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
-import { TopBar } from '@/src/components/Topbar';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
+
+type Hotel = {
+  id: string;
+  image: string;
+  name: string;
+  location: string;
+  rating: number; // 1..5 estrelas para o topo do card
+  score: number; // 9.4
+  scoreLabel: string; // "Maravilhoso"
+  reviewCount: number;
+  pricePerNight: string; // ja formatado "US$419"
+  distance?: string; // somente para hoteis proximos
+};
+
+const RECOMMENDED: Hotel[] = [
+  {
+    id: 'rec-1',
+    image: 'https://static.cupid.travel/hotels/ex_e704ab59_z.jpg',
+    name: "Magna Pars- L'Hotel à Parfum Small Luxury Hotels of the World",
+    location: 'Milan, Via Forcella 6',
+    rating: 5,
+    score: 9.4,
+    scoreLabel: 'Maravilhoso',
+    reviewCount: 157,
+    pricePerNight: 'US$419',
+  },
+  {
+    id: 'rec-2',
+    image: 'https://static.cupid.travel/hotels/468587792.jpg',
+    name: 'UNA Hotels Galles Milano',
+    location: 'Milan, Piazza Lima 2',
+    rating: 4,
+    score: 8.4,
+    scoreLabel: 'Muito bom',
+    reviewCount: 8644,
+    pricePerNight: 'US$141',
+  },
+  {
+    id: 'rec-3',
+    image: 'https://static.cupid.travel/hotels/ex_74a7f292_z.jpg',
+    name: 'Hassler Roma',
+    location: 'Rome, Piazza Trinita Dei Monti 6',
+    rating: 5,
+    score: 9.4,
+    scoreLabel: 'Maravilhoso',
+    reviewCount: 56,
+    pricePerNight: 'US$1.177',
+  },
+  {
+    id: 'rec-4',
+    image: 'https://static.cupid.travel/hotels/40691107.jpg',
+    name: 'Shangri-La The Shard, London',
+    location: 'London, 31 St Thomas Street',
+    rating: 5,
+    score: 10,
+    scoreLabel: 'Excelente',
+    reviewCount: 2625,
+    pricePerNight: 'US$597',
+  },
+  {
+    id: 'rec-5',
+    image: 'https://static.cupid.travel/hotels/53482587.jpg',
+    name: 'Hotel Splendide Royal - The Leading Hotels of the World',
+    location: 'Rome, Via Di Porta Pinciana 14',
+    rating: 5,
+    score: 9.1,
+    scoreLabel: 'Maravilhoso',
+    reviewCount: 533,
+    pricePerNight: 'US$407',
+  },
+  {
+    id: 'rec-6',
+    image: 'https://static.cupid.travel/hotels/ex_e7402a4a_z.jpg',
+    name: 'Address Sky View, Downtown Dubai',
+    location: 'Dubai, Sheikh Mohammed Bin Rashed Boulevard',
+    rating: 5,
+    score: 9.2,
+    scoreLabel: 'Maravilhoso',
+    reviewCount: 133,
+    pricePerNight: 'US$455',
+  },
+];
+
+const NEARBY: Hotel[] = [
+  {
+    id: 'near-1',
+    image: 'https://nuitee-hotels.b-cdn.net/hotels/212136997.jpg?height=480&quality=80&sharpen=true',
+    name: 'Novotel Porto Alegre Tres Figueiras',
+    location: 'Porto Alegre, Avenida Soledade, 575',
+    rating: 4,
+    score: 8.0,
+    scoreLabel: 'Muito bom',
+    reviewCount: 1405,
+    pricePerNight: 'US$45',
+    distance: '10 km de center',
+  },
+  {
+    id: 'near-2',
+    image: 'https://nuitee-hotels.b-cdn.net/hotels/73456519.jpg?height=480&quality=80&sharpen=true',
+    name: 'Slaviero Hotel Porto Alegre Moinhos',
+    location: 'Porto Alegre, Rua Comendador Caminha, 42',
+    rating: 4,
+    score: 7.8,
+    scoreLabel: 'Bom',
+    reviewCount: 1719,
+    pricePerNight: 'US$95',
+    distance: '11 km de center',
+  },
+  {
+    id: 'near-3',
+    image: 'https://nuitee-hotels.b-cdn.net/hotels/552426673.jpg?height=480&quality=80&sharpen=true',
+    name: 'Manhattan Porto Alegre by Mercure - 5 minutos do Hospital Moinhos de Vento',
+    location: 'Porto Alegre, Rua Miguel Tostes, 30',
+    rating: 4,
+    score: 7.7,
+    scoreLabel: 'Bom',
+    reviewCount: 1794,
+    pricePerNight: 'US$118',
+    distance: '11 km de center',
+  },
+  {
+    id: 'near-4',
+    image: 'https://nuitee-hotels.b-cdn.net/hotels/346465046.jpg?height=480&quality=80&sharpen=true',
+    name: 'ibis Styles Porto Alegre Moinhos de Vento',
+    location: 'Porto Alegre, Rua 24 de Outubro 1513 Auxiliadora',
+    rating: 4,
+    score: 8.4,
+    scoreLabel: 'Muito bom',
+    reviewCount: 2643,
+    pricePerNight: 'US$85',
+    distance: '11 km de center',
+  },
+  {
+    id: 'near-5',
+    image: 'https://nuitee-hotels.b-cdn.net/hotels/548461866.jpg?height=480&quality=80&sharpen=true',
+    name: 'ibis Porto Alegre Moinhos de Vento',
+    location: 'Porto Alegre, Rua Marquês do Herval 540',
+    rating: 4,
+    score: 8.4,
+    scoreLabel: 'Muito bom',
+    reviewCount: 2440,
+    pricePerNight: 'US$70',
+    distance: '11 km de center',
+  },
+  {
+    id: 'near-6',
+    image: 'https://nuitee-hotels.b-cdn.net/hotels/49231839.jpg?height=480&quality=80&sharpen=true',
+    name: 'Ibis Styles Porto Alegre Centro - proximo rodoviaria, Araujo Vianna e hospitais',
+    location: 'Porto Alegre, Rua Garibaldi, 633',
+    rating: 4,
+    score: 8.2,
+    scoreLabel: 'Muito bom',
+    reviewCount: 2537,
+    pricePerNight: 'US$80',
+    distance: '12 km de center',
+  },
+];
+
+function HotelCard({ hotel }: { hotel: Hotel }) {
+  return (
+    <TouchableOpacity style={styles.card} activeOpacity={0.9}>
+      <Image source={{ uri: hotel.image }} style={styles.cardImage} resizeMode="cover" />
+
+      <View style={styles.cardBody}>
+        <View style={styles.starsRow}>
+          {Array.from({ length: hotel.rating }).map((_, i) => (
+            <StarIcon key={i} size={12} color="#FFB400" weight="fill" />
+          ))}
+        </View>
+
+        <Text style={styles.cardName} numberOfLines={2}>
+          {hotel.name}
+        </Text>
+
+        <View style={styles.locationRow}>
+          <MapPinIcon size={12} color={colors.text.muted} weight="regular" />
+          <Text style={styles.locationText} numberOfLines={1}>
+            {hotel.location}
+          </Text>
+        </View>
+
+        {hotel.distance ? (
+          <Text style={styles.distanceText}>{hotel.distance}</Text>
+        ) : null}
+
+        <View style={styles.cardDivider} />
+
+        <View style={styles.cardFooter}>
+          <View style={styles.scoreBlock}>
+            <View style={styles.scoreBadge}>
+              <Text style={styles.scoreValue}>{hotel.score}</Text>
+            </View>
+            <View style={styles.scoreText}>
+              <Text style={styles.scoreLabel}>{hotel.scoreLabel}</Text>
+              <Text style={styles.reviewCount}>{hotel.reviewCount} avaliações</Text>
+            </View>
+          </View>
+          <View style={styles.priceBlock}>
+            <Text style={styles.priceValue}>{hotel.pricePerNight}</Text>
+            <Text style={styles.priceCaption} numberOfLines={2}>
+              1 quarto x 1 noite incluindo impostos
+            </Text>
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 export default function TravelShopScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
 
-  // Shared value para controlar a animação da TopBar
-  const scrollY = useSharedValue(0);
-
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
-
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <StatusBar style="light" />
-      
-      {/* ScrollView Animado para passar a posição Y para a TopBar */}
-      <Animated.ScrollView
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarHeight + 24 }]}
-      >
-        
-        {/* Seção Superior (DarkHeader) */}
-        {/* O paddingTop inclui a altura do insets + espaço para não sobrepor os ícones da TopBar */}
-        <View style={[styles.darkHeader, { paddingTop: insets.top + 70 }]}>
-          <Text style={styles.mainTitle}>
-            Use seu cashback{'\n'}para novas{'\n'}experiências.
-          </Text>
-          <View style={styles.accentLine} />
-        </View>
 
-        {/* Seção Inferior (Main Content) */}
-        <View style={styles.mainContent}>
-          
-          <View style={styles.sectionHeading}>
-            <Text style={styles.sectionHeadingText}>EXCLUSIVO</Text>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: tabBarHeight + 32 }}
+      >
+        <LinearGradient
+          colors={['#6444DA', '#4D2ACC', '#1B0F4A']}
+          start={{ x: 0.1, y: 0.1 }}
+          end={{ x: 0.8, y: 1.2 }}
+          locations={[0, 0.2, 0.7]}
+          style={[styles.headerGradient, { paddingTop: insets.top + 16 }]}
+        >
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
+
+          <View style={styles.headerInner}>
+            <Text style={styles.headerLabel}>TRAVELSHOP</Text>
+            <Text style={styles.mainTitle}>
+              Find your <Text style={styles.mainTitleAccent}>stay</Text>
+            </Text>
+            <Text style={styles.pageDescription}>
+              Search hotels, compare deals and book your next trip with TravelBACK cashback.
+            </Text>
           </View>
 
-          {/* CARD 1 - AÉREO */}
-          <TouchableOpacity style={styles.card} activeOpacity={0.9}>
-            <View style={styles.cardImageContainer}>
-              <Image 
-                source={{ uri: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80' }} 
-                style={styles.cardImage} 
-              />
-              {/* Overlay escuro opcional para simular a seriedade do grayscale */}
-              <View style={styles.imageOverlay} />
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>AÉREO</Text>
+          <View style={styles.searchCard}>
+            <TouchableOpacity style={styles.searchField} activeOpacity={0.7}>
+              <MapPinIcon size={20} color="#0F022D" weight="regular" />
+              <View style={styles.searchFieldText}>
+                <Text style={styles.searchFieldLabel}>Destinos</Text>
+                <Text style={styles.searchFieldValue}>Para onde você vai?</Text>
               </View>
-            </View>
-            
-            <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>VOO PARA LONDRES</Text>
-              <Text style={styles.cardDesc}>
-                Classe executiva saindo de São Paulo. Experiência premium com acesso a lounges exclusivos e serviço de bordo internacional.
-              </Text>
-              
-              <Text style={styles.priceLabel}>A PARTIR DE</Text>
-              <Text style={styles.price}>R$ 12.400</Text>
-              <Text style={styles.points}>20% de CashBack!</Text>
-              
-              <View style={styles.btn}>
-                <Text style={styles.btnText}>COMPRAR</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
 
-          {/* CARD 2 - HOSPEDAGEM */}
-          <TouchableOpacity style={styles.card} activeOpacity={0.9}>
-            <View style={styles.cardImageContainer}>
-              <Image 
-                source={{ uri: 'https://images.unsplash.com/photo-1503899036067-0479ed6c9259?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80' }} 
-                style={styles.cardImage} 
-              />
-              <View style={styles.imageOverlay} />
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>HOSPEDAGEM</Text>
-              </View>
-            </View>
-            
-            <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>AMAN TOKYO</Text>
-              <Text style={styles.cardDesc}>
-                4 noites na Suíte Panorâmica. Imersão na tranquilidade minimalista acima do centro financeiro de Otemachi.
-              </Text>
-              
-              <Text style={[styles.priceLabel, { marginTop: 8 }]}>CASHBACK APLICÁVEL</Text>
-              <Text style={[styles.price ]}>R$ 8.200</Text>
-              <Text style={styles.points}>12% de CashBack!</Text>
-              
-              <View style={styles.btn}>
-                <Text style={styles.btnText}>COMPRAR</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
+            <View style={styles.searchDivider} />
 
-          {/* CARD 3 - TEXTO APENAS */}
-          <TouchableOpacity style={styles.textCard} activeOpacity={0.8}>
-            <View style={styles.textCardContent}>
-              <Text style={styles.cardTitle}>EXPERIÊNCIA GASTRONÔMICA{'\n'}PARIS</Text>
-              <Text style={styles.cardDesc}>Reserva prioritária em restaurante com estrela Michelin.</Text>
-              
-              <View style={styles.cardFooter}>
-                <Text style={styles.price}>R$ 1.500</Text>
-                <View style={styles.linkDetails}>
-                  <Text style={styles.linkDetailsText}>DETALHES</Text>
-                </View>
+            <TouchableOpacity style={styles.searchField} activeOpacity={0.7}>
+              <CalendarIcon size={20} color="#0F022D" weight="regular" />
+              <View style={styles.searchFieldText}>
+                <Text style={styles.searchFieldLabel}>Datas</Text>
+                <Text style={styles.searchFieldValue}>Check-in — Check-out</Text>
               </View>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
 
-          {/* CARD 4 - TEXTO APENAS (INVITE ONLY) */}
-          <TouchableOpacity style={styles.textCard} activeOpacity={0.8}>
-            <View style={styles.textCardContent}>
-              <Text style={styles.cardTitle}>BOUTIQUE SUÍÇA</Text>
-              <Text style={styles.cardDesc}>Acesso antecipado a coleções limitadas com concierge.</Text>
-              
-              <View style={styles.cardFooter}>
-                <Text style={styles.inviteOnly}>Somente Convite</Text>
-                <View style={styles.linkDetails}>
-                  <Text style={styles.linkDetailsText}>DETALHES</Text>
-                </View>
+            <View style={styles.searchDivider} />
+
+            <TouchableOpacity style={styles.searchField} activeOpacity={0.7}>
+              <UsersIcon size={20} color="#0F022D" weight="regular" />
+              <View style={styles.searchFieldText}>
+                <Text style={styles.searchFieldLabel}>Hóspedes</Text>
+                <Text style={styles.searchFieldValue}>1 quarto, 2 adultos</Text>
               </View>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
 
+            <TouchableOpacity style={styles.searchButton} activeOpacity={0.85}>
+              <MagnifyingGlassIcon size={18} color={colors.text.light} weight="bold" />
+              <Text style={styles.searchButtonText}>Buscar Hotéis</Text>
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            Hotéis <Text style={styles.sectionTitleAccent}>recomendados</Text>
+          </Text>
         </View>
-      </Animated.ScrollView>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.carousel}
+        >
+          {RECOMMENDED.map((hotel) => (
+            <HotelCard key={hotel.id} hotel={hotel} />
+          ))}
+        </ScrollView>
 
-      {/* TopBar global que reage ao scroll */}
-      <TopBar scrollY={scrollY} />
+        <View style={[styles.section, { marginTop: 24 }]}>
+          <Text style={styles.sectionTitle}>
+            Hotéis <Text style={styles.sectionTitleAccent}>próximos</Text>
+          </Text>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.carousel}
+        >
+          {NEARBY.map((hotel) => (
+            <HotelCard key={hotel.id} hotel={hotel} />
+          ))}
+        </ScrollView>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.light, // Fundo claro da aplicação
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
+
+  headerGradient: {
+    paddingBottom: 28,
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 40,
-  },
-  darkHeader: {
-    backgroundColor: colors.background.dark,
+  headerInner: {
     paddingHorizontal: 24,
-    paddingBottom: 40,
   },
-  mainTitle: {
-    fontSize: 32,
-    fontFamily: fonts.bold,
-    color: colors.text.light,
-    lineHeight: 36,
-    letterSpacing: -1,
-  },
-  accentLine: {
-    width: 32,
-    height: 3,
-    backgroundColor: colors.brand.primary,
-    marginTop: 24,
-  },
-  mainContent: {
-    padding: 24,
-  },
-  sectionHeading: {
-    marginBottom: 20,
-    alignSelf: 'flex-start',
-    borderBottomWidth: 2,
-    borderBottomColor: colors.text.dark,
-    paddingBottom: 4,
-  },
-  sectionHeadingText: {
+  headerLabel: {
+    color: 'rgba(255,255,255,0.7)',
     fontSize: 11,
     fontFamily: fonts.bold,
-    color: colors.text.dark,
-    letterSpacing: 1,
+    letterSpacing: 2,
+    marginBottom: 8,
   },
-  card: {
-    backgroundColor: '#FFFFFF',
+  mainTitle: {
+    fontSize: 38,
+    fontFamily: fonts.bold,
+    color: colors.text.light,
+    letterSpacing: -1.5,
+    marginBottom: 10,
+  },
+  mainTitleAccent: {
+    color: '#85EDD3',
+    fontFamily: fonts.bold_italic,
+  },
+  pageDescription: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: 'rgba(255,255,255,0.7)',
+    lineHeight: 20,
+    maxWidth: '95%',
     marginBottom: 24,
-    borderRadius: 0, // Swiss style usa quinas mais duras (sharp edges)
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    overflow: 'hidden',
   },
-  cardImageContainer: {
-    width: '100%',
-    height: 200,
-    position: 'relative',
+
+  searchCard: {
+    marginHorizontal: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  searchField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    gap: 12,
+  },
+  searchFieldText: { flex: 1 },
+  searchFieldLabel: {
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    color: colors.text.muted,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  searchFieldValue: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: colors.text.dark,
+  },
+  searchDivider: {
+    height: 1,
+    backgroundColor: '#EDEDF2',
+    marginHorizontal: 6,
+  },
+  searchButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#0F022D',
+    paddingVertical: 14,
+    borderRadius: 10,
+    marginTop: 12,
+  },
+  searchButtonText: {
+    color: colors.text.light,
+    fontSize: 14,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.4,
+  },
+
+  section: {
+    paddingHorizontal: 24,
+    marginTop: 32,
+    marginBottom: 14,
+  },
+  sectionTitle: {
+    fontSize: 26,
+    fontFamily: fonts.bold,
+    color: colors.text.dark,
+    letterSpacing: -0.8,
+  },
+  sectionTitleAccent: {
+    color: '#f07167',
+    fontFamily: fonts.bold_italic,
+  },
+
+  carousel: {
+    paddingHorizontal: 24,
+    gap: 14,
+  },
+
+  card: {
+    width: 300,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#ECECEF',
+    overflow: 'hidden',
   },
   cardImage: {
     width: '100%',
-    height: '100%',
+    height: 170,
+    backgroundColor: '#EDEDF2',
   },
-  imageOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.1)', // Dá um toque levemente lavado
+  cardBody: {
+    padding: 16,
   },
-  badge: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    backgroundColor: colors.background.dark,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+  starsRow: {
+    flexDirection: 'row',
+    gap: 2,
+    marginBottom: 8,
   },
-  badgeText: {
-    color: colors.text.light,
-    fontSize: 9,
-    fontFamily: fonts.bold,
-    letterSpacing: 1,
-  },
-  cardContent: {
-    padding: 20,
-  },
-  cardTitle: {
-    fontSize: 18,
+  cardName: {
+    fontSize: 15,
     fontFamily: fonts.bold,
     color: colors.text.dark,
-    marginBottom: 12,
-    letterSpacing: -0.5,
-    textTransform: 'uppercase',
+    letterSpacing: -0.2,
+    lineHeight: 20,
+    marginBottom: 6,
+    minHeight: 40,
   },
-  cardDesc: {
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  locationText: {
+    flex: 1,
     fontSize: 12,
     fontFamily: fonts.regular,
     color: colors.text.muted,
-    lineHeight: 18,
-    marginBottom: 20,
   },
-  priceLabel: {
-    fontSize: 9,
-    fontFamily: fonts.bold,
-    color: '#888888',
-    marginBottom: 4,
-    letterSpacing: 0.5,
-  },
-  price: {
-    fontSize: 22,
-    fontFamily: fonts.bold,
-    color: colors.text.dark,
-    letterSpacing: -1,
-  },
-  points: {
-    fontSize: 10,
-    fontFamily: fonts.bold,
-    color: colors.brand.primary,
-    marginTop: 4,
-    marginBottom: 16,
-  },
-  btn: {
-    width: '100%',
-    backgroundColor: colors.brand.primary,
-    padding: 14,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  btnText: {
-    color: colors.text.light,
+  distanceText: {
     fontSize: 11,
     fontFamily: fonts.bold,
-    letterSpacing: 1,
+    color: colors.text.muted,
+    letterSpacing: 0.4,
+    marginTop: 6,
+    textTransform: 'uppercase',
   },
-  textCard: {
-    backgroundColor: '#FFFFFF',
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
+  cardDivider: {
+    height: 1,
+    backgroundColor: '#EDEDF2',
+    marginVertical: 12,
   },
-  textCardContent: {
-    padding: 24,
-  },
+
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  scoreBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  scoreBadge: {
+    backgroundColor: '#00A86B',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    minWidth: 36,
+    alignItems: 'center',
+  },
+  scoreValue: {
+    color: colors.text.light,
+    fontSize: 13,
+    fontFamily: fonts.bold,
+  },
+  scoreText: {
+    flex: 1,
+  },
+  scoreLabel: {
+    fontSize: 12,
+    fontFamily: fonts.bold,
+    color: colors.text.dark,
+  },
+  reviewCount: {
+    fontSize: 11,
+    fontFamily: fonts.regular,
+    color: colors.text.muted,
+  },
+  priceBlock: {
     alignItems: 'flex-end',
-    marginTop: 24,
+    maxWidth: 130,
   },
-  inviteOnly: {
-    fontSize: 16,
+  priceValue: {
+    fontSize: 18,
     fontFamily: fonts.bold,
     color: colors.text.dark,
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
-  linkDetails: {
-    borderBottomWidth: 1.5,
-    borderBottomColor: colors.text.dark,
-    paddingBottom: 2,
-  },
-  linkDetailsText: {
+  priceCaption: {
     fontSize: 10,
-    fontFamily: fonts.bold,
-    color: colors.text.dark,
-    letterSpacing: 0.5,
+    fontFamily: fonts.regular,
+    color: colors.text.muted,
+    textAlign: 'right',
+    marginTop: 2,
+    lineHeight: 13,
   },
 });

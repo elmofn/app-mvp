@@ -11,7 +11,6 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -52,8 +51,6 @@ export function SupportContent({
         style={[styles.headerGradient, { paddingTop: insets.top }]}
       >
         <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
-
-        <ScreenHeader title="Support" dark={true} />
 
         <View style={styles.headerBody}>
           <Text style={styles.mainTitle}>
@@ -136,7 +133,7 @@ const styles = StyleSheet.create({
   },
   headerBody: {
     paddingHorizontal: 24,
-    marginTop: -12,
+    marginTop: 18,
     marginBottom: 28,
   },
   mainTitle: {

@@ -138,7 +138,7 @@ export default function StatementScreen() {
 
           <View style={styles.headerInner}>
             <Text style={styles.mainTitle}>
-              Travel <Text style={styles.mainTitleAccent}>history</Text>
+              Travel <Text style={styles.mainTitleAccent}>History</Text>
             </Text>
 
             <View style={styles.balanceSection}>
@@ -247,13 +247,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
 
   headerGradient: {
-    paddingBottom: 28,
+    paddingBottom: 26,
   },
   headerInner: {
     paddingHorizontal: 24,
   },
   mainTitle: {
-    fontSize: 38,
+    fontSize: 50,
     fontFamily: fonts.bold,
     color: colors.text.light,
     letterSpacing: -1.5,
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   },
   mainTitleAccent: {
     color: '#85EDD3',
-    fontFamily: fonts.bold_italic,
+    fontFamily: fonts.italic,
   },
 
   balanceSection: {

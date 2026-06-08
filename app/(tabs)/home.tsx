@@ -8,7 +8,6 @@ import {
   EyeIcon,
   EyeSlashIcon,
   ListIcon,
-  QuestionMarkIcon,
   SparkleIcon,
   SuitcaseRollingIcon,
   UserIcon
@@ -382,16 +381,6 @@ export default function HomeScreen() {
                   <BellIcon size={18} color="#0F022D" weight="bold" />
                 </View>
                 <Text style={styles.menuItemText}>Notifications</Text>
-              </TouchableOpacity>
-
-              <View style={styles.menuDivider} />
-
-              {/* Item 3: Support */}
-              <TouchableOpacity style={styles.menuItem} onPress={() => { setIsMenuOpen(false); router.push('/support'); }}>
-                <View style={styles.menuIconContainer}>
-                  <QuestionMarkIcon size={18} color="#0F022D" weight="bold" />
-                </View>
-                <Text style={styles.menuItemText}>Help & Support</Text>
               </TouchableOpacity>
 
             </Animated.View>

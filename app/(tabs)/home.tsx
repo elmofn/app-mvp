@@ -13,7 +13,7 @@ import {
   UserIcon
 } from 'phosphor-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -132,7 +132,7 @@ export default function HomeScreen() {
       if (scrollY.value > 0) {
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
       } else {
-        isForcingAnimation.value = true; 
+        isForcingAnimation.value = true;
         scrollY.value = 150;
         setTimeout(() => {
           scrollY.value = withTiming(0, { duration: 450 }, () => {
@@ -141,6 +141,30 @@ export default function HomeScreen() {
         }, 50);
       }
     }, [])
+  );
+
+  // Intercepta o botao de voltar do Android na home: em vez de tentar
+  // popar a stack (sem destino, leva a tela branca), abre um alert
+  // confirmando saida do app. Cancelar mantem o usuario na home;
+  // confirmar chama BackHandler.exitApp(). No iOS o evento nunca dispara.
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        Alert.alert(
+          'Exit app?',
+          'Are you sure you want to leave TravelBACK?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Exit', style: 'destructive', onPress: () => BackHandler.exitApp() },
+          ],
+          { cancelable: true },
+        );
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, []),
   );
 
   if (!data) {

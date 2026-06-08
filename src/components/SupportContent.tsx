@@ -27,6 +27,7 @@ type Props = {
   titleFirst?: string;
   titleAccent?: string;
   titleAfter?: string;
+  onTermsPress?: () => void;
 };
 
 export function SupportContent({
@@ -35,6 +36,7 @@ export function SupportContent({
   titleFirst = 'How Can\nWe ',
   titleAccent = 'Assist',
   titleAfter = '\nYou?',
+  onTermsPress,
 }: Props) {
   const insets = useSafeAreaInsets();
 
@@ -116,12 +118,14 @@ export function SupportContent({
             <Text style={styles.darkButtonText}>About the app</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.darkButton} activeOpacity={0.85}>
-            <View style={[styles.darkButtonIcon, { backgroundColor: '#f07167' }]}>
-              <FileTextIcon size={24} color="#0F022D" weight="bold" />
-            </View>
-            <Text style={styles.darkButtonText}>Terms and Conditions</Text>
-          </TouchableOpacity>
+          {onTermsPress ? (
+            <TouchableOpacity style={styles.darkButton} activeOpacity={0.85} onPress={onTermsPress}>
+              <View style={[styles.darkButtonIcon, { backgroundColor: '#f07167' }]}>
+                <FileTextIcon size={24} color="#0F022D" weight="bold" />
+              </View>
+              <Text style={styles.darkButtonText}>Terms and Conditions</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
     </ScrollView>

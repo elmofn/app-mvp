@@ -11,6 +11,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 
+import { AlertProvider } from '@/src/contexts/AlertContext';
 import { AuthProvider, useAuth } from '@/src/contexts/AuthContext';
 
 // 1. Impede que a tela de splash inicial feche antes de carregarmos os assets
@@ -40,9 +41,11 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <AppShell />
-    </AuthProvider>
+    <AlertProvider>
+      <AuthProvider>
+        <AppShell />
+      </AuthProvider>
+    </AlertProvider>
   );
 }
 

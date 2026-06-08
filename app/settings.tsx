@@ -4,7 +4,6 @@ import { StatusBar } from 'expo-status-bar';
 import { CaretDownIcon } from 'phosphor-react-native';
 import React, { useState } from 'react';
 import {
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -19,6 +18,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/src/components/ScreenHeader';
+import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
@@ -51,6 +51,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { account, signOut } = useAuth();
+  const showAlert = useAlert();
 
   const [name, setName] = useState(account?.accountDetails.name ?? '');
   const [phone, setPhone] = useState(formatPhone(account?.accountDetails.phoneNumber ?? ''));
@@ -66,7 +67,7 @@ export default function SettingsScreen() {
   const [modalVisible, setModalVisible] = useState<{ type: 'currency' | 'language' | null }>({ type: null });
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Do you want to end your TravelCash session?', [
+    showAlert('Logout', 'Do you want to end your TravelCash session?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Logout',
@@ -80,7 +81,7 @@ export default function SettingsScreen() {
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
+    showAlert(
       'Delete Account',
       'This action is irreversible. All your data will be permanently removed.',
       [

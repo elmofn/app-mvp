@@ -13,7 +13,7 @@ import {
   UserIcon
 } from 'phosphor-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -26,6 +26,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { fetchHomeData, formatCurrency, HomeData } from '@/src/services/api';
 import { colors } from '@/src/theme/colors';
@@ -72,6 +73,7 @@ const STATIC_TRIPS = [
 export default function HomeScreen() {
   const router = useRouter();
   const { account } = useAuth();
+  const showAlert = useAlert();
   const [data, setData] = useState<HomeData | null>(null);
 
   const firstName = account?.accountDetails.name?.trim().split(/\s+/)[0] ?? '';
@@ -150,21 +152,20 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
-        Alert.alert(
+        showAlert(
           'Exit app?',
           'Are you sure you want to leave TravelBACK?',
           [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Exit', style: 'destructive', onPress: () => BackHandler.exitApp() },
           ],
-          { cancelable: true },
         );
         return true;
       };
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, []),
+    }, [showAlert]),
   );
 
   if (!data) {

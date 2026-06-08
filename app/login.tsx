@@ -5,7 +5,6 @@ import { EyeIcon, EyeSlashIcon } from 'phosphor-react-native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -18,6 +17,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/src/components/ScreenHeader';
+import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
@@ -26,6 +26,7 @@ export default function LoginFormScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { signIn, isSigningIn } = useAuth();
+  const showAlert = useAlert();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +36,7 @@ export default function LoginFormScreen() {
   const handleSignIn = async () => {
     const login = email.trim();
     if (!login || !password) {
-      Alert.alert('Missing information', 'Please enter your e-mail and password to continue.');
+      showAlert('Missing information', 'Please enter your e-mail and password to continue.');
       return;
     }
 
@@ -44,19 +45,19 @@ export default function LoginFormScreen() {
       if (response.success && response.token) {
         router.replace('/(tabs)/home');
       } else {
-        Alert.alert(
+        showAlert(
           'Login failed',
           response.errorMessage || response.message || 'Invalid e-mail or password.',
         );
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unexpected error. Please try again.';
-      Alert.alert('Login failed', message);
+      showAlert('Login failed', message);
     }
   };
 
   const handleForgotPassword = () => {
-    Alert.alert(
+    showAlert(
       'Forgot password?',
       'Enter the e-mail associated with your account and we will send you a reset link.',
       [{ text: 'OK' }],

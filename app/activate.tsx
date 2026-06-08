@@ -4,7 +4,6 @@ import { StatusBar } from 'expo-status-bar';
 import { CheckIcon, EyeIcon, EyeSlashIcon } from 'phosphor-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -24,6 +23,7 @@ import Animated, {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/src/components/ScreenHeader';
+import { useAlert } from '@/src/contexts/AlertContext';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -74,6 +74,7 @@ const STEPS: Step[] = [
 export default function ActivationScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const showAlert = useAlert();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [focusedField, setFocusedField] = useState(false);
@@ -107,7 +108,7 @@ export default function ActivationScreen() {
 
   const handleNext = () => {
     if (currentStep === STEPS.length && !acceptedTerms) {
-      Alert.alert('Terms', 'Please accept the Terms and Conditions to continue.');
+      showAlert('Terms', 'Please accept the Terms and Conditions to continue.');
       return;
     }
 

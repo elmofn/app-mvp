@@ -1,5 +1,6 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -42,6 +43,7 @@ function parseDate(iso: string) {
 }
 
 export default function StatementScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const { account } = useAuth();
@@ -221,6 +223,7 @@ export default function StatementScreen() {
                         key={tx.id}
                         style={styles.transactionItem}
                         activeOpacity={0.7}
+                        onPress={() => router.push(`/transaction/${tx.id}`)}
                       >
                         <View style={styles.txTextContainer}>
                           <Text style={styles.txTitle}>{tx.details?.unitName ?? '—'}</Text>

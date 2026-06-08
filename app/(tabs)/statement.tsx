@@ -223,7 +223,12 @@ export default function StatementScreen() {
                         key={tx.id}
                         style={styles.transactionItem}
                         activeOpacity={0.7}
-                        onPress={() => router.push(`/transaction/${tx.id}`)}
+                        onPress={() =>
+                          router.push({
+                            pathname: '/transaction/[id]',
+                            params: { id: tx.id },
+                          })
+                        }
                       >
                         <View style={styles.txTextContainer}>
                           <Text style={styles.txTitle}>{tx.details?.unitName ?? '—'}</Text>

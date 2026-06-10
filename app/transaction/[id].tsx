@@ -144,7 +144,7 @@ export default function TransactionDetailScreen() {
           </Section>
 
           <Section title="Financial">
-            <Row label="Value (BRL)" value={`R$ ${formatCurrency(valueBRL)}`} />
+            <Row label="Original Value (BRL)" value={`R$ ${formatCurrency(valueBRL)}`} />
             <Row label="Value (USD)" value={`US$ ${formatCurrency(tx.value)}`} />
             {tx.details?.purchaseValue > 0 ? (
               <Row

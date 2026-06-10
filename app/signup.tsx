@@ -1,9 +1,10 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { CheckIcon, EyeIcon, EyeSlashIcon } from 'phosphor-react-native';
+import { CaretDownIcon, CheckCircleIcon, CheckIcon, EyeIcon, EyeSlashIcon } from 'phosphor-react-native';
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -22,7 +23,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CountryPicker } from '@/src/components/CountryPicker';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
+import { Country, DEFAULT_COUNTRY } from '@/src/data/countries';
+import { useDebounce } from '@/src/hooks/useDebounce';
+import { normalizeEmail, normalizePhone, searchByEmail, searchByPhone } from '@/src/services/search';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -63,7 +68,7 @@ const STEPS: Step[] = [
     titleAccent: 'Number',
     description: 'Enter your mobile number with country code so we can keep your account safe.',
     label: 'Phone Number',
-    placeholder: '+55 11 99999-9999',
+    placeholder: '11 99999-9999',
     key: 'phone',
   },
   {
@@ -94,6 +99,8 @@ const STEPS: Step[] = [
   },
 ];
 
+type CheckStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid';
+
 export default function SignupScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -102,6 +109,7 @@ export default function SignupScreen() {
   const [focusedField, setFocusedField] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -109,6 +117,71 @@ export default function SignupScreen() {
     code: '',
     password: '',
   });
+
+  const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
+  const [countryPickerOpen, setCountryPickerOpen] = useState(false);
+
+  const [emailStatus, setEmailStatus] = useState<CheckStatus>('idle');
+  const [phoneStatus, setPhoneStatus] = useState<CheckStatus>('idle');
+
+  const debouncedEmail = useDebounce(formData.email, 500);
+  const debouncedPhone = useDebounce(formData.phone, 500);
+
+  // Verifica e-mail no debounce: a flag cancelled descarta requests obsoletos.
+  useEffect(() => {
+    const email = debouncedEmail.trim();
+    if (!email) {
+      setEmailStatus('idle');
+      return;
+    }
+    const normalized = normalizeEmail(email);
+    if (!normalized.includes('@') || !normalized.includes('.')) {
+      setEmailStatus('invalid');
+      return;
+    }
+    let cancelled = false;
+    setEmailStatus('checking');
+    searchByEmail(email)
+      .then((exists) => {
+        if (cancelled) return;
+        setEmailStatus(exists ? 'taken' : 'available');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setEmailStatus('idle');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedEmail]);
+
+  // Verifica telefone: combina DDI + digitos do numero local.
+  useEffect(() => {
+    const local = debouncedPhone.replace(/\D/g, '');
+    if (!local) {
+      setPhoneStatus('idle');
+      return;
+    }
+    const normalized = normalizePhone(country.dial, local);
+    if (normalized.length < 8) {
+      setPhoneStatus('invalid');
+      return;
+    }
+    let cancelled = false;
+    setPhoneStatus('checking');
+    searchByPhone(country.dial, local)
+      .then((exists) => {
+        if (cancelled) return;
+        setPhoneStatus(exists ? 'taken' : 'available');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPhoneStatus('idle');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedPhone, country.dial]);
 
   const progressWidth = useSharedValue(1 / STEPS.length);
   const contentOpacity = useSharedValue(1);
@@ -130,6 +203,8 @@ export default function SignupScreen() {
 
   const handleNext = () => {
     if (currentStep === 4 && !acceptedTerms) return;
+    if (currentStep === 2 && emailStatus !== 'available') return;
+    if (currentStep === 3 && phoneStatus !== 'available') return;
 
     if (currentStep < STEPS.length) {
       contentOpacity.value = withTiming(0, { duration: 200 }, (finished) => {
@@ -147,6 +222,8 @@ export default function SignupScreen() {
   const isReview = currentStep === 4;
   const isPassword = currentStep === 6;
   const isCode = currentStep === 5;
+  const isEmail = currentStep === 2;
+  const isPhone = currentStep === 3;
 
   const inputValue = step.key ? formData[step.key] : '';
   const setInputValue = (val: string) => {
@@ -154,7 +231,14 @@ export default function SignupScreen() {
   };
 
   const ctaLabel = isReview ? 'Create Account' : currentStep === STEPS.length ? 'Finish' : 'Next';
-  const disabled = isReview && !acceptedTerms;
+  const disabled =
+    (isReview && !acceptedTerms) ||
+    (isEmail && emailStatus !== 'available') ||
+    (isPhone && phoneStatus !== 'available');
+
+  const reviewPhone = formData.phone
+    ? `${country.dial} ${formData.phone}`
+    : '—';
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
@@ -220,7 +304,7 @@ export default function SignupScreen() {
                     </View>
                     <View style={styles.reviewRow}>
                       <Text style={styles.reviewLabel}>Phone</Text>
-                      <Text style={styles.reviewValue}>{formData.phone || '—'}</Text>
+                      <Text style={styles.reviewValue}>{reviewPhone}</Text>
                     </View>
                   </View>
 
@@ -239,11 +323,9 @@ export default function SignupScreen() {
                   </TouchableOpacity>
                 </View>
               ) : isPassword ? (
-                <View
-                  style={[styles.passwordRow, focusedField && styles.inputFieldFocused]}
-                >
+                <View style={[styles.inputRow, focusedField && styles.inputFieldFocused]}>
                   <TextInput
-                    style={styles.passwordInput}
+                    style={styles.inputFlex}
                     placeholder={step.placeholder}
                     placeholderTextColor="#B5B5BD"
                     onFocus={() => setFocusedField(true)}
@@ -256,7 +338,7 @@ export default function SignupScreen() {
                     onChangeText={setInputValue}
                   />
                   <TouchableOpacity
-                    style={styles.eyeButton}
+                    style={styles.adornment}
                     onPress={() => setShowPassword((v) => !v)}
                     activeOpacity={0.6}
                     hitSlop={8}
@@ -268,6 +350,77 @@ export default function SignupScreen() {
                     )}
                   </TouchableOpacity>
                 </View>
+              ) : isPhone ? (
+                <View>
+                  <View
+                    style={[
+                      styles.inputRow,
+                      focusedField && styles.inputFieldFocused,
+                      phoneStatus === 'taken' && styles.inputFieldError,
+                    ]}
+                  >
+                    <TouchableOpacity
+                      style={styles.countryTrigger}
+                      onPress={() => setCountryPickerOpen(true)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.countryFlag}>{country.flag}</Text>
+                      <Text style={styles.countryDial}>{country.dial}</Text>
+                      <CaretDownIcon size={12} color={colors.text.muted} weight="bold" />
+                    </TouchableOpacity>
+
+                    <TextInput
+                      style={styles.inputFlex}
+                      placeholder={step.placeholder}
+                      placeholderTextColor="#B5B5BD"
+                      onFocus={() => setFocusedField(true)}
+                      onBlur={() => setFocusedField(false)}
+                      value={inputValue}
+                      onChangeText={setInputValue}
+                      keyboardType="phone-pad"
+                      autoComplete="tel"
+                    />
+
+                    <View style={styles.adornment}>
+                      <StatusIndicator status={phoneStatus} />
+                    </View>
+                  </View>
+                  <StatusMessage
+                    status={phoneStatus}
+                    takenMessage="An account with this phone number already exists."
+                  />
+                </View>
+              ) : isEmail ? (
+                <View>
+                  <View
+                    style={[
+                      styles.inputRow,
+                      focusedField && styles.inputFieldFocused,
+                      emailStatus === 'taken' && styles.inputFieldError,
+                    ]}
+                  >
+                    <TextInput
+                      style={styles.inputFlex}
+                      placeholder={step.placeholder}
+                      placeholderTextColor="#B5B5BD"
+                      onFocus={() => setFocusedField(true)}
+                      onBlur={() => setFocusedField(false)}
+                      value={inputValue}
+                      onChangeText={setInputValue}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      autoComplete="email"
+                    />
+                    <View style={styles.adornment}>
+                      <StatusIndicator status={emailStatus} />
+                    </View>
+                  </View>
+                  <StatusMessage
+                    status={emailStatus}
+                    takenMessage="An account with this e-mail already exists."
+                  />
+                </View>
               ) : (
                 <TextInput
                   style={[styles.inputField, focusedField && styles.inputFieldFocused]}
@@ -277,29 +430,10 @@ export default function SignupScreen() {
                   onBlur={() => setFocusedField(false)}
                   value={inputValue}
                   onChangeText={setInputValue}
-                  keyboardType={
-                    currentStep === 2
-                      ? 'email-address'
-                      : currentStep === 3
-                      ? 'phone-pad'
-                      : isCode
-                      ? 'number-pad'
-                      : 'default'
-                  }
-                  autoCapitalize={
-                    currentStep === 1 ? 'words' : currentStep === 2 ? 'none' : 'sentences'
-                  }
-                  autoCorrect={currentStep !== 2 && currentStep !== 3}
+                  keyboardType={isCode ? 'number-pad' : 'default'}
+                  autoCapitalize={currentStep === 1 ? 'words' : 'sentences'}
                   autoComplete={
-                    currentStep === 1
-                      ? 'name'
-                      : currentStep === 2
-                      ? 'email'
-                      : currentStep === 3
-                      ? 'tel'
-                      : isCode
-                      ? 'one-time-code'
-                      : 'off'
+                    currentStep === 1 ? 'name' : isCode ? 'one-time-code' : 'off'
                   }
                   maxLength={isCode ? 6 : undefined}
                 />
@@ -319,8 +453,32 @@ export default function SignupScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <CountryPicker
+        visible={countryPickerOpen}
+        onClose={() => setCountryPickerOpen(false)}
+        onSelect={(c) => setCountry(c)}
+        selectedCode={country.code}
+      />
     </SafeAreaView>
   );
+}
+
+function StatusIndicator({ status }: { status: CheckStatus }) {
+  if (status === 'checking') {
+    return <ActivityIndicator size="small" color={colors.text.muted} />;
+  }
+  if (status === 'available') {
+    return <CheckCircleIcon size={20} color="#00A86B" weight="fill" />;
+  }
+  return null;
+}
+
+function StatusMessage({ status, takenMessage }: { status: CheckStatus; takenMessage: string }) {
+  if (status === 'taken') {
+    return <Text style={styles.errorText}>{takenMessage}</Text>;
+  }
+  return null;
 }
 
 const styles = StyleSheet.create({
@@ -399,27 +557,58 @@ const styles = StyleSheet.create({
     color: colors.text.dark,
     paddingVertical: 10,
   },
-  inputFieldFocused: {
-    borderBottomWidth: 2,
-    borderBottomColor: colors.brand.primary,
-  },
-
-  passwordRow: {
+  inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5E5',
   },
-  passwordInput: {
+  inputFlex: {
     flex: 1,
     fontSize: 17,
     fontFamily: fonts.regular,
     color: colors.text.dark,
     paddingVertical: 10,
   },
-  eyeButton: {
-    paddingHorizontal: 4,
+  adornment: {
+    paddingHorizontal: 6,
     paddingVertical: 4,
+    minWidth: 24,
+    alignItems: 'center',
+  },
+  inputFieldFocused: {
+    borderBottomWidth: 2,
+    borderBottomColor: colors.brand.primary,
+  },
+  inputFieldError: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#f07167',
+  },
+  errorText: {
+    marginTop: 8,
+    fontSize: 12,
+    fontFamily: fonts.medium,
+    color: '#f07167',
+  },
+
+  countryTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingRight: 12,
+    marginRight: 10,
+    borderRightWidth: 1,
+    borderRightColor: '#E5E5E5',
+  },
+  countryFlag: {
+    fontSize: 20,
+  },
+  countryDial: {
+    fontSize: 15,
+    fontFamily: fonts.bold,
+    color: colors.text.dark,
+    letterSpacing: -0.2,
   },
 
   reviewCard: {

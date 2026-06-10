@@ -153,7 +153,7 @@ export default function HomeScreen() {
     useCallback(() => {
       const onBackPress = () => {
         showAlert(
-          'Exit app?',
+          'Exit app',
           'Are you sure you want to leave TravelBACK?',
           [
             { text: 'Cancel', style: 'cancel' },

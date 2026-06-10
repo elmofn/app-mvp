@@ -67,7 +67,7 @@ export default function SettingsScreen() {
   const [modalVisible, setModalVisible] = useState<{ type: 'currency' | 'language' | null }>({ type: null });
 
   const handleLogout = () => {
-    showAlert('Logout', 'Do you want to end your TravelCash session?', [
+    showAlert('Logout', 'Do you want to end your TravelBACK session?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Logout',

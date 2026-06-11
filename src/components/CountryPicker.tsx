@@ -2,7 +2,9 @@ import { MagnifyingGlassIcon, XIcon } from 'phosphor-react-native';
 import React, { useMemo, useState } from 'react';
 import {
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -50,7 +52,10 @@ export function CountryPicker({ visible, onClose, onSelect, selectedCode }: Prop
       statusBarTranslucent
       onRequestClose={handleClose}
     >
-      <View style={styles.backdrop}>
+      <KeyboardAvoidingView
+        style={styles.backdrop}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         <TouchableOpacity style={styles.dismissArea} activeOpacity={1} onPress={handleClose} />
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
           <View style={styles.header}>
@@ -105,7 +110,7 @@ export function CountryPicker({ visible, onClose, onSelect, selectedCode }: Prop
             )}
           />
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

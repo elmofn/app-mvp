@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { FingerprintIcon } from 'phosphor-react-native';
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
@@ -12,21 +12,42 @@ export function BiometricGate() {
   const router = useRouter();
   const { isLocked, isRestoring, account, biometricAvailable, unlock, signOut } = useAuth();
   const { width, height } = useWindowDimensions();
-  const promptedRef = useRef(false);
 
-  // Dispara o prompt de biometria assim que o gate aparece (uma vez), para
-  // que o usuario nem precise tocar no botao na maioria das vezes.
-  useEffect(() => {
-    if (!isLocked || !biometricAvailable || promptedRef.current) return;
-    promptedRef.current = true;
-    unlock();
-  }, [isLocked, biometricAvailable, unlock]);
+  const autoTriggeredRef = useRef(false);
+  const inFlightRef = useRef(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  // Reseta a flag quando destranca para que a proxima vez (apos voltar do
-  // background) volte a abrir o prompt automaticamente.
+  // Wrapper unico para o unlock: evita chamadas concorrentes (auto-trigger
+  // + tap manual) e expoe estado de loading para o botao.
+  const tryUnlock = useCallback(async () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    setIsAuthenticating(true);
+    try {
+      await unlock();
+    } finally {
+      inFlightRef.current = false;
+      setIsAuthenticating(false);
+    }
+  }, [unlock]);
+
+  // Reseta o flag quando saimos do lock para que a proxima vez que o gate
+  // aparecer (apos voltar do background) volte a auto-disparar.
   useEffect(() => {
-    if (!isLocked) promptedRef.current = false;
+    if (!isLocked) autoTriggeredRef.current = false;
   }, [isLocked]);
+
+  // Auto-dispara o prompt nativo apos 400ms - tempo para a montagem do
+  // overlay terminar antes do prompt do SO subir por cima. O cleanup
+  // cancela o timer se o usuario tocar antes ou o gate desmontar.
+  useEffect(() => {
+    if (!isLocked || !biometricAvailable || autoTriggeredRef.current) return;
+    autoTriggeredRef.current = true;
+    const t = setTimeout(() => {
+      tryUnlock();
+    }, 400);
+    return () => clearTimeout(t);
+  }, [isLocked, biometricAvailable, tryUnlock]);
 
   if (isRestoring || !isLocked || !account || !biometricAvailable) {
     return null;
@@ -43,7 +64,12 @@ export function BiometricGate() {
 
   return (
     <View style={StyleSheet.absoluteFillObject} pointerEvents="auto">
-      <Svg width={width} height={height} style={StyleSheet.absoluteFillObject}>
+      <Svg
+        width={width}
+        height={height}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      >
         <Defs>
           <RadialGradient
             id="gateGrad"
@@ -75,8 +101,15 @@ export function BiometricGate() {
           Tap below to unlock your TravelBACK account with biometric authentication.
         </Text>
 
-        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.85} onPress={unlock}>
-          <Text style={styles.primaryButtonText}>Unlock</Text>
+        <TouchableOpacity
+          style={[styles.primaryButton, isAuthenticating && styles.primaryButtonBusy]}
+          activeOpacity={0.85}
+          onPress={tryUnlock}
+          disabled={isAuthenticating}
+        >
+          <Text style={styles.primaryButtonText}>
+            {isAuthenticating ? 'Authenticating…' : 'Unlock'}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.secondaryButton} activeOpacity={0.7} onPress={handleSignOut}>
@@ -135,6 +168,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
   },
+  primaryButtonBusy: { opacity: 0.6 },
   primaryButtonText: {
     color: '#0F022D',
     fontSize: 15,

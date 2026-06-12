@@ -108,9 +108,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const unlock = useCallback(async () => {
-    const ok = await authenticateWithBiometric('Unlock TravelBACK');
-    if (ok) setIsLocked(false);
-    return ok;
+    const result = await authenticateWithBiometric('Unlock TravelBACK');
+    if (result.success) {
+      setIsLocked(false);
+      return true;
+    }
+    console.warn('[auth] unlock failed:', result.error, result.warning);
+    return false;
   }, []);
 
   const lock = useCallback(() => {

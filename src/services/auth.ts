@@ -137,7 +137,11 @@ export class SignInError extends Error {
   }
 }
 
-export async function signIn(login: string, password: string): Promise<SignInResponse> {
+export async function signIn(
+  login: string,
+  password: string,
+  geolocation = '',
+): Promise<SignInResponse> {
   // devInfo eh declarado como string no contrato, mas o controller faz
   // JsonConvert.DeserializeObject internamente, entao o conteudo precisa
   // ser um JSON serializado (objeto com dados do device).
@@ -150,7 +154,7 @@ export async function signIn(login: string, password: string): Promise<SignInRes
     login,
     password,
     timeoutInMinutes: 0,
-    geolocation: '',
+    geolocation,
     devInfo,
   };
 

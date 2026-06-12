@@ -11,6 +11,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 
+import { BiometricGate } from '@/src/components/BiometricGate';
 import { AlertProvider } from '@/src/contexts/AlertContext';
 import { AuthProvider, useAuth } from '@/src/contexts/AuthContext';
 
@@ -71,6 +72,7 @@ function AppShell() {
         <Stack.Screen name="settings" />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
+      <BiometricGate />
     </>
   );
 }

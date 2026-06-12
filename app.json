@@ -33,7 +33,19 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow TravelBACK to use your location to help validate and secure your sign-ins."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow TravelBACK to use Face ID to unlock your account."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

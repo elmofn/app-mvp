@@ -92,7 +92,6 @@ export default function AssistantScreen() {
           <ScreenHeader title="Travel AI" dark={true} />
 
           <View style={styles.headerInner}>
-            <Text style={styles.headerLabel}>AI ASSISTANT</Text>
             <Text style={styles.mainTitle}>
               Your Travel <Text style={styles.mainTitleAccent}>Concierge</Text>
             </Text>
@@ -197,13 +196,6 @@ const styles = StyleSheet.create({
 
   headerGradient: { paddingBottom: 24 },
   headerInner: { paddingHorizontal: 24, marginTop: -8 },
-  headerLabel: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 11,
-    fontFamily: fonts.bold,
-    letterSpacing: 2,
-    marginBottom: 8,
-  },
   mainTitle: {
     fontSize: 36,
     fontFamily: fonts.bold,

@@ -53,12 +53,16 @@ export async function getFAQ(lang: SupportedLang): Promise<FAQItem[]> {
   const raw = await response.json();
   // Aceitamos itens parcialmente invalidos: filtramos com safeParse item-a-item
   // para nao perder a tela inteira por causa de um campo esquisito em um
-  // unico FAQ.
+  // unico FAQ. A API tem devolvido itens dos tres idiomas mesmo com o ?query
+  // setado, entao filtramos client-side pelo campo language do proprio item.
   if (!Array.isArray(raw)) return [];
   const valid: FAQItem[] = [];
   for (const item of raw) {
     const parsed = FAQItemSchema.safeParse(item);
-    if (parsed.success && parsed.data.isActive) valid.push(parsed.data);
+    if (!parsed.success) continue;
+    if (!parsed.data.isActive) continue;
+    if (parsed.data.language !== lang) continue;
+    valid.push(parsed.data);
   }
   return valid;
 }

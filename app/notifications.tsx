@@ -176,6 +176,15 @@ export default function NotificationsScreen() {
                 {items.map((alert) => {
                   const open = expandedId === alert.contentId;
                   const unread = isUnread(alert);
+                  // O backend frequentemente repete title em description -
+                  // nesses casos nao faz sentido mostrar o mesmo texto duas
+                  // vezes. Tambem evita expandir um card vazio quando nao
+                  // ha richText nem description extra.
+                  const showDescription =
+                    alert.description.trim().length > 0 &&
+                    alert.description.trim() !== alert.title.trim();
+                  const hasRichBody = !!alert.richText && alert.richText.trim().length > 0;
+                  const expandable = hasRichBody || showDescription;
                   return (
                     <TouchableOpacity
                       key={alert.contentId}
@@ -187,17 +196,19 @@ export default function NotificationsScreen() {
                         <Text style={styles.cardTitle}>{alert.title}</Text>
                         {unread ? <View style={styles.unreadDot} /> : null}
                       </View>
-                      <Text
-                        style={styles.cardDescription}
-                        numberOfLines={open ? undefined : 2}
-                      >
-                        {alert.description}
-                      </Text>
-                      {open && alert.richText ? (
+                      {showDescription ? (
+                        <Text
+                          style={styles.cardDescription}
+                          numberOfLines={open || !expandable ? undefined : 2}
+                        >
+                          {alert.description}
+                        </Text>
+                      ) : null}
+                      {open && hasRichBody ? (
                         <View style={styles.richBody}>
                           <RenderHTML
                             contentWidth={width - 96}
-                            source={{ html: alert.richText }}
+                            source={{ html: alert.richText ?? '' }}
                             baseStyle={HTML_BASE_STYLE}
                             tagsStyles={HTML_TAG_STYLES}
                             enableExperimentalMarginCollapsing

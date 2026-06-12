@@ -1,6 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  ArrowRightIcon,
   FileTextIcon,
   ShieldCheckIcon,
   SparkleIcon,
@@ -11,17 +10,13 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { FAQSection } from '@/src/components/FAQSection';
+import type { SupportedLang } from '@/src/services/locale';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
-const FAQS = [
-  { id: '1', question: 'How do I freeze my physical card?' },
-  { id: '2', question: 'Travel Insurance Coverage Limits' },
-  { id: '3', question: 'International ATM Withdraw fees' },
-  { id: '4', question: 'Adding Funds via Swift Transfer' },
-];
-
 type Props = {
+  lang: SupportedLang;
   showTravelAssistant?: boolean;
   bottomInset?: number;
   titleFirst?: string;
@@ -31,6 +26,7 @@ type Props = {
 };
 
 export function SupportContent({
+  lang,
   showTravelAssistant = true,
   bottomInset = 24,
   titleFirst = 'How Can\nWe ',
@@ -92,22 +88,9 @@ export function SupportContent({
         </View>
       </LinearGradient>
 
-      <View style={styles.faqSection}>
-        <Text style={styles.faqTitle}>
-          Frequent{'\n'}
-          <Text style={styles.faqTitleAccent}>Questions<Text style={styles.faqTitle}>.</Text></Text>
-        </Text>
-        <Text style={styles.faqSubtitle}>KNOWLEDGE BASE</Text>
+      <FAQSection lang={lang} />
 
-        <View style={styles.faqList}>
-          {FAQS.map((faq) => (
-            <TouchableOpacity key={faq.id} style={styles.faqItem} activeOpacity={0.7}>
-              <Text style={styles.faqItemText}>{faq.question}</Text>
-              <ArrowRightIcon size={20} color={colors.text.dark} weight="regular" />
-            </TouchableOpacity>
-          ))}
-        </View>
-
+      <View style={styles.bottomSection}>
         <View style={styles.divider} />
 
         <View style={styles.bottomButtons}>
@@ -190,58 +173,16 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
   },
 
-  faqSection: {
-    padding: 24,
-    paddingTop: 44,
-  },
-  faqTitle: {
-    fontSize: 48,
-    fontFamily: fonts.bold,
-    color: colors.text.dark,
-    letterSpacing: 0,
-    lineHeight: 52,
-  },
-  faqTitleAccent: {
-    color: '#f07167',
-    fontFamily: fonts.italic,
-  },
-  faqSubtitle: {
-    fontSize: 15,
-    fontFamily: fonts.italic,
-    color: colors.text.muted,
-    letterSpacing: 1.5,
-    marginTop: 1,
-    marginBottom: 28,
-  },
-
-  faqList: {
-    gap: 10,
-  },
-  faqItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#EDEDF2',
-    borderRadius: 8,
-    paddingVertical: 22,
-    paddingHorizontal: 20,
-  },
-  faqItemText: {
-    flex: 1,
-    fontSize: 16,
-    fontFamily: fonts.regular,
-    color: colors.text.dark,
-    lineHeight: 20,
-    maxWidth: '80%',
-    paddingRight: 16,
-    paddingLeft: 16,
+  bottomSection: {
+    paddingHorizontal: 24,
+    paddingBottom: 8,
   },
 
   divider: {
     width: 56,
     height: 2,
     backgroundColor: '#f07167',
-    marginTop: 24,
+    marginTop: 4,
     marginBottom: 20,
   },
 

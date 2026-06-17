@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { CaretDownIcon, CheckCircleIcon, CheckIcon, EyeIcon, EyeSlashIcon } from 'phosphor-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -25,8 +25,19 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { CountryPicker } from '@/src/components/CountryPicker';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
+import { useAlert } from '@/src/contexts/AlertContext';
+import { useAuth } from '@/src/contexts/AuthContext';
 import { Country, DEFAULT_COUNTRY } from '@/src/data/countries';
 import { useDebounce } from '@/src/hooks/useDebounce';
+import {
+  createAccount,
+  requestValidationCode,
+  setNewPassword,
+  validateCode,
+  ValidateCodeError,
+} from '@/src/services/account';
+import { getDeviceLanguage } from '@/src/services/locale';
+import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/src/services/location';
 import { normalizeEmail, normalizePhone, searchByEmail, searchByPhone } from '@/src/services/search';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
@@ -91,10 +102,10 @@ const STEPS: Step[] = [
   {
     id: 6,
     titleFirst: 'Create',
-    titleAccent: 'Password',
-    description: 'Last step: choose a strong password to protect your data and your trips.',
-    label: 'Password',
-    placeholder: 'At least 8 characters',
+    titleAccent: 'PIN',
+    description: 'Last step: choose a 4-digit PIN to protect your account.',
+    label: '4-digit PIN',
+    placeholder: '0 0 0 0',
     key: 'password',
   },
 ];
@@ -104,6 +115,11 @@ type CheckStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid';
 export default function SignupScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { signIn } = useAuth();
+  const showAlert = useAlert();
+  // Idioma do device - usado tanto no payload do CreateAccount como na
+  // escolha da mensagem localizada dos erros retornados pelo backend.
+  const deviceLang = getDeviceLanguage();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [focusedField, setFocusedField] = useState(false);
@@ -123,6 +139,16 @@ export default function SignupScreen() {
 
   const [emailStatus, setEmailStatus] = useState<CheckStatus>('idle');
   const [phoneStatus, setPhoneStatus] = useState<CheckStatus>('idle');
+
+  // accountId real (retornado pelo CreateAccount). Usado no
+  // RequestValidationCode e no SetNewPasswordAccount.
+  const [accountId, setAccountId] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [codeSending, setCodeSending] = useState(false);
+  // Guarda se ja disparamos o envio de codigo para o step 5 atual -
+  // evita re-disparo a cada render. Reseta no botao "Resend".
+  const codeRequestedRef = useRef(false);
 
   const debouncedEmail = useDebounce(formData.email, 500);
   const debouncedPhone = useDebounce(formData.phone, 500);
@@ -201,21 +227,143 @@ export default function SignupScreen() {
 
   const changeStep = (newStep: number) => setCurrentStep(newStep);
 
+  // Anima a saida do step atual e entra no proximo. Wrapper reutilizado
+  // por todos os handlers para manter a transicao identica a anterior.
+  const advanceStep = () => {
+    contentOpacity.value = withTiming(0, { duration: 200 }, (finished) => {
+      if (finished) {
+        runOnJS(changeStep)(currentStep + 1);
+        contentOpacity.value = withTiming(1, { duration: 300 });
+      }
+    });
+  };
+
+  // Dispara o RequestValidationCode (email por enquanto). Usado tanto no
+  // auto-disparo da entrada do step 5 quanto no botao "Resend".
+  const sendValidationCode = async (id: string) => {
+    setCodeSending(true);
+    setCodeError(null);
+    try {
+      await requestValidationCode(id, 'email', deviceLang);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not send the verification code.';
+      showAlert('Verification', message);
+    } finally {
+      setCodeSending(false);
+    }
+  };
+
+  // Quando o usuario chega ao step 5 com um accountId valido, envia o
+  // codigo automaticamente. O ref impede reenvio a cada render.
+  useEffect(() => {
+    if (currentStep !== 5) return;
+    if (!accountId) return;
+    if (codeRequestedRef.current) return;
+    codeRequestedRef.current = true;
+    sendValidationCode(accountId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, accountId]);
+
+  const handleResendCode = () => {
+    if (!accountId || codeSending) return;
+    codeRequestedRef.current = false;
+    setFormData((curr) => ({ ...curr, code: '' }));
+    setCodeError(null);
+    sendValidationCode(accountId);
+  };
+
+  const handleCreateAccount = async () => {
+    setIsSubmitting(true);
+    try {
+      // Garante uma coordenada antes da chamada. Se o usuario negou
+      // permissao, segue com string vazia (backend aceita).
+      let coords = getCachedLocation();
+      if (!coords) coords = await getCurrentLocation();
+      const geolocation = formatLocationPayload(coords);
+      const phoneDigits = formData.phone.replace(/\D/g, '');
+      const phoneNumber = normalizePhone(country.dial, phoneDigits);
+
+      const { accountId: newId } = await createAccount(
+        {
+          name: formData.name.trim(),
+          email: normalizeEmail(formData.email),
+          phoneNumber,
+          language: deviceLang,
+          geolocation,
+        },
+        deviceLang,
+      );
+      setAccountId(newId);
+      advanceStep();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not create your account.';
+      showAlert('Sign up failed', message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleValidateCode = async () => {
+    setIsSubmitting(true);
+    setCodeError(null);
+    try {
+      await validateCode(normalizeEmail(formData.email), formData.code, deviceLang);
+      advanceStep();
+    } catch (err) {
+      if (err instanceof ValidateCodeError) {
+        setCodeError(err.message);
+      } else {
+        const message = err instanceof Error ? err.message : 'Could not validate the code.';
+        showAlert('Verification', message);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleFinish = async () => {
+    setIsSubmitting(true);
+    try {
+      await setNewPassword(accountId, formData.password, deviceLang);
+      const response = await signIn(normalizeEmail(formData.email), formData.password);
+      if (response.success && response.token && response.accountDetails) {
+        router.replace('/(tabs)/home');
+      } else {
+        const message =
+          response.errorMessage ||
+          response.message ||
+          'Your account was created but sign in failed. Please log in manually.';
+        showAlert('Almost there', message, [
+          { text: 'OK', onPress: () => router.replace('/login') },
+        ]);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not save your PIN.';
+      showAlert('Sign up failed', message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleNext = () => {
+    if (isSubmitting) return;
     if (currentStep === 4 && !acceptedTerms) return;
     if (currentStep === 2 && emailStatus !== 'available') return;
     if (currentStep === 3 && phoneStatus !== 'available') return;
 
-    if (currentStep < STEPS.length) {
-      contentOpacity.value = withTiming(0, { duration: 200 }, (finished) => {
-        if (finished) {
-          runOnJS(changeStep)(currentStep + 1);
-          contentOpacity.value = withTiming(1, { duration: 300 });
-        }
-      });
-    } else {
-      router.replace('/(tabs)/home');
+    if (currentStep === 4) {
+      handleCreateAccount();
+      return;
     }
+    if (currentStep === 5) {
+      handleValidateCode();
+      return;
+    }
+    if (currentStep === 6) {
+      handleFinish();
+      return;
+    }
+    advanceStep();
   };
 
   const step = STEPS[currentStep - 1];
@@ -231,10 +379,13 @@ export default function SignupScreen() {
   };
 
   const ctaLabel = isReview ? 'Create Account' : currentStep === STEPS.length ? 'Finish' : 'Next';
+  const pinIncomplete = isPassword && formData.password.length !== 4;
   const disabled =
+    isSubmitting ||
     (isReview && !acceptedTerms) ||
     (isEmail && emailStatus !== 'available') ||
-    (isPhone && phoneStatus !== 'available');
+    (isPhone && phoneStatus !== 'available') ||
+    pinIncomplete;
 
   const reviewPhone = formData.phone
     ? `${country.dial} ${formData.phone}`
@@ -325,7 +476,7 @@ export default function SignupScreen() {
               ) : isPassword ? (
                 <View style={[styles.inputRow, focusedField && styles.inputFieldFocused]}>
                   <TextInput
-                    style={styles.inputFlex}
+                    style={[styles.inputFlex, styles.pinInput]}
                     placeholder={step.placeholder}
                     placeholderTextColor="#B5B5BD"
                     onFocus={() => setFocusedField(true)}
@@ -334,8 +485,10 @@ export default function SignupScreen() {
                     autoCapitalize="none"
                     autoCorrect={false}
                     autoComplete="password-new"
+                    keyboardType="number-pad"
+                    maxLength={4}
                     value={inputValue}
-                    onChangeText={setInputValue}
+                    onChangeText={(val) => setInputValue(val.replace(/\D/g, ''))}
                   />
                   <TouchableOpacity
                     style={styles.adornment}
@@ -421,6 +574,44 @@ export default function SignupScreen() {
                     takenMessage="An account with this e-mail already exists."
                   />
                 </View>
+              ) : isCode ? (
+                <View>
+                  <TextInput
+                    style={[
+                      styles.inputField,
+                      focusedField && styles.inputFieldFocused,
+                      codeError ? styles.inputFieldError : null,
+                    ]}
+                    placeholder={step.placeholder}
+                    placeholderTextColor="#B5B5BD"
+                    onFocus={() => setFocusedField(true)}
+                    onBlur={() => setFocusedField(false)}
+                    value={inputValue}
+                    onChangeText={(val) => {
+                      if (codeError) setCodeError(null);
+                      setInputValue(val.replace(/\D/g, ''));
+                    }}
+                    keyboardType="number-pad"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                  />
+                  {codeError ? <Text style={styles.errorText}>{codeError}</Text> : null}
+                  <TouchableOpacity
+                    onPress={handleResendCode}
+                    activeOpacity={0.7}
+                    disabled={codeSending || !accountId}
+                    style={styles.resendButton}
+                  >
+                    <Text
+                      style={[
+                        styles.resendButtonText,
+                        (codeSending || !accountId) && styles.resendButtonTextDisabled,
+                      ]}
+                    >
+                      {codeSending ? 'Sending code…' : 'Resend code'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               ) : (
                 <TextInput
                   style={[styles.inputField, focusedField && styles.inputFieldFocused]}
@@ -430,12 +621,8 @@ export default function SignupScreen() {
                   onBlur={() => setFocusedField(false)}
                   value={inputValue}
                   onChangeText={setInputValue}
-                  keyboardType={isCode ? 'number-pad' : 'default'}
                   autoCapitalize={currentStep === 1 ? 'words' : 'sentences'}
-                  autoComplete={
-                    currentStep === 1 ? 'name' : isCode ? 'one-time-code' : 'off'
-                  }
-                  maxLength={isCode ? 6 : undefined}
+                  autoComplete={currentStep === 1 ? 'name' : 'off'}
                 />
               )}
             </Animated.View>
@@ -447,7 +634,11 @@ export default function SignupScreen() {
                 activeOpacity={0.85}
                 disabled={disabled}
               >
-                <Text style={styles.primaryButtonText}>{ctaLabel}</Text>
+                {isSubmitting ? (
+                  <ActivityIndicator color={colors.text.light} />
+                ) : (
+                  <Text style={styles.primaryButtonText}>{ctaLabel}</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -589,6 +780,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: fonts.medium,
     color: '#f07167',
+  },
+  pinInput: {
+    letterSpacing: 14,
+    fontFamily: fonts.bold,
+    fontSize: 22,
+    textAlign: 'left',
+  },
+  resendButton: {
+    alignSelf: 'flex-start',
+    marginTop: 12,
+    paddingVertical: 4,
+  },
+  resendButtonText: {
+    fontSize: 13,
+    fontFamily: fonts.bold,
+    color: colors.brand.primary,
+    letterSpacing: 0.4,
+    textDecorationLine: 'underline',
+  },
+  resendButtonTextDisabled: {
+    color: colors.text.muted,
+    textDecorationLine: 'none',
   },
 
   countryTrigger: {

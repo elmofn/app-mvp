@@ -7,9 +7,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAuth } from '@/src/contexts/AuthContext';
-import { formatCurrency } from '@/src/services/api';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
+import { formatCurrency } from '@/src/utils/format';
 
 const PT_MONTHS = [
   'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',

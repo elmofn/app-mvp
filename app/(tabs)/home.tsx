@@ -12,8 +12,8 @@ import {
   SuitcaseRollingIcon,
   UserIcon
 } from 'phosphor-react-native';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, BackHandler, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { BackHandler, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -24,27 +24,20 @@ import Animated, {
   useSharedValue,
   withTiming
 } from 'react-native-reanimated';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ActivityHighlights } from '@/src/components/ActivityHighlights';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
-import { fetchHomeData, formatCurrency, HomeData } from '@/src/services/api';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
+import { formatCurrency } from '@/src/utils/format';
 
 const FEATURED_EXPERIENCES = [
   { id: '1', title: 'Louvre Privé', tag: 'ARTE', image: 'https://images.unsplash.com/photo-1543332164-6e82f355badc?auto=format&fit=crop&w=600&q=80' },
   { id: '2', title: 'Safari Serengeti', tag: 'AVENTURA', image: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=600&q=80' },
   { id: '3', title: 'Ryokan Kyoto', tag: 'RELAX', image: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=600&q=80' },
 ];
-
-const PT_MONTHS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
-
-function formatStatementDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return `${String(d.getDate()).padStart(2, '0')} ${PT_MONTHS[d.getMonth()]}`;
-}
 
 const STATIC_TRIPS = [
   {
@@ -74,7 +67,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const { account } = useAuth();
   const showAlert = useAlert();
-  const [data, setData] = useState<HomeData | null>(null);
 
   const firstName = account?.accountDetails.name?.trim().split(/\s+/)[0] ?? '';
   // available vem sempre em USD; convertemos para a moeda local multiplicando
@@ -83,40 +75,15 @@ export default function HomeScreen() {
   const balanceUSD = account ? formatCurrency(account.balance.available) : '0,00';
   const balanceBRL = account ? formatCurrency(account.balance.available * exchangeRate) : '0,00';
 
-  // Account Activity Highlights: 4 transacoes mais recentes vindas do payload
-  // do login. type 1 = entrada (cashback) e type 2 = saida (resgate).
-  const highlights = useMemo(() => {
-    const stmts = account?.statements;
-    if (!stmts || stmts.length === 0) return null;
-    return stmts.slice(0, 4).map((tx) => {
-      const isPositive = tx.type === 1;
-      const valueBRL = tx.value * exchangeRate;
-      const productName = tx.details?.productName ?? '';
-      const date = formatStatementDate(tx.creationTime);
-      return {
-        id: tx.id,
-        title: tx.details?.unitName ?? '—',
-        dateLabel: productName ? `${productName} • ${date}` : date,
-        amount: `${isPositive ? '+' : '-'} R$ ${formatCurrency(valueBRL)}`,
-      };
-    });
-  }, [account, exchangeRate]);
-  
   // Controle de Saldo
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
-  
+
   // Controle do Menu Suspenso
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const scrollY = useSharedValue(0);
   const scrollViewRef = useRef<Animated.ScrollView>(null);
   const isForcingAnimation = useSharedValue(false);
-
-  useEffect(() => {
-    fetchHomeData().then((response) => {
-      setData(response);
-    });
-  }, []);
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -168,15 +135,6 @@ export default function HomeScreen() {
     }, [showAlert]),
   );
 
-  if (!data) {
-    return (
-      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]} edges={['left', 'right']}>
-        <StatusBar style="light" />
-        <ActivityIndicator size="large" color="#5b32e0" />
-      </SafeAreaView>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -211,7 +169,7 @@ export default function HomeScreen() {
 
   {/* Greeting: cai de cima */}
   <Animated.Text entering={FadeInDown.delay(100).duration(500)} style={styles.greeting}>
-    Hello, <Text style={styles.firstName}>{firstName || data.user.firstName}</Text>
+    Hello, <Text style={styles.firstName}>{firstName}</Text>
   </Animated.Text>
 
   {/* Balance: entra da esquerda com delay */}
@@ -241,20 +199,8 @@ export default function HomeScreen() {
     </View>
   </Animated.View>
 
-  {/* Activity: cai de baixo com delay maior */}
-  <Animated.View entering={FadeInDown.delay(350).duration(500)}>
-    <Text style={styles.activityTitle}>Account Activity Highlights</Text>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.activityScroll}>
-      {(highlights ?? data.recentTransactions).map((tx) => (
-        <View key={tx.id} style={styles.activityCard}>
-          <Text style={styles.activityCardTitle}>{tx.title}</Text>
-          <Text style={styles.activityCardSub}>{tx.dateLabel}</Text>
-          <Text style={styles.activityCardVal}>{tx.amount}</Text>
-        </View>
-      ))}
-      <View style={{ width: 20 }} />
-    </ScrollView>
-  </Animated.View>
+  {/* Activity Highlights: nao renderiza se a conta nao tem transacoes */}
+  <ActivityHighlights statements={account?.statements} exchangeRate={exchangeRate} />
 </LinearGradient>
 
 {/* --- QUICK ACTIONS: cada card com delay e lado alternado --- */}
@@ -526,52 +472,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     letterSpacing: 0.9,
     color: '#85EDD3',
-  },
-
-  // --- ACTIVITY ---
-  activityTitle: {
-    fontSize: 12,
-    fontFamily: fonts.bold,
-    color: 'rgba(255,255,255,0.5)',
-    marginBottom: 7,
-    letterSpacing: 0.5,
-    zIndex: 2,
-  },
-  activityScroll: {
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
-    overflow: 'visible',
-    zIndex: 2,
-  },
-  activityCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
-    padding: 12,
-    paddingHorizontal: 16,
-    minWidth: 180,
-    marginRight: 12,
-    marginBottom: 8,
-  },
-  activityCardTitle: {
-    fontSize: 12,
-    fontFamily: fonts.bold,
-    color: '#FFF',
-    marginBottom: 1,
-  },
-  activityCardSub: {
-    fontSize: 8,
-    fontFamily: fonts.medium,
-    color: 'rgba(255,255,255,0.5)',
-    marginBottom: 12,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  activityCardVal: {
-    fontSize: 14,
-    fontFamily: fonts.bold_italic,
-    color: '#FFF',
   },
 
   // --- QUICK ACTIONS ---

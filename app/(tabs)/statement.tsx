@@ -18,10 +18,10 @@ import Animated, {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/src/contexts/AuthContext';
-import { formatCurrency } from '@/src/services/api';
 import { SignInStatement } from '@/src/services/auth';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
+import { formatCurrency } from '@/src/utils/format';
 
 const MONTH_ABBR = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
 const MONTH_NAMES = [

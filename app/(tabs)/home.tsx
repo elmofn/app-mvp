@@ -7,6 +7,7 @@ import {
   CoinsIcon,
   EyeIcon,
   EyeSlashIcon,
+  InfoIcon,
   ListIcon,
   SparkleIcon,
   SuitcaseRollingIcon,
@@ -154,9 +155,24 @@ export default function HomeScreen() {
           {isBalanceVisible ? balanceBRL : '****'}
         </Text>
       </View>
-      <Text style={styles.balanceUsd}>
-        US$ {isBalanceVisible ? balanceUSD : '****'}
-      </Text>
+      <View style={styles.balanceUsdRow}>
+        <Text style={styles.balanceUsd}>
+          US$ {isBalanceVisible ? balanceUSD : '****'}
+        </Text>
+        <TouchableOpacity
+          onPress={() =>
+            showAlert(
+              'Your Wallet is dollarized.',
+              'You can choose the currency and display, and the balance will be updated according to the dollar exchange rate. The balance expires after 12 months of Inactivity',
+            )
+          }
+          activeOpacity={0.7}
+          hitSlop={10}
+          style={styles.balanceInfoBtn}
+        >
+          <InfoIcon size={15} color="rgba(255,255,255,0.6)" weight="bold" />
+        </TouchableOpacity>
+      </View>
     </View>
     <View style={styles.rightActions}>
       <TouchableOpacity onPress={() => setIsBalanceVisible(!isBalanceVisible)} activeOpacity={0.7} style={styles.eyeButton}>
@@ -358,14 +374,22 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
     lineHeight: 50, 
   },
+  balanceUsdRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: -4,
+  },
   balanceUsd: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.5)',
     fontFamily: fonts.bold,
     letterSpacing: -0.7,
-    marginTop: -4, 
   },
-  
+  balanceInfoBtn: {
+    padding: 1,
+  },
+
   // (Ícone do Olho e Botão Statement)
   rightActions: {
     alignItems: 'flex-end',

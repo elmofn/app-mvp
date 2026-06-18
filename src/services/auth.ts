@@ -82,6 +82,21 @@ export const SignInPolicySchema = z.object({
   richText: z.string(),
 });
 
+export const SignInHomeBannerSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string(),
+  imageUrl: z.string(),
+});
+
+export const SignInNextTripSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  tag: z.string(),
+  description: z.string(),
+  imageUrl: z.string(),
+});
+
 export const SignInStatementSchema = z.object({
   id: z.string(),
   accountId: z.string(),
@@ -104,6 +119,8 @@ export const SignInAccountDetailsSchema = z.object({
   setups: SignInSetupsSchema,
   statements: z.array(SignInStatementSchema).optional(),
   polices: z.array(SignInPolicySchema),
+  homeBanners: z.array(SignInHomeBannerSchema),
+  nextTrips: z.array(SignInNextTripSchema),
 });
 
 export type SignInUser = z.infer<typeof SignInUserSchema>;
@@ -114,6 +131,8 @@ export type SignInAccount = z.infer<typeof SignInAccountSchema>;
 export type SignInStatementDetails = z.infer<typeof SignInStatementDetailsSchema>;
 export type SignInStatement = z.infer<typeof SignInStatementSchema>;
 export type SignInPolicy = z.infer<typeof SignInPolicySchema>;
+export type SignInHomeBanner = z.infer<typeof SignInHomeBannerSchema>;
+export type SignInNextTrip = z.infer<typeof SignInNextTripSchema>;
 export type SignInAccountDetails = z.infer<typeof SignInAccountDetailsSchema>;
 
 export type SignInResponse = {

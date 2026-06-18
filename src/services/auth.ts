@@ -204,7 +204,21 @@ export async function signIn(
   }
 
   try {
-    return JSON.parse(rawBody) as SignInResponse;
+    const parsed = JSON.parse(rawBody) as SignInResponse;
+    // DEBUG temporario: confirma onde o backend coloca homeBanners/nextTrips
+    console.log('[signIn] response keys:', Object.keys(parsed));
+    console.log('[signIn] accountDetails keys:', parsed.accountDetails ? Object.keys(parsed.accountDetails) : '(none)');
+    console.log(
+      '[signIn] homeBanners len:',
+      Array.isArray(parsed.accountDetails?.homeBanners)
+        ? parsed.accountDetails?.homeBanners.length
+        : '(missing)',
+      'nextTrips len:',
+      Array.isArray(parsed.accountDetails?.nextTrips)
+        ? parsed.accountDetails?.nextTrips.length
+        : '(missing)',
+    );
+    return parsed;
   } catch (err) {
     console.warn('[signIn] could not parse 200 body:', rawBody);
     throw new SignInError('Invalid response from server', response.status, rawBody);

@@ -138,6 +138,11 @@ export type SignInAccountDetails = z.infer<typeof SignInAccountDetailsSchema>;
 export type SignInResponse = {
   accountDetails?: SignInAccountDetails;
   token?: string;
+  // homeBanners e nextTrips chegam no ROOT do response (irmaos de
+  // accountDetails), nao aninhados nele. O signIn move-os para dentro de
+  // accountDetails antes de retornar, para que o app acesse via account.
+  homeBanners?: SignInHomeBanner[];
+  nextTrips?: SignInNextTrip[];
   result: boolean;
   message: string;
   status: number;
@@ -205,19 +210,13 @@ export async function signIn(
 
   try {
     const parsed = JSON.parse(rawBody) as SignInResponse;
-    // DEBUG temporario: confirma onde o backend coloca homeBanners/nextTrips
-    console.log('[signIn] response keys:', Object.keys(parsed));
-    console.log('[signIn] accountDetails keys:', parsed.accountDetails ? Object.keys(parsed.accountDetails) : '(none)');
-    console.log(
-      '[signIn] homeBanners len:',
-      Array.isArray(parsed.accountDetails?.homeBanners)
-        ? parsed.accountDetails?.homeBanners.length
-        : '(missing)',
-      'nextTrips len:',
-      Array.isArray(parsed.accountDetails?.nextTrips)
-        ? parsed.accountDetails?.nextTrips.length
-        : '(missing)',
-    );
+    // homeBanners/nextTrips vem no root do response; movemos para dentro de
+    // accountDetails para que todo o app (e o cache persistido) os acesse
+    // de forma uniforme via account.homeBanners / account.nextTrips.
+    if (parsed.accountDetails) {
+      parsed.accountDetails.homeBanners = parsed.homeBanners ?? [];
+      parsed.accountDetails.nextTrips = parsed.nextTrips ?? [];
+    }
     return parsed;
   } catch (err) {
     console.warn('[signIn] could not parse 200 body:', rawBody);

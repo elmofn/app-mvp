@@ -7,13 +7,25 @@ import {
   WhatsappLogoIcon,
 } from 'phosphor-react-native';
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FAQSection } from '@/src/components/FAQSection';
 import type { SupportedLang } from '@/src/services/locale';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
+
+// Numero unico de suporte do TravelBACK no WhatsApp Business - cada
+// link e gerado pelo wa.link com a mensagem pre-preenchida no idioma
+// correspondente. Mantenho aqui ao inves de em config porque sao
+// constantes do produto, nao do ambiente.
+const WHATSAPP_LINKS: Record<SupportedLang, string> = {
+  'pt-BR': 'https://wa.link/gnhtsh',
+  'en-US': 'https://wa.link/tstxoz',
+  'es-ES': 'https://wa.link/oydqsc',
+};
+
+const VIDEO_CALL_LINK = 'https://calendly.com/travelcash';
 
 type Props = {
   lang: SupportedLang;
@@ -35,6 +47,12 @@ export function SupportContent({
   onTermsPress,
 }: Props) {
   const insets = useSafeAreaInsets();
+
+  const openExternal = (url: string) => {
+    Linking.openURL(url).catch((err) => {
+      console.warn('[support] could not open url:', url, err);
+    });
+  };
 
   return (
     <ScrollView
@@ -60,7 +78,11 @@ export function SupportContent({
         </View>
 
         <View style={styles.contactCards}>
-          <TouchableOpacity style={styles.contactCard} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.contactCard}
+            activeOpacity={0.85}
+            onPress={() => openExternal(WHATSAPP_LINKS[lang])}
+          >
             <View style={styles.contactCardBody}>
               <Text style={[styles.contactCardTitle, { color: '#85EDD3' }]}>Whatsapp</Text>
               <Text style={styles.contactCardSubtitle}>Direct Support</Text>
@@ -68,7 +90,11 @@ export function SupportContent({
             <WhatsappLogoIcon size={32} color="#85EDD3" weight="regular" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.contactCard} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.contactCard}
+            activeOpacity={0.85}
+            onPress={() => openExternal(VIDEO_CALL_LINK)}
+          >
             <View style={styles.contactCardBody}>
               <Text style={styles.contactCardTitle}>Video Call</Text>
               <Text style={styles.contactCardSubtitle}>Lorem Ipsum, Lorem Ipsum.</Text>

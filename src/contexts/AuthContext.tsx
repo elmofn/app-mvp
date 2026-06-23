@@ -24,6 +24,14 @@ type AuthContextValue = AuthState & {
   signOut: () => Promise<void>;
   unlock: () => Promise<boolean>;
   lock: () => void;
+  updateAccountDetails: (patch: AccountPatch) => Promise<void>;
+};
+
+export type AccountPatch = {
+  name?: string;
+  email?: string;
+  phoneNumber?: string;
+  lang?: string;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -121,6 +129,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (stateRef.current.token) setIsLocked(true);
   }, []);
 
+  // Aplica um patch parcial no account em memoria e re-salva o cache. Usado
+  // pelo settings depois que UpdateAccount retorna 200 - mantem o app
+  // refletindo o novo estado sem precisar de re-login.
+  const updateAccountDetails = useCallback(async (patch: AccountPatch) => {
+    const current = stateRef.current;
+    if (!current.account || !current.token) return;
+    const next: SignInAccountDetails = {
+      ...current.account,
+      accountDetails: {
+        ...current.account.accountDetails,
+        ...(patch.name !== undefined ? { name: patch.name } : {}),
+        ...(patch.email !== undefined ? { email: patch.email } : {}),
+        ...(patch.phoneNumber !== undefined ? { phoneNumber: patch.phoneNumber } : {}),
+      },
+      setups: {
+        ...current.account.setups,
+        ...(patch.lang !== undefined ? { lang: patch.lang } : {}),
+      },
+    };
+    setState({ account: next, token: current.token });
+    await saveSession(current.token, next);
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -133,6 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signOut,
         unlock,
         lock,
+        updateAccountDetails,
       }}
     >
       {children}

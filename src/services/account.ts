@@ -210,6 +210,48 @@ export async function validateCode(
 }
 
 // ----------------------------------------------------------------------------
+// UpdateAccount: PUT /api/Account/UpdateAccount
+// Atualiza name/email/legalId/phoneNumber/language de uma conta existente.
+// Mudancas em email ou phoneNumber sao gateadas pelo fluxo de verificacao
+// chamado a partir da tela de settings - este metodo soh dispara a PUT.
+// ----------------------------------------------------------------------------
+
+export type UpdateAccountInput = {
+  accountId: string;
+  name: string;
+  email: string;
+  legalId: string;
+  phoneNumber: string;
+  language: SupportedLang;
+  geolocation: string;
+};
+
+export async function updateAccount(
+  input: UpdateAccountInput,
+  lang: SupportedLang,
+): Promise<void> {
+  const url = `${API_BASE_URL}/api/Account/UpdateAccount`;
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    const message = await parseLocalizedError(
+      response,
+      lang,
+      `UpdateAccount failed (${response.status})`,
+    );
+    console.warn('[account] UpdateAccount HTTP', response.status);
+    throw new Error(message);
+  }
+}
+
+// ----------------------------------------------------------------------------
 // SetNewPasswordAccount: POST /api/Account/SetNewPasswordAccount
 // ----------------------------------------------------------------------------
 

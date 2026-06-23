@@ -2,11 +2,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { CaretDownIcon, XIcon } from 'phosphor-react-native';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
+  Keyboard,
   Modal,
   Platform,
   ScrollView,
@@ -235,23 +235,47 @@ export default function SettingsScreen() {
     setModalVisible({ type });
   };
 
+  // Posicionamento manual da sticky bar: ouvimos os eventos do Keyboard e
+  // colocamos a barra com bottom = altura do teclado. KAV em padding eh
+  // flaky com sticky footers nessa combinacao (SafeAreaView + ScrollView),
+  // entao tiramos ele e cuidamos do offset diretamente.
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const stickyBarBottom = keyboardHeight > 0 ? keyboardHeight : 0;
+  const stickyBarPaddingBottom = keyboardHeight > 0 ? 12 : insets.bottom + 12;
+  // Reserva espaco no fim do scroll para que o ultimo botao nao fique
+  // atras da sticky bar (quando dirty) ou colado no home indicator (quando
+  // limpo). Tambem reserva espaco do teclado quando aberto.
+  const scrollBottomPadding =
+    (isDirty ? 84 : 0) + (keyboardHeight > 0 ? keyboardHeight : insets.bottom) + 16;
+
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <StatusBar style="light" />
 
-      <KeyboardAvoidingView
+      <ScrollView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: scrollBottomPadding },
+        ]}
+        keyboardShouldPersistTaps="handled"
       >
-        <ScrollView
-          style={{ flex: 1 }}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: isDirty ? 16 : insets.bottom + 16 },
-          ]}
-          keyboardShouldPersistTaps="handled"
-        >
           <LinearGradient
             colors={['#6444DA', '#4D2ACC', '#1B0F4A']}
             start={{ x: 0.1, y: 0.1 }}
@@ -355,7 +379,15 @@ export default function SettingsScreen() {
         </ScrollView>
 
         {isDirty ? (
-          <View style={[styles.stickyBar, { paddingBottom: insets.bottom + 12 }]}>
+          <View
+            style={[
+              styles.stickyBar,
+              {
+                bottom: stickyBarBottom,
+                paddingBottom: stickyBarPaddingBottom,
+              },
+            ]}
+          >
             <TouchableOpacity
               style={[styles.buttonPrimary, isSaving && styles.buttonPrimaryDisabled]}
               onPress={handleSave}
@@ -370,7 +402,6 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
         ) : null}
-      </KeyboardAvoidingView>
 
       <Modal
         visible={modalVisible.type !== null}
@@ -568,9 +599,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   stickyBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     paddingHorizontal: 24,
     paddingTop: 12,
-    paddingBottom: 12,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#EDEDF2',

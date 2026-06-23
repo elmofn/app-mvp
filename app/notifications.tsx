@@ -18,7 +18,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAuth } from '@/src/contexts/AuthContext';
-import { type AlertItem, getAlerts } from '@/src/services/alerts';
+import { type AlertItem, confirmRead, getAlerts } from '@/src/services/alerts';
 import { getUserLanguage } from '@/src/services/locale';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
@@ -79,9 +79,9 @@ export default function NotificationsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  // Marcacao otimista de leitura - como o backend ainda nao expoe um
-  // endpoint, controlamos local: assim que o usuario expande um item,
-  // ele perde o ponto de "unread" pra essa sessao.
+  // Marcacao otimista de leitura: a UI atualiza imediatamente e o
+  // ConfirmRead vai em paralelo. Se a chamada falhar, mantemos o estado
+  // local da sessao (proximo GetAlerts traz a verdade do servidor).
   const [readLocal, setReadLocal] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -109,24 +109,41 @@ export default function NotificationsScreen() {
     };
   }, [accountId, lang]);
 
+  const isUnread = (it: AlertItem) => !it.readed && !readLocal.has(it.contentId);
+  const hasUnread = items.some(isUnread);
+
   const toggle = (id: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedId((curr) => (curr === id ? null : id));
+
+    const alreadyRead = readLocal.has(id) || items.find((it) => it.contentId === id)?.readed;
+    if (alreadyRead || !accountId) return;
+
     setReadLocal((curr) => {
-      if (curr.has(id)) return curr;
       const next = new Set(curr);
       next.add(id);
       return next;
+    });
+    confirmRead(id, accountId).catch((err) => {
+      console.warn('[alerts] confirmRead failed:', err);
     });
   };
 
   const markAllRead = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setReadLocal(new Set(items.map((it) => it.contentId)));
+    const unreadIds = items.filter(isUnread).map((it) => it.contentId);
+    setReadLocal((curr) => {
+      const next = new Set(curr);
+      unreadIds.forEach((id) => next.add(id));
+      return next;
+    });
+    if (!accountId) return;
+    unreadIds.forEach((id) => {
+      confirmRead(id, accountId).catch((err) => {
+        console.warn('[alerts] confirmRead failed:', err);
+      });
+    });
   };
-
-  const isUnread = (it: AlertItem) => !it.readed && !readLocal.has(it.contentId);
-  const hasUnread = items.some(isUnread);
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
@@ -188,7 +205,7 @@ export default function NotificationsScreen() {
                   return (
                     <TouchableOpacity
                       key={alert.contentId}
-                      style={[styles.card, unread && styles.cardUnread]}
+                      style={[styles.card, unread ? styles.cardUnread : styles.cardRead]}
                       activeOpacity={0.85}
                       onPress={() => toggle(alert.contentId)}
                     >
@@ -291,15 +308,17 @@ const styles = StyleSheet.create({
 
   list: { gap: 10 },
   card: {
-    backgroundColor: '#EDEDF2',
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
     paddingVertical: 18,
     paddingHorizontal: 20,
+    borderWidth: 1,
   },
   cardUnread: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(240,113,103,0.4)',
+    borderColor: colors.brand.details,
+  },
+  cardRead: {
+    borderColor: colors.background.cardDark,
   },
   cardHeader: {
     flexDirection: 'row',

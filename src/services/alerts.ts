@@ -4,6 +4,12 @@ import type { SupportedLang } from './locale';
 
 const API_BASE_URL = 'https://travelcash-api-stg.azurewebsites.net';
 
+// O backend gera o confirmationId real - mandamos um placeholder fixo
+// (mesmo padrao do CreateAccount). O id retornado nao eh persistido pelo
+// app: o estado "lido" eh refletido na proxima chamada de GetAlerts via
+// flag `readed`.
+const PLACEHOLDER_CONFIRMATION_ID = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
+
 // Schema do payload de /api/Content/GetAlerts. Mesmo formato base dos
 // outros endpoints de conteudo (FAQ, Policies), mas com varios campos
 // marcados como opcionais para tolerar variacoes do backend - se um
@@ -76,4 +82,38 @@ export async function getAlerts(
   });
 
   return valid;
+}
+
+// ----------------------------------------------------------------------------
+// ConfirmRead: POST /api/Content/ConfirmRead
+// Marca um alerta como lido na conta do usuario. Disparado quando ele
+// expande o card; o app trata localmente a UI otimista e este endpoint
+// persiste o estado para a proxima sessao.
+// ----------------------------------------------------------------------------
+
+export async function confirmRead(
+  contentId: string,
+  accountId: string,
+): Promise<void> {
+  const url = `${API_BASE_URL}/api/Content/ConfirmRead`;
+  const body = {
+    confirmationId: PLACEHOLDER_CONFIRMATION_ID,
+    contentId,
+    accountId,
+    confirmationDate: new Date().toISOString(),
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    console.warn('[alerts] ConfirmRead HTTP', response.status);
+    throw new Error(`ConfirmRead failed (${response.status})`);
+  }
 }

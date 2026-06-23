@@ -23,6 +23,7 @@ import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
 import {
   requestValidationCode,
+  setNewPassword,
   updateAccount,
   validateCode,
   ValidateCodeError,
@@ -98,6 +99,17 @@ export default function SettingsScreen() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
 
+  // O mesmo modal serve dois fluxos diferentes (atualizar perfil x trocar
+  // PIN); pendingAction guarda qual deles esta em curso e modalStage controla
+  // qual passo o modal mostra (verificacao -> novo PIN, no caso de senha).
+  type PendingAction = 'updateProfile' | 'changePassword';
+  type ModalStage = 'verify' | 'newPin';
+  const [pendingAction, setPendingAction] = useState<PendingAction>('updateProfile');
+  const [modalStage, setModalStage] = useState<ModalStage>('verify');
+  const [newPin, setNewPin] = useState('');
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [isSavingPin, setIsSavingPin] = useState(false);
+
   // Diff em digitos pra phone, lowercased pra email, trim pra name.
   const phoneDigits = phone.replace(/\D/g, '');
   const nextName = name.trim();
@@ -149,6 +161,23 @@ export default function SettingsScreen() {
     }
   };
 
+  // Limpa todos os campos do modal e o estagio - chamado no close e quando
+  // um fluxo termina com sucesso, para que a proxima abertura sempre comece
+  // limpa, do estagio 'verify'.
+  const resetModalState = () => {
+    setModalStage('verify');
+    setVerifyCode('');
+    setVerifyError(null);
+    setNewPin('');
+    setPinError(null);
+  };
+
+  const closeVerifyModal = () => {
+    if (isVerifying || isSavingPin) return;
+    setVerifyVisible(false);
+    resetModalState();
+  };
+
   const handleSave = async () => {
     if (!account || !isDirty || isSaving) return;
     if (!requiresVerification) {
@@ -157,8 +186,24 @@ export default function SettingsScreen() {
     }
     // Mudancas em email ou phone exigem verificacao via email - mesmo
     // identifier (o email atual) eh quem recebe o codigo.
-    setVerifyCode('');
-    setVerifyError(null);
+    resetModalState();
+    setPendingAction('updateProfile');
+    setVerifyVisible(true);
+    try {
+      await requestValidationCode(account.accountDetails.accountId, 'email', lang);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not send the verification code.';
+      showAlert('Verification', message);
+    }
+  };
+
+  // Inicia o fluxo de troca de PIN: envia o codigo por email e abre o modal
+  // no estagio de verificacao. Apos o codigo bater, transicionamos para o
+  // estagio 'newPin' onde o usuario define a nova senha.
+  const handleChangePassword = async () => {
+    if (!account) return;
+    resetModalState();
+    setPendingAction('changePassword');
     setVerifyVisible(true);
     try {
       await requestValidationCode(account.accountDetails.accountId, 'email', lang);
@@ -177,8 +222,15 @@ export default function SettingsScreen() {
       // O codigo foi enviado para o email atual (cadastrado) - eh ele que
       // serve como identifier no ValidateCode, nao o email novo.
       await validateCode(original.email, verifyCode, lang);
-      setVerifyVisible(false);
-      await performUpdate();
+      if (pendingAction === 'updateProfile') {
+        setVerifyVisible(false);
+        resetModalState();
+        await performUpdate();
+      } else {
+        // changePassword: codigo valido, abre o estagio 'newPin' no mesmo
+        // modal. Nao fechamos - o usuario continua o fluxo na sequencia.
+        setModalStage('newPin');
+      }
     } catch (err) {
       if (err instanceof ValidateCodeError) {
         setVerifyError(err.message);
@@ -188,6 +240,24 @@ export default function SettingsScreen() {
       }
     } finally {
       setIsVerifying(false);
+    }
+  };
+
+  const handleConfirmNewPin = async () => {
+    if (!account) return;
+    if (newPin.length !== 4) return;
+    setIsSavingPin(true);
+    setPinError(null);
+    try {
+      await setNewPassword(account.accountDetails.accountId, newPin, lang);
+      setVerifyVisible(false);
+      resetModalState();
+      showAlert('Password updated', 'Your new PIN has been saved.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not save your new PIN.';
+      setPinError(message);
+    } finally {
+      setIsSavingPin(false);
     }
   };
 
@@ -363,7 +433,11 @@ export default function SettingsScreen() {
                 <Text style={styles.buttonFilledText}>Logout</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.buttonFilled} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={styles.buttonFilled}
+                onPress={handleChangePassword}
+                activeOpacity={0.8}
+              >
                 <Text style={styles.buttonFilledText}>Change Password</Text>
               </TouchableOpacity>
 
@@ -449,77 +523,143 @@ export default function SettingsScreen() {
         visible={verifyVisible}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => (isVerifying ? null : setVerifyVisible(false))}
+        onRequestClose={closeVerifyModal}
       >
         <View style={styles.verifyOverlay}>
           <View style={styles.verifyCard}>
             <TouchableOpacity
               style={styles.verifyClose}
-              onPress={() => !isVerifying && setVerifyVisible(false)}
+              onPress={closeVerifyModal}
               hitSlop={10}
             >
               <XIcon size={18} color={colors.text.muted} weight="bold" />
             </TouchableOpacity>
 
-            <Text style={styles.verifyEyebrow}>VERIFY YOUR IDENTITY</Text>
-            <Text style={styles.verifyTitle}>
-              Confirm <Text style={styles.verifyTitleAccent}>changes</Text>
-            </Text>
-            <Text style={styles.verifyDescription}>
-              We sent a verification code to {original.email}. Enter it below to confirm the update.
-            </Text>
+            {modalStage === 'verify' ? (
+              <>
+                <Text style={styles.verifyEyebrow}>
+                  {pendingAction === 'changePassword'
+                    ? 'CHANGE PASSWORD'
+                    : 'VERIFY YOUR IDENTITY'}
+                </Text>
+                <Text style={styles.verifyTitle}>
+                  {pendingAction === 'changePassword' ? (
+                    <>
+                      Verify <Text style={styles.verifyTitleAccent}>identity</Text>
+                    </>
+                  ) : (
+                    <>
+                      Confirm <Text style={styles.verifyTitleAccent}>changes</Text>
+                    </>
+                  )}
+                </Text>
+                <Text style={styles.verifyDescription}>
+                  We sent a verification code to {original.email}. Enter it below to continue.
+                </Text>
 
-            <TextInput
-              style={[
-                styles.verifyInput,
-                verifyError ? styles.verifyInputError : null,
-              ]}
-              placeholder="0 0 0 0 0 0"
-              placeholderTextColor="#B5B5BD"
-              value={verifyCode}
-              onChangeText={(val) => {
-                if (verifyError) setVerifyError(null);
-                setVerifyCode(val.replace(/\D/g, ''));
-              }}
-              keyboardType="number-pad"
-              autoComplete="one-time-code"
-              maxLength={6}
-            />
+                <TextInput
+                  style={[
+                    styles.verifyInput,
+                    verifyError ? styles.verifyInputError : null,
+                  ]}
+                  placeholder="0 0 0 0 0 0"
+                  placeholderTextColor="#B5B5BD"
+                  value={verifyCode}
+                  onChangeText={(val) => {
+                    if (verifyError) setVerifyError(null);
+                    setVerifyCode(val.replace(/\D/g, ''));
+                  }}
+                  keyboardType="number-pad"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                />
 
-            {verifyError ? <Text style={styles.verifyErrorText}>{verifyError}</Text> : null}
+                {verifyError ? <Text style={styles.verifyErrorText}>{verifyError}</Text> : null}
 
-            <TouchableOpacity
-              onPress={handleResendCode}
-              activeOpacity={0.7}
-              disabled={isResending}
-              style={styles.resendButton}
-            >
-              <Text
-                style={[
-                  styles.resendButtonText,
-                  isResending && styles.resendButtonTextDisabled,
-                ]}
-              >
-                {isResending ? 'Sending code…' : 'Resend code'}
-              </Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleResendCode}
+                  activeOpacity={0.7}
+                  disabled={isResending}
+                  style={styles.resendButton}
+                >
+                  <Text
+                    style={[
+                      styles.resendButtonText,
+                      isResending && styles.resendButtonTextDisabled,
+                    ]}
+                  >
+                    {isResending ? 'Sending code…' : 'Resend code'}
+                  </Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[
-                styles.buttonPrimary,
-                styles.verifyButton,
-                (verifyCode.length < 4 || isVerifying) && styles.buttonPrimaryDisabled,
-              ]}
-              onPress={handleVerifyCode}
-              activeOpacity={0.85}
-              disabled={verifyCode.length < 4 || isVerifying}
-            >
-              {isVerifying ? (
-                <ActivityIndicator color={colors.text.light} />
-              ) : (
-                <Text style={styles.buttonPrimaryText}>Verify & Save</Text>
-              )}
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.buttonPrimary,
+                    styles.verifyButton,
+                    (verifyCode.length < 4 || isVerifying) && styles.buttonPrimaryDisabled,
+                  ]}
+                  onPress={handleVerifyCode}
+                  activeOpacity={0.85}
+                  disabled={verifyCode.length < 4 || isVerifying}
+                >
+                  {isVerifying ? (
+                    <ActivityIndicator color={colors.text.light} />
+                  ) : (
+                    <Text style={styles.buttonPrimaryText}>
+                      {pendingAction === 'changePassword' ? 'Verify' : 'Verify & Save'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.verifyEyebrow}>CHANGE PASSWORD</Text>
+                <Text style={styles.verifyTitle}>
+                  New <Text style={styles.verifyTitleAccent}>PIN</Text>
+                </Text>
+                <Text style={styles.verifyDescription}>
+                  Choose a new 4-digit PIN to protect your account.
+                </Text>
+
+                <TextInput
+                  style={[
+                    styles.verifyInput,
+                    styles.pinInput,
+                    pinError ? styles.verifyInputError : null,
+                  ]}
+                  placeholder="0 0 0 0"
+                  placeholderTextColor="#B5B5BD"
+                  value={newPin}
+                  onChangeText={(val) => {
+                    if (pinError) setPinError(null);
+                    setNewPin(val.replace(/\D/g, ''));
+                  }}
+                  keyboardType="number-pad"
+                  secureTextEntry
+                  autoComplete="password-new"
+                  maxLength={4}
+                />
+
+                {pinError ? <Text style={styles.verifyErrorText}>{pinError}</Text> : null}
+
+                <TouchableOpacity
+                  style={[
+                    styles.buttonPrimary,
+                    styles.verifyButton,
+                    (newPin.length !== 4 || isSavingPin) && styles.buttonPrimaryDisabled,
+                  ]}
+                  onPress={handleConfirmNewPin}
+                  activeOpacity={0.85}
+                  disabled={newPin.length !== 4 || isSavingPin}
+                >
+                  {isSavingPin ? (
+                    <ActivityIndicator color={colors.text.light} />
+                  ) : (
+                    <Text style={styles.buttonPrimaryText}>Save New PIN</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -738,6 +878,9 @@ const styles = StyleSheet.create({
     color: colors.text.dark,
     paddingVertical: 10,
     letterSpacing: 8,
+  },
+  pinInput: {
+    letterSpacing: 14,
   },
   verifyInputError: {
     borderBottomWidth: 2,

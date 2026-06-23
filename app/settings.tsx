@@ -592,6 +592,10 @@ export default function SettingsScreen() {
                   </Text>
                 </TouchableOpacity>
 
+                <Text style={styles.verifyHelpNotice}>
+                  If you don&apos;t have access to this email or phone, please contact support.
+                </Text>
+
                 <TouchableOpacity
                   style={[
                     styles.buttonPrimary,
@@ -903,6 +907,13 @@ const styles = StyleSheet.create({
     color: colors.brand.primary,
     letterSpacing: 0.4,
     textDecorationLine: 'underline',
+  },
+  verifyHelpNotice: {
+    marginTop: 16,
+    fontSize: 12,
+    fontFamily: fonts.regular,
+    color: colors.text.muted,
+    lineHeight: 16,
   },
   resendButtonTextDisabled: {
     color: colors.text.muted,

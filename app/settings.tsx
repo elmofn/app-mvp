@@ -22,6 +22,7 @@ import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
 import {
+  removeAccount,
   requestValidationCode,
   setNewPassword,
   updateAccount,
@@ -99,16 +100,21 @@ export default function SettingsScreen() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
 
-  // O mesmo modal serve dois fluxos diferentes (atualizar perfil x trocar
-  // PIN); pendingAction guarda qual deles esta em curso e modalStage controla
-  // qual passo o modal mostra (verificacao -> novo PIN, no caso de senha).
-  type PendingAction = 'updateProfile' | 'changePassword';
+  // O mesmo modal serve tres fluxos (atualizar perfil, trocar PIN e
+  // deletar conta); pendingAction guarda qual deles esta em curso e
+  // modalStage controla qual passo o modal mostra (verificacao -> novo
+  // PIN, no caso de senha; verificacao -> RemoveAccount, no de delete).
+  type PendingAction = 'updateProfile' | 'changePassword' | 'deleteAccount';
   type ModalStage = 'verify' | 'newPin';
   const [pendingAction, setPendingAction] = useState<PendingAction>('updateProfile');
   const [modalStage, setModalStage] = useState<ModalStage>('verify');
   const [newPin, setNewPin] = useState('');
   const [pinError, setPinError] = useState<string | null>(null);
   const [isSavingPin, setIsSavingPin] = useState(false);
+  // Captura a escolha do usuario no alerta antes de iniciar o fluxo de
+  // delete - blockAccount tambem trava o e-mail para futuras recriacoes
+  // automaticas (vide comentario do RemoveAccount).
+  const [deleteBlockAccount, setDeleteBlockAccount] = useState(false);
 
   // Diff em digitos pra phone, lowercased pra email, trim pra name.
   const phoneDigits = phone.replace(/\D/g, '');
@@ -213,6 +219,40 @@ export default function SettingsScreen() {
     }
   };
 
+  // Inicia o fluxo de remocao: registra a escolha de blockAccount feita
+  // no alerta, abre o modal de verificacao e dispara o codigo por email.
+  const startDeleteFlow = async (blockAccount: boolean) => {
+    if (!account) return;
+    resetModalState();
+    setDeleteBlockAccount(blockAccount);
+    setPendingAction('deleteAccount');
+    setVerifyVisible(true);
+    try {
+      await requestValidationCode(account.accountDetails.accountId, 'email', lang);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not send the verification code.';
+      showAlert('Verification', message);
+    }
+  };
+
+  // Chamado apos o codigo bater - mantemos o modal aberto durante a PUT
+  // (spinner do botao de verify cobre o estado), e no sucesso navegamos
+  // para a raiz, o que desmonta a tela. Em erro, fechamos e alertamos.
+  const performDelete = async () => {
+    if (!account) return;
+    try {
+      await removeAccount(account.accountDetails.accountId, deleteBlockAccount, lang);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not delete your account.';
+      setVerifyVisible(false);
+      resetModalState();
+      showAlert('Delete failed', message);
+      return;
+    }
+    await signOut();
+    router.replace('/');
+  };
+
   const handleVerifyCode = async () => {
     if (!account) return;
     if (verifyCode.length < 4) return;
@@ -226,6 +266,11 @@ export default function SettingsScreen() {
         setVerifyVisible(false);
         resetModalState();
         await performUpdate();
+      } else if (pendingAction === 'deleteAccount') {
+        // Mantemos o modal aberto durante o RemoveAccount - o spinner do
+        // botao de verify segue indicando progresso. Em sucesso, o
+        // signOut + replace('/') desmonta a tela inteira.
+        await performDelete();
       } else {
         // changePassword: codigo valido, abre o estagio 'newPin' no mesmo
         // modal. Nao fechamos - o usuario continua o fluxo na sequencia.
@@ -293,10 +338,19 @@ export default function SettingsScreen() {
   const handleDeleteAccount = () => {
     showAlert(
       'Delete Account',
-      'This action is irreversible. All your data will be permanently removed.',
+      'Choose how to proceed. You can delete only this account, or also block any future account from being created for this email. This action is irreversible.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => {} },
+        {
+          text: 'Delete account',
+          style: 'destructive',
+          onPress: () => startDeleteFlow(false),
+        },
+        {
+          text: 'Delete and block this email',
+          style: 'destructive',
+          onPress: () => startDeleteFlow(true),
+        },
       ],
     );
   };
@@ -540,12 +594,18 @@ export default function SettingsScreen() {
                 <Text style={styles.verifyEyebrow}>
                   {pendingAction === 'changePassword'
                     ? 'CHANGE PASSWORD'
+                    : pendingAction === 'deleteAccount'
+                    ? 'DELETE ACCOUNT'
                     : 'VERIFY YOUR IDENTITY'}
                 </Text>
                 <Text style={styles.verifyTitle}>
                   {pendingAction === 'changePassword' ? (
                     <>
                       Verify <Text style={styles.verifyTitleAccent}>identity</Text>
+                    </>
+                  ) : pendingAction === 'deleteAccount' ? (
+                    <>
+                      Confirm <Text style={styles.verifyTitleAccent}>delete</Text>
                     </>
                   ) : (
                     <>
@@ -610,7 +670,11 @@ export default function SettingsScreen() {
                     <ActivityIndicator color={colors.text.light} />
                   ) : (
                     <Text style={styles.buttonPrimaryText}>
-                      {pendingAction === 'changePassword' ? 'Verify' : 'Verify & Save'}
+                      {pendingAction === 'changePassword'
+                        ? 'Verify'
+                        : pendingAction === 'deleteAccount'
+                        ? 'Verify & Delete'
+                        : 'Verify & Save'}
                     </Text>
                   )}
                 </TouchableOpacity>

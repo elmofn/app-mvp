@@ -252,6 +252,40 @@ export async function updateAccount(
 }
 
 // ----------------------------------------------------------------------------
+// RemoveAccount: POST /api/Account/RemoveAccount
+// Deleta a conta do usuario. Se blockAccount=true, o backend tambem
+// marca o e-mail como bloqueado, impedindo que ele seja reativado pelo
+// pipeline que cria contas inativas automaticamente a partir de dados
+// processados.
+// ----------------------------------------------------------------------------
+
+export async function removeAccount(
+  accountId: string,
+  blockAccount: boolean,
+  lang: SupportedLang,
+): Promise<void> {
+  const url = `${API_BASE_URL}/api/Account/RemoveAccount`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ accountId, blockAccount }),
+  });
+
+  if (!response.ok) {
+    const message = await parseLocalizedError(
+      response,
+      lang,
+      `RemoveAccount failed (${response.status})`,
+    );
+    console.warn('[account] RemoveAccount HTTP', response.status);
+    throw new Error(message);
+  }
+}
+
+// ----------------------------------------------------------------------------
 // SetNewPasswordAccount: POST /api/Account/SetNewPasswordAccount
 // ----------------------------------------------------------------------------
 

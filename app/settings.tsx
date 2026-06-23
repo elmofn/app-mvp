@@ -236,7 +236,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <StatusBar style="light" />
 
       <KeyboardAvoidingView
@@ -244,10 +244,11 @@ export default function SettingsScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
+          style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             styles.scrollContent,
-            isDirty ? { paddingBottom: 16 } : null,
+            { paddingBottom: isDirty ? 16 : insets.bottom + 16 },
           ]}
           keyboardShouldPersistTaps="handled"
         >
@@ -354,7 +355,7 @@ export default function SettingsScreen() {
         </ScrollView>
 
         {isDirty ? (
-          <View style={styles.stickyBar}>
+          <View style={[styles.stickyBar, { paddingBottom: insets.bottom + 12 }]}>
             <TouchableOpacity
               style={[styles.buttonPrimary, isSaving && styles.buttonPrimaryDisabled]}
               onPress={handleSave}

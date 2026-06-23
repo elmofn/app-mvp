@@ -230,7 +230,7 @@ export default function HomeScreen() {
   <Animated.View entering={FadeInLeft.delay(650).duration(500)}>
     <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/assistant')} activeOpacity={0.8}>
       <View style={styles.actionInfo}>
-        <Text style={styles.actionTitle}>CashIA</Text>
+        <Text style={styles.actionTitle}>Travel Assistant</Text>
         <Text style={styles.actionDesc}>Planeje sua próxima jornada.</Text>
       </View>
       <View style={styles.actionIconWrapper}>

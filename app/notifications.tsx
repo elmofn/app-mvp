@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#f07167',
+    backgroundColor: colors.brand.details,
   },
   cardDescription: {
     fontSize: 14,

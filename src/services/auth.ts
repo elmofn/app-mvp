@@ -89,6 +89,13 @@ export const SignInHomeBannerSchema = z.object({
   imageUrl: z.string(),
 });
 
+export const SignInShopBannerSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string(),
+  imageUrl: z.string(),
+});
+
 export const SignInNextTripSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -120,6 +127,7 @@ export const SignInAccountDetailsSchema = z.object({
   statements: z.array(SignInStatementSchema).optional(),
   polices: z.array(SignInPolicySchema),
   homeBanners: z.array(SignInHomeBannerSchema),
+  shopBanners: z.array(SignInShopBannerSchema),
   nextTrips: z.array(SignInNextTripSchema),
 });
 
@@ -132,16 +140,19 @@ export type SignInStatementDetails = z.infer<typeof SignInStatementDetailsSchema
 export type SignInStatement = z.infer<typeof SignInStatementSchema>;
 export type SignInPolicy = z.infer<typeof SignInPolicySchema>;
 export type SignInHomeBanner = z.infer<typeof SignInHomeBannerSchema>;
+export type SignInShopBanner = z.infer<typeof SignInShopBannerSchema>;
 export type SignInNextTrip = z.infer<typeof SignInNextTripSchema>;
 export type SignInAccountDetails = z.infer<typeof SignInAccountDetailsSchema>;
 
 export type SignInResponse = {
   accountDetails?: SignInAccountDetails;
   token?: string;
-  // homeBanners e nextTrips chegam no ROOT do response (irmaos de
-  // accountDetails), nao aninhados nele. O signIn move-os para dentro de
-  // accountDetails antes de retornar, para que o app acesse via account.
+  // homeBanners, shopBanners e nextTrips chegam no ROOT do response
+  // (irmaos de accountDetails), nao aninhados nele. O signIn move-os para
+  // dentro de accountDetails antes de retornar, para que o app acesse via
+  // account.
   homeBanners?: SignInHomeBanner[];
+  shopBanners?: SignInShopBanner[];
   nextTrips?: SignInNextTrip[];
   result: boolean;
   message: string;
@@ -215,6 +226,7 @@ export async function signIn(
     // de forma uniforme via account.homeBanners / account.nextTrips.
     if (parsed.accountDetails) {
       parsed.accountDetails.homeBanners = parsed.homeBanners ?? [];
+      parsed.accountDetails.shopBanners = parsed.shopBanners ?? [];
       parsed.accountDetails.nextTrips = parsed.nextTrips ?? [];
     }
     return parsed;

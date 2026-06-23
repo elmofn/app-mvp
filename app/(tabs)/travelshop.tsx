@@ -1,8 +1,10 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import {
   CalendarIcon,
+  CoinsIcon,
   MagnifyingGlassIcon,
   MapPinIcon,
   StarIcon,
@@ -17,8 +19,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import Animated, { FadeInRight } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ShopBannersCarousel } from '@/src/components/ShopBannersCarousel';
+import { useAuth } from '@/src/contexts/AuthContext';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -233,6 +238,8 @@ function HotelCard({ hotel }: { hotel: Hotel }) {
 export default function TravelShopScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
+  const router = useRouter();
+  const { account } = useAuth();
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
@@ -297,6 +304,25 @@ export default function TravelShopScreen() {
           </View>
         </LinearGradient>
 
+        {/* --- BALANCE ACTION CARD: mesmo botao que aparece na home --- */}
+        <View style={styles.quickActions}>
+          <Animated.View entering={FadeInRight.delay(550).duration(500)}>
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => router.push('/statement')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.actionInfo}>
+                <Text style={styles.actionTitle}>Balance</Text>
+                <Text style={styles.actionDesc}>Gerencie seus Travel Credits.</Text>
+              </View>
+              <View style={styles.actionIconWrapper}>
+                <CoinsIcon size={32} color="#0F022D" weight="regular" />
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
             Hotéis <Text style={styles.sectionTitleAccent}>Recomendados</Text>
@@ -326,6 +352,11 @@ export default function TravelShopScreen() {
             <HotelCard key={hotel.id} hotel={hotel} />
           ))}
         </ScrollView>
+
+        {/* --- SHOP BANNERS: via payload do SignIn --- */}
+        <View style={{ marginTop: 24 }}>
+          <ShopBannersCarousel banners={account?.shopBanners} />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -419,6 +450,42 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fonts.bold,
     letterSpacing: 0.4,
+  },
+
+  // --- ACTION CARD (Balance) - identico ao da home ---
+  quickActions: {
+    paddingHorizontal: 20,
+    marginTop: -20,
+    zIndex: 10,
+  },
+  actionCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: '#EDEDF2',
+  },
+  actionInfo: {
+    flex: 1,
+  },
+  actionTitle: {
+    fontSize: 21,
+    fontFamily: fonts.bold,
+    color: '#0F022D',
+    letterSpacing: -0.5,
+    marginBottom: 2,
+  },
+  actionDesc: {
+    fontSize: 10,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.9,
+    paddingBottom: 4,
+    color: '#0F022D',
+  },
+  actionIconWrapper: {
+    marginLeft: 16,
   },
 
   section: {

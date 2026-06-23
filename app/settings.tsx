@@ -239,36 +239,39 @@ export default function SettingsScreen() {
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <StatusBar style="light" />
 
-      <LinearGradient
-        colors={['#6444DA', '#4D2ACC', '#1B0F4A']}
-        start={{ x: 0.1, y: 0.1 }}
-        end={{ x: 0.8, y: 1.2 }}
-        locations={[0.1, 0.2, 0.7]}
-        style={[styles.headerGradient, { paddingTop: insets.top }]}
-      >
-        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
-
-        <ScreenHeader title="User Data" dark={true} />
-
-        <View style={styles.headerBody}>
-          <Text style={styles.mainTitle}>
-            User <Text style={styles.mainTitleAccent}>Profile</Text>
-          </Text>
-          <Text style={styles.pageDescription}>
-            Update your personal information. Email and phone changes require verification.
-          </Text>
-        </View>
-      </LinearGradient>
-
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            isDirty ? { paddingBottom: 16 } : null,
+          ]}
           keyboardShouldPersistTaps="handled"
         >
+          <LinearGradient
+            colors={['#6444DA', '#4D2ACC', '#1B0F4A']}
+            start={{ x: 0.1, y: 0.1 }}
+            end={{ x: 0.8, y: 1.2 }}
+            locations={[0.1, 0.2, 0.7]}
+            style={[styles.headerGradient, { paddingTop: insets.top }]}
+          >
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
+
+            <ScreenHeader title="User Data" dark={true} />
+
+            <View style={styles.headerBody}>
+              <Text style={styles.mainTitle}>
+                User <Text style={styles.mainTitleAccent}>Profile</Text>
+              </Text>
+              <Text style={styles.pageDescription}>
+                Update your personal information. Email and phone changes require verification.
+              </Text>
+            </View>
+          </LinearGradient>
+
           <View style={styles.formContainer}>
             <View style={styles.formGroup}>
               <Text style={styles.inputLabel}>Name</Text>
@@ -331,21 +334,6 @@ export default function SettingsScreen() {
             </TouchableOpacity>
 
             <View style={styles.buttonGroup}>
-              {isDirty ? (
-                <TouchableOpacity
-                  style={[styles.buttonPrimary, isSaving && styles.buttonPrimaryDisabled]}
-                  onPress={handleSave}
-                  activeOpacity={0.85}
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <ActivityIndicator color={colors.text.light} />
-                  ) : (
-                    <Text style={styles.buttonPrimaryText}>Save Changes</Text>
-                  )}
-                </TouchableOpacity>
-              ) : null}
-
               <TouchableOpacity style={styles.buttonFilled} onPress={handleLogout} activeOpacity={0.8}>
                 <Text style={styles.buttonFilledText}>Logout</Text>
               </TouchableOpacity>
@@ -364,6 +352,23 @@ export default function SettingsScreen() {
             </View>
           </View>
         </ScrollView>
+
+        {isDirty ? (
+          <View style={styles.stickyBar}>
+            <TouchableOpacity
+              style={[styles.buttonPrimary, isSaving && styles.buttonPrimaryDisabled]}
+              onPress={handleSave}
+              activeOpacity={0.85}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <ActivityIndicator color={colors.text.light} />
+              ) : (
+                <Text style={styles.buttonPrimaryText}>Save Changes</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        ) : null}
       </KeyboardAvoidingView>
 
       <Modal
@@ -560,6 +565,14 @@ const styles = StyleSheet.create({
   buttonGroup: {
     marginTop: 32,
     gap: 12,
+  },
+  stickyBar: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 12,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#EDEDF2',
   },
   buttonPrimary: {
     backgroundColor: colors.brand.primary,

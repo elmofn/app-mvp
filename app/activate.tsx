@@ -1,18 +1,22 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { CheckIcon, EyeIcon, EyeSlashIcon } from 'phosphor-react-native';
+import { CheckIcon, EyeIcon, EyeSlashIcon, XIcon } from 'phosphor-react-native';
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import RenderHTML, { MixedStyleDeclaration } from 'react-native-render-html';
 import Animated, {
   interpolate,
   runOnJS,
@@ -24,6 +28,15 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAlert } from '@/src/contexts/AlertContext';
+import { useAuth } from '@/src/contexts/AuthContext';
+import {
+  AccountPreview,
+  ActivationCodeError,
+  getAccountByCode,
+  setNewPassword,
+} from '@/src/services/account';
+import { confirmRead } from '@/src/services/alerts';
+import { getDeviceLanguage } from '@/src/services/locale';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -45,7 +58,7 @@ const STEPS: Step[] = [
     titleFirst: 'Activation',
     titleAccent: 'Code',
     description:
-      'We sent a 6-digit code to your e-mail. Enter it below to activate your TravelBACK account.',
+      'Enter the activation code you received to confirm your TravelBACK account.',
     label: 'Activation Code',
     placeholder: '0 0 0 0 0 0',
     key: 'code',
@@ -71,22 +84,79 @@ const STEPS: Step[] = [
   },
 ];
 
+// Estilos para o RenderHTML do modal de termos. Copiados de app/terms.tsx
+// porque a tela de ativacao precisa renderizar a police antes do login -
+// nao da pra reusar terms.tsx, que depende de AuthContext.account.
+const HTML_BASE_STYLE: MixedStyleDeclaration = {
+  color: colors.text.dark,
+  fontFamily: fonts.regular,
+  fontSize: 14,
+  lineHeight: 22,
+};
+
+const HTML_TAG_STYLES: Record<string, MixedStyleDeclaration> = {
+  h1: {
+    fontFamily: fonts.bold,
+    fontSize: 24,
+    color: colors.text.dark,
+    letterSpacing: -0.5,
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  h2: {
+    fontFamily: fonts.bold,
+    fontSize: 20,
+    color: colors.text.dark,
+    letterSpacing: -0.3,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  h3: {
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    color: colors.text.dark,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  p: {
+    fontFamily: fonts.regular,
+    color: colors.text.dark,
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: 10,
+  },
+  strong: { fontFamily: fonts.bold },
+  em: { fontFamily: fonts.italic },
+  ol: { marginBottom: 12, paddingLeft: 18 },
+  ul: { marginBottom: 12, paddingLeft: 18 },
+  li: { marginBottom: 4 },
+  a: { color: '#0F022D', textDecorationLine: 'underline' },
+};
+
 export default function ActivationScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const showAlert = useAlert();
+  const { signIn } = useAuth();
+  // Usuario ainda nao esta logado nesse fluxo - locale fica no idioma do device.
+  const lang = getDeviceLanguage();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [focusedField, setFocusedField] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const [formData, setFormData] = useState({
-    name: 'João Silva',
-    email: 'joao.silva@email.com',
-    code: '',
-    password: '',
-  });
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [preview, setPreview] = useState<AccountPreview | null>(null);
+
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
+  const [stepError, setStepError] = useState<string | null>(null);
+
+  const [termsVisible, setTermsVisible] = useState(false);
 
   const progressWidth = useSharedValue(1 / STEPS.length);
   const contentOpacity = useSharedValue(1);
@@ -106,21 +176,110 @@ export default function ActivationScreen() {
 
   const changeStep = (newStep: number) => setCurrentStep(newStep);
 
-  const handleNext = () => {
-    if (currentStep === STEPS.length && !acceptedTerms) {
+  // Anima a saida do conteudo, troca o step no meio e anima a entrada.
+  const advanceTo = (newStep: number) => {
+    contentOpacity.value = withTiming(0, { duration: 200 }, (finished) => {
+      if (finished) {
+        runOnJS(changeStep)(newStep);
+        contentOpacity.value = withTiming(1, { duration: 300 });
+      }
+    });
+  };
+
+  const handleVerifyCode = async () => {
+    if (code.length !== 6) {
+      setStepError('Enter the 6-digit activation code.');
+      return;
+    }
+    setIsVerifyingCode(true);
+    setStepError(null);
+    try {
+      const result = await getAccountByCode(code, lang);
+      setPreview(result);
+      advanceTo(2);
+    } catch (err) {
+      if (err instanceof ActivationCodeError) {
+        setStepError(err.message);
+      } else {
+        const message = err instanceof Error ? err.message : 'Could not validate the code.';
+        showAlert('Activation', message);
+      }
+    } finally {
+      setIsVerifyingCode(false);
+    }
+  };
+
+  const handleSavePassword = async () => {
+    if (!preview) return;
+    if (password.length < 8) {
+      setStepError('Use at least 8 characters.');
+      return;
+    }
+    setIsSavingPassword(true);
+    setStepError(null);
+    try {
+      await setNewPassword(preview.accountId, password, lang);
+      advanceTo(3);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not save your password.';
+      setStepError(message);
+    } finally {
+      setIsSavingPassword(false);
+    }
+  };
+
+  const handleFinish = async () => {
+    if (!preview) return;
+    if (!acceptedTerms) {
       showAlert('Terms', 'Please accept the Terms and Conditions to continue.');
       return;
     }
+    setIsFinishing(true);
+    setStepError(null);
+    try {
+      // ConfirmRead por police em paralelo - falhas de uma nao bloqueiam
+      // o login, apenas viram warning no console.
+      if (preview.polices.length > 0) {
+        await Promise.all(
+          preview.polices.map((p) =>
+            confirmRead(p.contentId, preview.accountId).catch((err) => {
+              console.warn('[activate] confirmRead failed for', p.contentId, err);
+            }),
+          ),
+        );
+      }
 
-    if (currentStep < STEPS.length) {
-      contentOpacity.value = withTiming(0, { duration: 200 }, (finished) => {
-        if (finished) {
-          runOnJS(changeStep)(currentStep + 1);
-          contentOpacity.value = withTiming(1, { duration: 300 });
-        }
-      });
-    } else {
-      router.replace('/(tabs)/home');
+      const response = await signIn(preview.email, password);
+      if (response.success && response.token && response.accountDetails) {
+        router.replace('/(tabs)/home');
+        return;
+      }
+      const message =
+        response.errorMessage ||
+        response.message ||
+        'Your account was activated but sign in failed. Please log in manually.';
+      showAlert('Activated', message, [
+        { text: 'OK', onPress: () => router.replace('/login') },
+      ]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not finish the activation.';
+      showAlert('Activation', message);
+    } finally {
+      setIsFinishing(false);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentStep === 1) {
+      handleVerifyCode();
+      return;
+    }
+    if (currentStep === 2) {
+      handleSavePassword();
+      return;
+    }
+    if (currentStep === 3) {
+      handleFinish();
     }
   };
 
@@ -129,13 +288,25 @@ export default function ActivationScreen() {
   const isPassword = currentStep === 2;
   const isCode = currentStep === 1;
 
-  const inputValue = step.key ? formData[step.key] : '';
+  const inputValue = isCode ? code : isPassword ? password : '';
   const setInputValue = (val: string) => {
-    if (step.key) setFormData({ ...formData, [step.key]: val });
+    if (stepError) setStepError(null);
+    if (isCode) setCode(val.replace(/\D/g, ''));
+    else if (isPassword) setPassword(val);
   };
 
+  const isBusy = isVerifyingCode || isSavingPassword || isFinishing;
   const ctaLabel = isReview ? 'Finish Activation' : 'Next';
-  const disabled = isReview && !acceptedTerms;
+  const disabled = (isReview && !acceptedTerms) || isBusy;
+
+  const reviewRows: { label: string; value: string }[] = preview
+    ? [
+        { label: 'Name', value: preview.name },
+        { label: 'E-mail', value: preview.email },
+        { label: 'Phone', value: preview.phoneNumber },
+        { label: 'Legal ID', value: preview.legalId },
+      ].filter((r) => r.value.trim().length > 0)
+    : [];
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
@@ -191,14 +362,16 @@ export default function ActivationScreen() {
               {isReview ? (
                 <View>
                   <View style={styles.reviewCard}>
-                    <View style={styles.reviewRow}>
-                      <Text style={styles.reviewLabel}>Name</Text>
-                      <Text style={styles.reviewValue}>{formData.name || '—'}</Text>
-                    </View>
-                    <View style={styles.reviewRow}>
-                      <Text style={styles.reviewLabel}>E-mail</Text>
-                      <Text style={styles.reviewValue}>{formData.email || '—'}</Text>
-                    </View>
+                    {reviewRows.length > 0 ? (
+                      reviewRows.map((row) => (
+                        <View key={row.label} style={styles.reviewRow}>
+                          <Text style={styles.reviewLabel}>{row.label}</Text>
+                          <Text style={styles.reviewValue}>{row.value}</Text>
+                        </View>
+                      ))
+                    ) : (
+                      <Text style={styles.reviewValue}>—</Text>
+                    )}
                   </View>
 
                   <TouchableOpacity
@@ -207,11 +380,20 @@ export default function ActivationScreen() {
                     activeOpacity={0.7}
                   >
                     <View style={[styles.checkbox, acceptedTerms && styles.checkboxActive]}>
-                      {acceptedTerms && <CheckIcon size={14} color={colors.text.light} weight="bold" />}
+                      {acceptedTerms && (
+                        <CheckIcon size={14} color={colors.text.light} weight="bold" />
+                      )}
                     </View>
                     <Text style={styles.checkboxText}>
-                      I accept the <Text style={styles.linkText}>Terms and Conditions</Text> and the{' '}
-                      <Text style={styles.linkText}>Privacy Policy</Text>.
+                      I accept the{' '}
+                      <Text style={styles.linkText} onPress={() => setTermsVisible(true)}>
+                        Terms and Conditions
+                      </Text>{' '}
+                      and the{' '}
+                      <Text style={styles.linkText} onPress={() => setTermsVisible(true)}>
+                        Privacy Policy
+                      </Text>
+                      .
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -254,13 +436,15 @@ export default function ActivationScreen() {
                   onBlur={() => setFocusedField(false)}
                   value={inputValue}
                   onChangeText={setInputValue}
-                  keyboardType={isCode ? 'number-pad' : 'default'}
+                  keyboardType="number-pad"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  autoComplete={isCode ? 'one-time-code' : 'off'}
-                  maxLength={isCode ? 6 : undefined}
+                  autoComplete="one-time-code"
+                  maxLength={6}
                 />
               )}
+
+              {stepError ? <Text style={styles.errorText}>{stepError}</Text> : null}
             </Animated.View>
 
             <View style={styles.buttonContainer}>
@@ -270,12 +454,61 @@ export default function ActivationScreen() {
                 activeOpacity={0.85}
                 disabled={disabled}
               >
-                <Text style={styles.primaryButtonText}>{ctaLabel}</Text>
+                {isBusy ? (
+                  <ActivityIndicator color={colors.text.light} />
+                ) : (
+                  <Text style={styles.primaryButtonText}>{ctaLabel}</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={termsVisible}
+        animationType="slide"
+        onRequestClose={() => setTermsVisible(false)}
+      >
+        <SafeAreaView style={styles.termsContainer} edges={['left', 'right', 'bottom']}>
+          <LinearGradient
+            colors={['#6444DA', '#4D2ACC', '#1B0F4A']}
+            start={{ x: 0.1, y: 0.1 }}
+            end={{ x: 0.8, y: 1.2 }}
+            locations={[0, 0.2, 0.7]}
+            style={[styles.termsHeader, { paddingTop: insets.top + 8 }]}
+          >
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
+            <TouchableOpacity
+              style={styles.termsClose}
+              onPress={() => setTermsVisible(false)}
+              hitSlop={10}
+            >
+              <XIcon size={22} color={colors.text.light} weight="bold" />
+            </TouchableOpacity>
+            <View style={styles.termsHeaderBody}>
+              <Text style={styles.termsEyebrow}>POLICIES</Text>
+              <Text style={styles.termsTitle}>
+                Terms & <Text style={styles.termsTitleAccent}>Conditions</Text>
+              </Text>
+            </View>
+          </LinearGradient>
+
+          <ScrollView contentContainerStyle={styles.termsBody} showsVerticalScrollIndicator={false}>
+            {preview?.polices && preview.polices.length > 0 ? (
+              <RenderHTML
+                contentWidth={width - 48}
+                source={{ html: preview.polices[0].richText }}
+                baseStyle={HTML_BASE_STYLE}
+                tagsStyles={HTML_TAG_STYLES}
+                enableExperimentalMarginCollapsing
+              />
+            ) : (
+              <Text style={styles.termsEmpty}>Terms not available.</Text>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -434,6 +667,14 @@ const styles = StyleSheet.create({
   linkText: {
     color: colors.text.dark,
     fontFamily: fonts.bold,
+    textDecorationLine: 'underline',
+  },
+
+  errorText: {
+    marginTop: 10,
+    fontSize: 12,
+    fontFamily: fonts.medium,
+    color: '#f07167',
   },
 
   buttonContainer: { marginTop: 32 },
@@ -442,6 +683,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 18,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   primaryButtonDisabled: { opacity: 0.4 },
   primaryButtonText: {
@@ -449,5 +691,51 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: fonts.bold,
     letterSpacing: 0.5,
+  },
+
+  // --- TERMS MODAL ---
+  termsContainer: { flex: 1, backgroundColor: '#FFFFFF' },
+  termsHeader: {
+    paddingBottom: 24,
+    paddingHorizontal: 24,
+  },
+  termsClose: {
+    position: 'absolute',
+    top: 18,
+    right: 18,
+    padding: 6,
+    zIndex: 2,
+  },
+  termsHeaderBody: {
+    marginTop: 12,
+  },
+  termsEyebrow: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
+  termsTitle: {
+    fontSize: 36,
+    fontFamily: fonts.bold,
+    color: colors.text.light,
+    letterSpacing: -1.2,
+  },
+  termsTitleAccent: {
+    color: '#85EDD3',
+    fontFamily: fonts.italic,
+  },
+  termsBody: {
+    paddingHorizontal: 24,
+    paddingTop: 18,
+    paddingBottom: 40,
+  },
+  termsEmpty: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: colors.text.muted,
+    paddingVertical: 24,
+    textAlign: 'center',
   },
 });

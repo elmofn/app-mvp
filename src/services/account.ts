@@ -156,6 +156,104 @@ export async function requestValidationCode(
 }
 
 // ----------------------------------------------------------------------------
+// GetAccountByCode: GET /api/Account/GetAccountByCode?code={code}
+// Verifica o codigo de ativacao e devolve um preview da conta (name,
+// email, phone, polices). Diferente do ValidateCode, codigo invalido
+// vem em 200 com result=false (nao em 400) - tratamos isso como
+// ActivationCodeError pra UI exibir mensagem inline.
+// ----------------------------------------------------------------------------
+
+export class ActivationCodeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ActivationCodeError';
+  }
+}
+
+export type AccountPreviewPolice = {
+  contentId: string;
+  title: string;
+  richText: string;
+};
+
+export type AccountPreview = {
+  accountId: string;
+  name: string;
+  email: string;
+  phoneNumber: string;
+  legalId: string;
+  polices: AccountPreviewPolice[];
+};
+
+export async function getAccountByCode(
+  code: string,
+  lang: SupportedLang,
+): Promise<AccountPreview> {
+  const url = `${API_BASE_URL}/api/Account/GetAccountByCode?code=${encodeURIComponent(code)}`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  });
+
+  const rawBody = await response.text();
+
+  if (!response.ok) {
+    let message = `GetAccountByCode failed (${response.status})`;
+    if (rawBody) {
+      try {
+        const parsed = JSON.parse(rawBody) as LocalizedPayload;
+        message = pickLocalizedMessage(parsed, lang) || message;
+      } catch {
+        message = rawBody.slice(0, 300);
+      }
+    }
+    console.warn('[account] GetAccountByCode HTTP', response.status);
+    throw new Error(message);
+  }
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(rawBody);
+  } catch {
+    throw new Error('Invalid response from server.');
+  }
+
+  if (parsed?.result === false) {
+    const message = pickLocalizedMessage(parsed as LocalizedPayload, lang)
+      || 'Invalid or expired activation code.';
+    throw new ActivationCodeError(message);
+  }
+
+  const accountDetails = (parsed.accountDetails ?? {}) as Record<string, unknown>;
+  const account = (parsed.account ?? {}) as Record<string, unknown>;
+  const policesRaw = Array.isArray(parsed.polices) ? (parsed.polices as Record<string, unknown>[]) : [];
+
+  const accountId = typeof accountDetails.accountId === 'string' ? accountDetails.accountId : '';
+  if (!accountId) {
+    console.warn('[account] GetAccountByCode missing accountId:', rawBody.slice(0, 300));
+    throw new Error('Invalid response from server.');
+  }
+
+  const polices: AccountPreviewPolice[] = [];
+  for (const p of policesRaw) {
+    const contentId = typeof p.contentId === 'string' ? p.contentId : '';
+    const title = typeof p.title === 'string' ? p.title : '';
+    const richText = typeof p.richText === 'string' ? p.richText : '';
+    if (contentId) polices.push({ contentId, title, richText });
+  }
+
+  return {
+    accountId,
+    name: typeof accountDetails.name === 'string' ? accountDetails.name : '',
+    email: typeof accountDetails.email === 'string' ? accountDetails.email : '',
+    phoneNumber:
+      typeof accountDetails.phoneNumber === 'string' ? accountDetails.phoneNumber : '',
+    legalId: typeof account.legalId === 'string' ? account.legalId : '',
+    polices,
+  };
+}
+
+// ----------------------------------------------------------------------------
 // ValidateCode: POST /api/Account/ValidateCode
 // 400 -> codigo invalido/expirado, vira ValidateCodeError com msg localizada.
 // 200 -> { accountId, message, messageIng, messageEsp }

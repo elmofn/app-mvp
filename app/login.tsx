@@ -243,15 +243,17 @@ export default function LoginFormScreen() {
                 <TextInput
                   style={styles.passwordInput}
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(val) => setPassword(val.replace(/\D/g, ''))}
                   onFocus={() => setFocusedField('password')}
                   onBlur={() => setFocusedField(null)}
-                  placeholder="Your password"
+                  placeholder="0 0 0 0"
                   placeholderTextColor="#B5B5BD"
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   autoCorrect={false}
                   autoComplete="password"
+                  keyboardType="number-pad"
+                  maxLength={4}
                 />
                 <TouchableOpacity
                   style={styles.eyeButton}

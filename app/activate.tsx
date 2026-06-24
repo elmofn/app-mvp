@@ -60,7 +60,7 @@ const STEPS: Step[] = [
     description:
       'Enter the activation code you received to confirm your TravelBACK account.',
     label: 'Activation Code',
-    placeholder: '0 0 0 0 0 0',
+    placeholder: 'Your activation code',
     key: 'code',
   },
   {
@@ -68,9 +68,9 @@ const STEPS: Step[] = [
     titleFirst: 'Create',
     titleAccent: 'Password',
     description:
-      'Set a strong password to protect your data and your future trips with TravelBACK.',
+      'Set a 4-digit PIN to protect your TravelBACK account.',
     label: 'Password',
-    placeholder: 'At least 8 characters',
+    placeholder: '0 0 0 0',
     key: 'password',
   },
   {
@@ -187,8 +187,8 @@ export default function ActivationScreen() {
   };
 
   const handleVerifyCode = async () => {
-    if (code.length !== 6) {
-      setStepError('Enter the 6-digit activation code.');
+    if (code.trim().length === 0) {
+      setStepError('Enter your activation code.');
       return;
     }
     setIsVerifyingCode(true);
@@ -211,8 +211,8 @@ export default function ActivationScreen() {
 
   const handleSavePassword = async () => {
     if (!preview) return;
-    if (password.length < 8) {
-      setStepError('Use at least 8 characters.');
+    if (password.length !== 4) {
+      setStepError('Use a 4-digit PIN.');
       return;
     }
     setIsSavingPassword(true);
@@ -291,8 +291,8 @@ export default function ActivationScreen() {
   const inputValue = isCode ? code : isPassword ? password : '';
   const setInputValue = (val: string) => {
     if (stepError) setStepError(null);
-    if (isCode) setCode(val.replace(/\D/g, ''));
-    else if (isPassword) setPassword(val);
+    if (isCode) setCode(val);
+    else if (isPassword) setPassword(val.replace(/\D/g, ''));
   };
 
   const isBusy = isVerifyingCode || isSavingPassword || isFinishing;
@@ -411,6 +411,8 @@ export default function ActivationScreen() {
                     autoCapitalize="none"
                     autoCorrect={false}
                     autoComplete="password-new"
+                    keyboardType="number-pad"
+                    maxLength={4}
                     value={inputValue}
                     onChangeText={setInputValue}
                   />
@@ -436,11 +438,8 @@ export default function ActivationScreen() {
                   onBlur={() => setFocusedField(false)}
                   value={inputValue}
                   onChangeText={setInputValue}
-                  keyboardType="number-pad"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  autoComplete="one-time-code"
-                  maxLength={6}
                 />
               )}
 

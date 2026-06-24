@@ -413,7 +413,7 @@ export default function SettingsScreen() {
       if (currencies.length === 0 || currenciesError) {
         setCurrenciesLoading(true);
         setCurrenciesError(null);
-        getCurrencies('', lang)
+        getCurrencies(lang)
           .then((list) => setCurrencies(list))
           .catch((err) => {
             const message = err instanceof Error ? err.message : 'Could not load currencies.';

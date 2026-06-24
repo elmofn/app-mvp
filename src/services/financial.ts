@@ -24,14 +24,11 @@ const CurrencyOptionSchema: z.ZodType<CurrencyOption> = z.object({
 });
 
 // GetCurrency: POST /api/Financial/GetCurrency
-// Com code = '' a API devolve a lista completa (~173 moedas). Mandando
-// um code valido o servidor faz o filtro - no app fazemos filter
-// client-side via search box do picker, entao chamamos uma unica vez
-// com string vazia.
-export async function getCurrencies(
-  code: string,
-  _lang: SupportedLang,
-): Promise<CurrencyOption[]> {
+// Body OBRIGATORIAMENTE com code = '' para que a API devolva a lista
+// completa (~173 moedas). Mandando um code valido o servidor filtra
+// para um unico item, o que nao serve para o picker. O filtro fica
+// client-side via search box.
+export async function getCurrencies(_lang: SupportedLang): Promise<CurrencyOption[]> {
   const url = `${API_BASE_URL}/api/Financial/GetCurrency`;
   const response = await fetch(url, {
     method: 'POST',
@@ -39,7 +36,7 @@ export async function getCurrencies(
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({ code: '' }),
   });
 
   if (!response.ok) {

@@ -286,6 +286,38 @@ export async function removeAccount(
 }
 
 // ----------------------------------------------------------------------------
+// SendPasswordRecoveryToken: POST /api/Security/SendPasswordRecoveryToken
+// Inicia o fluxo de "esqueci minha senha" - o backend dispara um codigo
+// para o e-mail informado. A validacao do codigo segue pelo ValidateCode
+// padrao (identifier = email) e a troca da senha pelo SetNewPassword.
+// ----------------------------------------------------------------------------
+
+export async function sendPasswordRecoveryToken(
+  email: string,
+  lang: SupportedLang,
+): Promise<void> {
+  const url = `${API_BASE_URL}/api/Security/SendPasswordRecoveryToken`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!response.ok) {
+    const message = await parseLocalizedError(
+      response,
+      lang,
+      `SendPasswordRecoveryToken failed (${response.status})`,
+    );
+    console.warn('[account] SendPasswordRecoveryToken HTTP', response.status);
+    throw new Error(message);
+  }
+}
+
+// ----------------------------------------------------------------------------
 // SetNewPasswordAccount: POST /api/Account/SetNewPasswordAccount
 // ----------------------------------------------------------------------------
 

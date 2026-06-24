@@ -9,7 +9,6 @@ import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
-import { getLocalCurrency } from '@/src/utils/balance';
 import { formatCurrency } from '@/src/utils/format';
 
 const PT_MONTHS = [
@@ -89,12 +88,12 @@ export default function TransactionDetailScreen() {
     );
   }
 
-  const local = getLocalCurrency(account);
   const isPositive = tx.type === 1;
-  // Valores historicos: usamos a taxa fixada no momento da transacao
-  // (tx.exchangeRate / tx.originValue) em vez de local.rate. Local.rate
-  // serve apenas para o saldo vivo; aplica-lo aqui faria valores antigos
-  // se mexerem cada vez que a cotacao do dia variasse.
+  // Tudo aqui vem congelado no SignIn: rate / value / symbol / code.
+  // O setups.currency (refresh via GetCurrency) so impacta o saldo
+  // exibido na home/extrato - na pagina de transacao usamos os campos
+  // historicos para que os numeros nao mudem se o usuario trocar a
+  // currency atual.
   const valueLocal = tx.originValue;
   const purchaseValueLocal = (tx.details?.purchaseValue ?? 0) * tx.exchangeRate;
   const typeLabel = isPositive ? 'Cashback' : 'Resgate';
@@ -123,7 +122,7 @@ export default function TransactionDetailScreen() {
 
             <View style={styles.amountBlock}>
               <Text style={[styles.amount, isPositive ? styles.amountPositive : styles.amountNegative]}>
-                {isPositive ? '+' : '-'} {local.symbol} {formatCurrency(valueLocal)}
+                {isPositive ? '+' : '-'} {tx.originCurrencySymbol} {formatCurrency(valueLocal)}
               </Text>
               <Text style={styles.amountUsd}>
                 {isPositive ? '+' : '-'} US$ {formatCurrency(tx.value)}
@@ -150,19 +149,19 @@ export default function TransactionDetailScreen() {
 
           <Section title="Financial">
             <Row
-              label={`Value (${local.code})`}
-              value={`${local.symbol} ${formatCurrency(valueLocal)}`}
+              label={`Value (${tx.originCurrencyCode})`}
+              value={`${tx.originCurrencySymbol} ${formatCurrency(valueLocal)}`}
             />
             <Row label="Value (USD)" value={`US$ ${formatCurrency(tx.value)}`} />
             {tx.details?.purchaseValue > 0 ? (
               <Row
                 label="Purchase Value"
-                value={`US$ ${formatCurrency(tx.details.purchaseValue)} (${local.symbol} ${formatCurrency(purchaseValueLocal)})`}
+                value={`US$ ${formatCurrency(tx.details.purchaseValue)} (${tx.originCurrencySymbol} ${formatCurrency(purchaseValueLocal)})`}
               />
             ) : null}
             <Row
               label="Exchange Rate"
-              value={`${local.symbol} ${formatCurrency(tx.exchangeRate)} / US$ 1`}
+              value={`${tx.originCurrencySymbol} ${formatCurrency(tx.exchangeRate)} / US$ 1`}
             />
             {tx.details?.cashBackPercente > 0 ? (
               <Row label="Cashback %" value={`${tx.details.cashBackPercente}%`} />

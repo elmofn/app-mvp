@@ -108,6 +108,8 @@ export const SignInStatementSchema = z.object({
   id: z.string(),
   accountId: z.string(),
   originCurrencyId: z.string(),
+  originCurrencyCode: z.string(),
+  originCurrencySymbol: z.string(),
   title: z.string(),
   type: z.number(),
   value: z.number(),

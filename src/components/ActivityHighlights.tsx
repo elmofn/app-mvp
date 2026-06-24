@@ -4,7 +4,6 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import type { SignInStatement } from '@/src/services/auth';
 import { fonts } from '@/src/theme/typography';
-import type { LocalCurrency } from '@/src/utils/balance';
 import { formatCurrency } from '@/src/utils/format';
 
 const PT_MONTHS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
@@ -17,23 +16,22 @@ function formatStatementDate(iso: string): string {
 
 type Props = {
   statements: SignInStatement[] | undefined;
-  // Moeda local do usuario - usada para formatar os highlights na
-  // moeda escolhida em settings (statements vem sempre em USD).
-  localCurrency: LocalCurrency;
 };
 
 // Renderiza os 4 lancamentos mais recentes da conta dentro do header da home.
 // Quando a conta ainda nao tem transacoes, o componente nao renderiza nada
 // (retorna null) - sem fallback para dados mockados.
-export function ActivityHighlights({ statements, localCurrency }: Props) {
+export function ActivityHighlights({ statements }: Props) {
   const highlights = useMemo(() => {
     if (!statements || statements.length === 0) return [];
     return statements.slice(0, 4).map((tx) => {
       // type 1 = entrada (cashback), type 2 = saida (resgate)
       const isPositive = tx.type === 1;
-      // Valor historico: ja vem convertido no SignIn. localCurrency
-      // entra apenas como symbol; a taxa que conta aqui esta congelada
-      // dentro do proprio tx.originValue.
+      // Valor + symbol historicos: SignIn ja traz tx.originValue
+      // convertido e tx.originCurrencySymbol congelado no momento da
+      // transacao. Nao usamos a moeda atual do usuario aqui, senao
+      // historico antigo apareceria com simbolo errado quando o
+      // usuario mudasse a defaultCurrency em settings.
       const valueLocal = tx.originValue;
       const productName = tx.details?.productName ?? '';
       const date = formatStatementDate(tx.creationTime);
@@ -41,10 +39,10 @@ export function ActivityHighlights({ statements, localCurrency }: Props) {
         id: tx.id,
         title: tx.details?.unitName ?? '—',
         dateLabel: productName ? `${productName} • ${date}` : date,
-        amount: `${isPositive ? '+' : '-'} ${localCurrency.symbol} ${formatCurrency(valueLocal)}`,
+        amount: `${isPositive ? '+' : '-'} ${tx.originCurrencySymbol} ${formatCurrency(valueLocal)}`,
       };
     });
-  }, [statements, localCurrency]);
+  }, [statements]);
 
   if (highlights.length === 0) return null;
 

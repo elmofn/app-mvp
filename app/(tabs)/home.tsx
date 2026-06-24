@@ -191,7 +191,7 @@ export default function HomeScreen() {
   </Animated.View>
 
   {/* Activity Highlights: nao renderiza se a conta nao tem transacoes */}
-  <ActivityHighlights statements={account?.statements} localCurrency={local} />
+  <ActivityHighlights statements={account?.statements} />
 </LinearGradient>
 
 {/* --- QUICK ACTIONS: cada card com delay e lado alternado --- */}

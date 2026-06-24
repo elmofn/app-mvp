@@ -220,10 +220,11 @@ export default function StatementScreen() {
                 <View style={styles.transactionsColumn}>
                   {group.items.map((tx) => {
                     const isPositive = tx.type === 1;
-                    // Valor historico: ja vem convertido no payload do
-                    // SignIn (tx.value * tx.exchangeRate na epoca da
-                    // transacao). Nao reaplicamos local.rate aqui - isso
-                    // movimentaria valores antigos com a cotacao de hoje.
+                    // Valor + symbol historicos: ambos vem congelados
+                    // no SignIn (originValue + originCurrencySymbol).
+                    // Local.symbol soh decide o que aparece no header
+                    // de saldo - aqui usamos o que estava ativo no
+                    // momento da transacao.
                     const valueLocal = tx.originValue;
                     return (
                       <TouchableOpacity
@@ -244,7 +245,7 @@ export default function StatementScreen() {
                           ) : null}
                         </View>
                         <Text style={[styles.txAmount, isPositive && styles.amountPositive]}>
-                          {isPositive ? '+' : '-'} {local.symbol} {formatCurrency(valueLocal)}
+                          {isPositive ? '+' : '-'} {tx.originCurrencySymbol} {formatCurrency(valueLocal)}
                         </Text>
                       </TouchableOpacity>
                     );

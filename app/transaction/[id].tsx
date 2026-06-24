@@ -91,8 +91,12 @@ export default function TransactionDetailScreen() {
 
   const local = getLocalCurrency(account);
   const isPositive = tx.type === 1;
-  const valueLocal = tx.value * local.rate;
-  const purchaseValueLocal = (tx.details?.purchaseValue ?? 0) * local.rate;
+  // Valores historicos: usamos a taxa fixada no momento da transacao
+  // (tx.exchangeRate / tx.originValue) em vez de local.rate. Local.rate
+  // serve apenas para o saldo vivo; aplica-lo aqui faria valores antigos
+  // se mexerem cada vez que a cotacao do dia variasse.
+  const valueLocal = tx.originValue;
+  const purchaseValueLocal = (tx.details?.purchaseValue ?? 0) * tx.exchangeRate;
   const typeLabel = isPositive ? 'Cashback' : 'Resgate';
 
   return (
@@ -158,7 +162,7 @@ export default function TransactionDetailScreen() {
             ) : null}
             <Row
               label="Exchange Rate"
-              value={`${local.symbol} ${formatCurrency(local.rate)} / US$ 1`}
+              value={`${local.symbol} ${formatCurrency(tx.exchangeRate)} / US$ 1`}
             />
             {tx.details?.cashBackPercente > 0 ? (
               <Row label="Cashback %" value={`${tx.details.cashBackPercente}%`} />

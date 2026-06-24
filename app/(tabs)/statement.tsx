@@ -220,7 +220,11 @@ export default function StatementScreen() {
                 <View style={styles.transactionsColumn}>
                   {group.items.map((tx) => {
                     const isPositive = tx.type === 1;
-                    const valueLocal = tx.value * local.rate;
+                    // Valor historico: ja vem convertido no payload do
+                    // SignIn (tx.value * tx.exchangeRate na epoca da
+                    // transacao). Nao reaplicamos local.rate aqui - isso
+                    // movimentaria valores antigos com a cotacao de hoje.
+                    const valueLocal = tx.originValue;
                     return (
                       <TouchableOpacity
                         key={tx.id}

@@ -31,7 +31,10 @@ export function ActivityHighlights({ statements, localCurrency }: Props) {
     return statements.slice(0, 4).map((tx) => {
       // type 1 = entrada (cashback), type 2 = saida (resgate)
       const isPositive = tx.type === 1;
-      const valueLocal = tx.value * localCurrency.rate;
+      // Valor historico: ja vem convertido no SignIn. localCurrency
+      // entra apenas como symbol; a taxa que conta aqui esta congelada
+      // dentro do proprio tx.originValue.
+      const valueLocal = tx.originValue;
       const productName = tx.details?.productName ?? '';
       const date = formatStatementDate(tx.creationTime);
       return {

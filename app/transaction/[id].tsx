@@ -9,6 +9,7 @@ import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
+import { getLocalCurrency } from '@/src/utils/balance';
 import { formatCurrency } from '@/src/utils/format';
 
 const PT_MONTHS = [
@@ -88,10 +89,10 @@ export default function TransactionDetailScreen() {
     );
   }
 
-  const exchangeRate = account?.setups.currency.currentExchangeRate || 1;
+  const local = getLocalCurrency(account);
   const isPositive = tx.type === 1;
-  const valueBRL = tx.value * exchangeRate;
-  const purchaseValueBRL = (tx.details?.purchaseValue ?? 0) * exchangeRate;
+  const valueLocal = tx.value * local.rate;
+  const purchaseValueLocal = (tx.details?.purchaseValue ?? 0) * local.rate;
   const typeLabel = isPositive ? 'Cashback' : 'Resgate';
 
   return (
@@ -118,7 +119,7 @@ export default function TransactionDetailScreen() {
 
             <View style={styles.amountBlock}>
               <Text style={[styles.amount, isPositive ? styles.amountPositive : styles.amountNegative]}>
-                {isPositive ? '+' : '-'} R$ {formatCurrency(valueBRL)}
+                {isPositive ? '+' : '-'} {local.symbol} {formatCurrency(valueLocal)}
               </Text>
               <Text style={styles.amountUsd}>
                 {isPositive ? '+' : '-'} US$ {formatCurrency(tx.value)}
@@ -144,15 +145,21 @@ export default function TransactionDetailScreen() {
           </Section>
 
           <Section title="Financial">
-            <Row label="Original Value (BRL)" value={`R$ ${formatCurrency(valueBRL)}`} />
+            <Row
+              label={`Value (${local.code})`}
+              value={`${local.symbol} ${formatCurrency(valueLocal)}`}
+            />
             <Row label="Value (USD)" value={`US$ ${formatCurrency(tx.value)}`} />
             {tx.details?.purchaseValue > 0 ? (
               <Row
                 label="Purchase Value"
-                value={`US$ ${formatCurrency(tx.details.purchaseValue)} (R$ ${formatCurrency(purchaseValueBRL)})`}
+                value={`US$ ${formatCurrency(tx.details.purchaseValue)} (${local.symbol} ${formatCurrency(purchaseValueLocal)})`}
               />
             ) : null}
-            <Row label="Exchange Rate" value={`R$ ${formatCurrency(tx.exchangeRate)} / US$ 1`} />
+            <Row
+              label="Exchange Rate"
+              value={`${local.symbol} ${formatCurrency(local.rate)} / US$ 1`}
+            />
             {tx.details?.cashBackPercente > 0 ? (
               <Row label="Cashback %" value={`${tx.details.cashBackPercente}%`} />
             ) : null}

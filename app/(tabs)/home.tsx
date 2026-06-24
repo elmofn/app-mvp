@@ -34,6 +34,7 @@ import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
+import { getLocalCurrency } from '@/src/utils/balance';
 import { formatCurrency } from '@/src/utils/format';
 
 export default function HomeScreen() {
@@ -42,11 +43,13 @@ export default function HomeScreen() {
   const showAlert = useAlert();
 
   const firstName = account?.accountDetails.name?.trim().split(/\s+/)[0] ?? '';
-  // available vem sempre em USD; convertemos para a moeda local multiplicando
-  // pelo currentExchangeRate (cotacao da moeda do usuario por 1 USD).
-  const exchangeRate = account?.setups.currency.currentExchangeRate || 1;
+  // available vem sempre em USD; convertemos para a moeda local
+  // multiplicando pelo currentExchangeRate (cotacao da moeda do usuario
+  // por 1 USD). symbol/code/rate vem do helper para refletir trocas
+  // feitas em settings sem precisar re-login.
+  const local = getLocalCurrency(account);
   const balanceUSD = account ? formatCurrency(account.balance.available) : '0,00';
-  const balanceBRL = account ? formatCurrency(account.balance.available * exchangeRate) : '0,00';
+  const balanceLocal = account ? formatCurrency(account.balance.available * local.rate) : '0,00';
 
   // Controle de Saldo
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
@@ -150,9 +153,9 @@ export default function HomeScreen() {
     <View>
       <Text style={styles.balanceLabel}>Available Balance</Text>
       <View style={styles.balanceValueContainer}>
-        <Text style={styles.currency}>R$</Text>
+        <Text style={styles.currency}>{local.symbol}</Text>
         <Text style={styles.balanceValue}>
-          {isBalanceVisible ? balanceBRL : '****'}
+          {isBalanceVisible ? balanceLocal : '****'}
         </Text>
       </View>
       <View style={styles.balanceUsdRow}>
@@ -188,7 +191,7 @@ export default function HomeScreen() {
   </Animated.View>
 
   {/* Activity Highlights: nao renderiza se a conta nao tem transacoes */}
-  <ActivityHighlights statements={account?.statements} exchangeRate={exchangeRate} />
+  <ActivityHighlights statements={account?.statements} localCurrency={local} />
 </LinearGradient>
 
 {/* --- QUICK ACTIONS: cada card com delay e lado alternado --- */}

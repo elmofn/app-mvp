@@ -4,6 +4,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import type { SignInStatement } from '@/src/services/auth';
 import { fonts } from '@/src/theme/typography';
+import type { LocalCurrency } from '@/src/utils/balance';
 import { formatCurrency } from '@/src/utils/format';
 
 const PT_MONTHS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
@@ -16,30 +17,31 @@ function formatStatementDate(iso: string): string {
 
 type Props = {
   statements: SignInStatement[] | undefined;
-  // Cotacao da moeda local por 1 USD (statements vem sempre em USD).
-  exchangeRate: number;
+  // Moeda local do usuario - usada para formatar os highlights na
+  // moeda escolhida em settings (statements vem sempre em USD).
+  localCurrency: LocalCurrency;
 };
 
 // Renderiza os 4 lancamentos mais recentes da conta dentro do header da home.
 // Quando a conta ainda nao tem transacoes, o componente nao renderiza nada
 // (retorna null) - sem fallback para dados mockados.
-export function ActivityHighlights({ statements, exchangeRate }: Props) {
+export function ActivityHighlights({ statements, localCurrency }: Props) {
   const highlights = useMemo(() => {
     if (!statements || statements.length === 0) return [];
     return statements.slice(0, 4).map((tx) => {
       // type 1 = entrada (cashback), type 2 = saida (resgate)
       const isPositive = tx.type === 1;
-      const valueBRL = tx.value * exchangeRate;
+      const valueLocal = tx.value * localCurrency.rate;
       const productName = tx.details?.productName ?? '';
       const date = formatStatementDate(tx.creationTime);
       return {
         id: tx.id,
         title: tx.details?.unitName ?? '—',
         dateLabel: productName ? `${productName} • ${date}` : date,
-        amount: `${isPositive ? '+' : '-'} R$ ${formatCurrency(valueBRL)}`,
+        amount: `${isPositive ? '+' : '-'} ${localCurrency.symbol} ${formatCurrency(valueLocal)}`,
       };
     });
-  }, [statements, exchangeRate]);
+  }, [statements, localCurrency]);
 
   if (highlights.length === 0) return null;
 

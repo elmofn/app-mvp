@@ -21,6 +21,7 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { SignInStatement } from '@/src/services/auth';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
+import { getLocalCurrency } from '@/src/utils/balance';
 import { formatCurrency } from '@/src/utils/format';
 
 const MONTH_ABBR = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
@@ -51,9 +52,11 @@ export default function StatementScreen() {
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedMonth, setSelectedMonth] = useState<string>('');
 
-  const exchangeRate = account?.setups.currency.currentExchangeRate || 1;
+  // Saldo na moeda local do usuario (escolhida em settings) + reflexo
+  // em USD logo abaixo como padrao do app.
+  const local = getLocalCurrency(account);
   const balanceUSD = account ? formatCurrency(account.balance.available) : '0,00';
-  const balanceBRL = account ? formatCurrency(account.balance.available * exchangeRate) : '0,00';
+  const balanceLocal = account ? formatCurrency(account.balance.available * local.rate) : '0,00';
 
   const statements = useMemo(() => account?.statements ?? [], [account]);
 
@@ -147,8 +150,8 @@ export default function StatementScreen() {
             <View style={styles.balanceSection}>
               <Text style={styles.balanceLabel}>Available Balance</Text>
               <Text style={styles.balanceMain}>
-                <Text style={styles.balanceCurrency}>R$ </Text>
-                {balanceBRL}
+                <Text style={styles.balanceCurrency}>{local.symbol} </Text>
+                {balanceLocal}
               </Text>
               <Text style={styles.balanceUsd}>US$ {balanceUSD}</Text>
             </View>
@@ -217,7 +220,7 @@ export default function StatementScreen() {
                 <View style={styles.transactionsColumn}>
                   {group.items.map((tx) => {
                     const isPositive = tx.type === 1;
-                    const valueBRL = tx.value * exchangeRate;
+                    const valueLocal = tx.value * local.rate;
                     return (
                       <TouchableOpacity
                         key={tx.id}
@@ -237,7 +240,7 @@ export default function StatementScreen() {
                           ) : null}
                         </View>
                         <Text style={[styles.txAmount, isPositive && styles.amountPositive]}>
-                          {isPositive ? '+' : '-'} R$ {formatCurrency(valueBRL)}
+                          {isPositive ? '+' : '-'} {local.symbol} {formatCurrency(valueLocal)}
                         </Text>
                       </TouchableOpacity>
                     );

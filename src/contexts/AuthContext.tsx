@@ -6,6 +6,7 @@ import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/
 import {
   signIn as apiSignIn,
   SignInAccountDetails,
+  SignInCurrency,
   SignInResponse,
 } from '@/src/services/auth';
 import { clearSession, loadSession, saveSession } from '@/src/services/storage';
@@ -32,6 +33,10 @@ export type AccountPatch = {
   email?: string;
   phoneNumber?: string;
   lang?: string;
+  // Currency vem inteira do picker (id + code + name + symbol + rate);
+  // gravamos junto com defaultCurrencyId para manter os dois campos do
+  // setups consistentes entre si.
+  currency?: SignInCurrency;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -146,6 +151,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setups: {
         ...current.account.setups,
         ...(patch.lang !== undefined ? { lang: patch.lang } : {}),
+        ...(patch.currency !== undefined
+          ? { currency: patch.currency, defaultCurrencyId: patch.currency.id }
+          : {}),
       },
     };
     setState({ account: next, token: current.token });

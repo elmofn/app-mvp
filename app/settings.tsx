@@ -24,11 +24,13 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import {
   removeAccount,
   requestValidationCode,
+  setAccountSetup,
   setNewPassword,
   updateAccount,
   validateCode,
   ValidateCodeError,
 } from '@/src/services/account';
+import { CurrencyOption, getCurrencies } from '@/src/services/financial';
 import { getUserLanguage, SupportedLang } from '@/src/services/locale';
 import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/src/services/location';
 import { colors } from '@/src/theme/colors';
@@ -45,12 +47,6 @@ function formatPhone(raw: string): string {
   }
   return raw;
 }
-
-const CURRENCIES = [
-  { label: 'US Dollar', value: 'USD' },
-  { label: 'Brazilian Real', value: 'BRL' },
-  { label: 'Euro', value: 'EUR' },
-];
 
 const LANGUAGES: { label: string; value: SupportedLang }[] = [
   { label: 'English - US', value: 'en-US' },
@@ -75,8 +71,15 @@ export default function SettingsScreen() {
       email: account?.accountDetails.email ?? '',
       phoneDigits: (account?.accountDetails.phoneNumber ?? '').replace(/\D/g, ''),
       lang: (account?.setups.lang ?? 'en-US') as SupportedLang,
+      currencyId: account?.setups.currency.id ?? '',
     }),
-    [account?.accountDetails.name, account?.accountDetails.email, account?.accountDetails.phoneNumber, account?.setups.lang],
+    [
+      account?.accountDetails.name,
+      account?.accountDetails.email,
+      account?.accountDetails.phoneNumber,
+      account?.setups.lang,
+      account?.setups.currency.id,
+    ],
   );
 
   const [name, setName] = useState(original.name);
@@ -84,9 +87,21 @@ export default function SettingsScreen() {
   const [email, setEmail] = useState(original.email);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  const [currency, setCurrency] = useState(
-    CURRENCIES.find((c) => c.value === account?.setups.currency.code) ?? CURRENCIES[0],
-  );
+  // O currency selecionado segue o shape de SignInCurrency (id + code +
+  // name + symbol + rate) para que possamos refletir a mudanca direto
+  // no AuthContext sem precisar refetchar a conta.
+  const [currency, setCurrency] = useState<CurrencyOption | null>(() => {
+    const c = account?.setups.currency;
+    return c ? { id: c.id, code: c.code, name: c.name, symbol: c.symbol, currentExchangeRate: c.currentExchangeRate } : null;
+  });
+  // Lista vinda de GetCurrency - carregada uma unica vez ao abrir o
+  // picker pela primeira vez. Mantemos a busca client-side, ja que a
+  // API devolve a lista inteira (~173 itens) num so payload.
+  const [currencies, setCurrencies] = useState<CurrencyOption[]>([]);
+  const [currenciesLoading, setCurrenciesLoading] = useState(false);
+  const [currenciesError, setCurrenciesError] = useState<string | null>(null);
+  const [currencySearch, setCurrencySearch] = useState('');
+
   const [language, setLanguage] = useState(
     LANGUAGES.find((l) => l.value === original.lang) ?? LANGUAGES[0],
   );
@@ -125,37 +140,70 @@ export default function SettingsScreen() {
   const emailDirty = nextEmail !== original.email.trim().toLowerCase();
   const phoneDirty = phoneDigits !== original.phoneDigits;
   const langDirty = language.value !== original.lang;
-  const isDirty = nameDirty || emailDirty || phoneDirty || langDirty;
+  const currencyDirty = (currency?.id ?? '') !== original.currencyId;
+  const profileDirty = nameDirty || emailDirty || phoneDirty || langDirty;
+  const isDirty = profileDirty || currencyDirty;
   const requiresVerification = emailDirty || phoneDirty;
 
-  // Executa a PUT UpdateAccount com o snapshot atual do form e propaga o
-  // novo estado para o AuthContext (que persiste no storage).
+  // Executa as PUTs/POSTs do save em sequencia e propaga o novo estado
+  // para o AuthContext (que persiste no storage). UpdateAccount cuida
+  // de name/email/phone/language; SetAccountSetup cuida de currency.
+  // Sao chamadas separadas porque cobrem dominios diferentes do backend.
   const performUpdate = async () => {
     if (!account) return;
     setIsSaving(true);
     try {
-      let coords = getCachedLocation();
-      if (!coords) coords = await getCurrentLocation();
-      const geolocation = formatLocationPayload(coords);
+      if (profileDirty) {
+        let coords = getCachedLocation();
+        if (!coords) coords = await getCurrentLocation();
+        const geolocation = formatLocationPayload(coords);
 
-      await updateAccount(
-        {
-          accountId: account.accountDetails.accountId,
-          name: nextName,
-          email: nextEmail,
-          legalId: account.account.legalId,
-          phoneNumber: phoneDigits,
-          language: language.value,
-          geolocation,
-        },
-        lang,
-      );
+        await updateAccount(
+          {
+            accountId: account.accountDetails.accountId,
+            name: nextName,
+            email: nextEmail,
+            legalId: account.account.legalId,
+            phoneNumber: phoneDigits,
+            language: language.value,
+            geolocation,
+          },
+          lang,
+        );
+      }
+
+      if (currencyDirty && currency) {
+        await setAccountSetup(
+          {
+            accountId: account.accountDetails.accountId,
+            defaultCurrencyId: currency.id,
+            language: language.value,
+          },
+          lang,
+        );
+      }
 
       await updateAccountDetails({
-        name: nextName,
-        email: nextEmail,
-        phoneNumber: phoneDigits,
-        lang: language.value,
+        ...(profileDirty
+          ? {
+              name: nextName,
+              email: nextEmail,
+              phoneNumber: phoneDigits,
+              lang: language.value,
+            }
+          : {}),
+        ...(currencyDirty && currency
+          ? {
+              currency: {
+                id: currency.id,
+                code: currency.code,
+                name: currency.name,
+                symbol: currency.symbol ?? account.setups.currency.symbol,
+                currentExchangeRate:
+                  currency.currentExchangeRate ?? account.setups.currency.currentExchangeRate,
+              },
+            }
+          : {}),
       });
 
       showAlert('Profile updated', 'Your changes have been saved.');
@@ -357,6 +405,23 @@ export default function SettingsScreen() {
 
   const openPicker = (type: 'currency' | 'language') => {
     setModalVisible({ type });
+    if (type === 'currency') {
+      setCurrencySearch('');
+      // Lazy fetch: a primeira abertura puxa a lista completa; nas
+      // proximas reusamos o cache em memoria. Se a chamada anterior
+      // falhou, tentamos de novo.
+      if (currencies.length === 0 || currenciesError) {
+        setCurrenciesLoading(true);
+        setCurrenciesError(null);
+        getCurrencies('', lang)
+          .then((list) => setCurrencies(list))
+          .catch((err) => {
+            const message = err instanceof Error ? err.message : 'Could not load currencies.';
+            setCurrenciesError(message);
+          })
+          .finally(() => setCurrenciesLoading(false));
+      }
+    }
   };
 
   // Posicionamento manual da sticky bar: ouvimos os eventos do Keyboard e
@@ -465,7 +530,9 @@ export default function SettingsScreen() {
             >
               <Text style={styles.inputLabel}>Currency</Text>
               <View style={styles.selectField}>
-                <Text style={styles.selectValue}>{currency.label}</Text>
+                <Text style={styles.selectValue}>
+                  {currency ? `${currency.name} (${currency.code})` : 'Select currency'}
+                </Text>
                 <CaretDownIcon size={16} color={colors.text.muted} />
               </View>
             </TouchableOpacity>
@@ -541,35 +608,97 @@ export default function SettingsScreen() {
           activeOpacity={1}
           onPress={() => setModalVisible({ type: null })}
         >
-          <View style={styles.modalContent}>
+          <TouchableOpacity
+            style={styles.modalContent}
+            activeOpacity={1}
+            onPress={() => undefined}
+          >
             <Text style={styles.modalTitle}>
               {modalVisible.type === 'currency' ? 'SELECT CURRENCY' : 'SELECT LANGUAGE'}
             </Text>
-            <FlatList
-              data={modalVisible.type === 'currency' ? CURRENCIES : LANGUAGES}
-              keyExtractor={(item) => item.value}
-              renderItem={({ item }) => {
-                const isActive =
-                  modalVisible.type === 'currency'
-                    ? currency.value === item.value
-                    : language.value === item.value;
-                return (
-                  <TouchableOpacity
-                    style={styles.modalOption}
-                    onPress={() => {
-                      if (modalVisible.type === 'currency') setCurrency(item);
-                      else setLanguage(item as { label: string; value: SupportedLang });
-                      setModalVisible({ type: null });
+
+            {modalVisible.type === 'currency' ? (
+              <>
+                <TextInput
+                  style={styles.modalSearch}
+                  placeholder="Search currency or code"
+                  placeholderTextColor="#B5B5BD"
+                  value={currencySearch}
+                  onChangeText={setCurrencySearch}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+
+                {currenciesLoading ? (
+                  <View style={styles.modalStateBox}>
+                    <ActivityIndicator color={colors.text.dark} />
+                  </View>
+                ) : currenciesError ? (
+                  <View style={styles.modalStateBox}>
+                    <Text style={styles.modalStateText}>{currenciesError}</Text>
+                  </View>
+                ) : (
+                  <FlatList
+                    data={currencies.filter((c) => {
+                      const q = currencySearch.trim().toLowerCase();
+                      if (!q) return true;
+                      return (
+                        c.code.toLowerCase().includes(q) ||
+                        c.name.toLowerCase().includes(q)
+                      );
+                    })}
+                    keyExtractor={(item) => item.id}
+                    keyboardShouldPersistTaps="handled"
+                    renderItem={({ item }) => {
+                      const isActive = currency?.id === item.id;
+                      return (
+                        <TouchableOpacity
+                          style={styles.modalOption}
+                          onPress={() => {
+                            setCurrency(item);
+                            setModalVisible({ type: null });
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.modalOptionText,
+                              isActive && styles.modalOptionActive,
+                            ]}
+                          >
+                            {item.name} ({item.code})
+                          </Text>
+                        </TouchableOpacity>
+                      );
                     }}
-                  >
-                    <Text style={[styles.modalOptionText, isActive && styles.modalOptionActive]}>
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }}
-            />
-          </View>
+                    ListEmptyComponent={
+                      <Text style={styles.modalStateText}>No currencies match your search.</Text>
+                    }
+                  />
+                )}
+              </>
+            ) : (
+              <FlatList
+                data={LANGUAGES}
+                keyExtractor={(item) => item.value}
+                renderItem={({ item }) => {
+                  const isActive = language.value === item.value;
+                  return (
+                    <TouchableOpacity
+                      style={styles.modalOption}
+                      onPress={() => {
+                        setLanguage(item);
+                        setModalVisible({ type: null });
+                      }}
+                    >
+                      <Text style={[styles.modalOptionText, isActive && styles.modalOptionActive]}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            )}
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
@@ -868,7 +997,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 8,
     padding: 24,
-    maxHeight: '50%',
+    maxHeight: '75%',
   },
   modalTitle: {
     fontSize: 12,
@@ -890,6 +1019,30 @@ const styles = StyleSheet.create({
   modalOptionActive: {
     color: colors.brand.primary,
     fontFamily: fonts.bold,
+  },
+  modalSearch: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: colors.text.dark,
+    marginBottom: 8,
+  },
+  modalStateBox: {
+    paddingVertical: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalStateText: {
+    fontSize: 13,
+    fontFamily: fonts.regular,
+    color: colors.text.muted,
+    textAlign: 'center',
+    paddingVertical: 24,
   },
 
   verifyOverlay: {

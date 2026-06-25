@@ -19,7 +19,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Animated, { FadeInRight } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ShopBannersCarousel } from '@/src/components/ShopBannersCarousel';
@@ -306,7 +305,6 @@ export default function TravelShopScreen() {
 
         {/* --- BALANCE ACTION CARD: mesmo botao que aparece na home --- */}
         <View style={styles.quickActions}>
-          <Animated.View entering={FadeInRight.delay(550).duration(500)}>
             <TouchableOpacity
               style={styles.actionCard}
               onPress={() => router.push('/statement')}
@@ -320,7 +318,6 @@ export default function TravelShopScreen() {
                 <CoinsIcon size={32} color="#0F022D" weight="regular" />
               </View>
             </TouchableOpacity>
-          </Animated.View>
         </View>
 
         <View style={styles.section}>
@@ -455,7 +452,7 @@ const styles = StyleSheet.create({
   // --- ACTION CARD (Balance) - identico ao da home ---
   quickActions: {
     paddingHorizontal: 20,
-    marginTop: -20,
+    marginTop: 20,
     zIndex: 10,
   },
   actionCard: {

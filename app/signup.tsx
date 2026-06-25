@@ -38,6 +38,7 @@ import {
 } from '@/src/services/account';
 import { getDeviceLanguage } from '@/src/services/locale';
 import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/src/services/location';
+import { EditFieldKind, EditReviewFieldModal } from '@/src/components/EditReviewFieldModal';
 import { normalizeEmail, normalizePhone, searchByEmail, searchByPhone } from '@/src/services/search';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
@@ -139,6 +140,13 @@ export default function SignupScreen() {
 
   const [emailStatus, setEmailStatus] = useState<CheckStatus>('idle');
   const [phoneStatus, setPhoneStatus] = useState<CheckStatus>('idle');
+
+  // Edit-field modal no review: usuario pode corrigir name ou phone sem
+  // voltar. Como o account ainda nao existe nesse fluxo, edit so atualiza
+  // o formData local e o CreateAccount no final envia ja os valores
+  // corretos. BMG/search roda antes para checar conflito de telefone.
+  type EditableField = 'name' | 'phone';
+  const [editingField, setEditingField] = useState<EditableField | null>(null);
 
   // accountId real (retornado pelo CreateAccount). Usado no
   // RequestValidationCode e no SetNewPasswordAccount.
@@ -391,6 +399,36 @@ export default function SignupScreen() {
     ? `${country.dial} ${formData.phone}`
     : '—';
 
+  // Config + save handler do EditReviewFieldModal para o review do
+  // signup. O account ainda nao existe, entao apenas atualizamos o
+  // formData; phone passa por BMG/search (mesma logica do step 3).
+  const editConfig: Record<EditableField, {
+    label: string;
+    kind: EditFieldKind;
+    initial: string;
+    check?: (val: string) => Promise<boolean>;
+  }> = {
+    name: { label: 'Name', kind: 'text', initial: formData.name },
+    phone: {
+      label: 'Phone',
+      kind: 'phone',
+      initial: formData.phone,
+      check: (digits) => searchByPhone(country.dial, digits),
+    },
+  };
+
+  const handleEditSave = async (newValue: string) => {
+    if (editingField === 'name') {
+      setFormData((prev) => ({ ...prev, name: newValue }));
+    } else if (editingField === 'phone') {
+      setFormData((prev) => ({ ...prev, phone: newValue }));
+      // O step 3 ja cacheou status do phone original - como mudou o
+      // numero por aqui, marcamos available para refletir a checagem
+      // recem feita pelo modal (searchByPhone retornou false).
+      setPhoneStatus('available');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <StatusBar style="light" />
@@ -445,18 +483,26 @@ export default function SignupScreen() {
               {isReview ? (
                 <View>
                   <View style={styles.reviewCard}>
-                    <View style={styles.reviewRow}>
-                      <Text style={styles.reviewLabel}>Name</Text>
+                    <TouchableOpacity
+                      style={styles.reviewRow}
+                      onPress={() => setEditingField('name')}
+                      activeOpacity={0.6}
+                    >
+                      <Text style={styles.reviewLabel}>Name • tap to edit</Text>
                       <Text style={styles.reviewValue}>{formData.name || '—'}</Text>
-                    </View>
+                    </TouchableOpacity>
                     <View style={styles.reviewRow}>
                       <Text style={styles.reviewLabel}>E-mail</Text>
                       <Text style={styles.reviewValue}>{formData.email || '—'}</Text>
                     </View>
-                    <View style={styles.reviewRow}>
-                      <Text style={styles.reviewLabel}>Phone</Text>
+                    <TouchableOpacity
+                      style={styles.reviewRow}
+                      onPress={() => setEditingField('phone')}
+                      activeOpacity={0.6}
+                    >
+                      <Text style={styles.reviewLabel}>Phone • tap to edit</Text>
                       <Text style={styles.reviewValue}>{reviewPhone}</Text>
-                    </View>
+                    </TouchableOpacity>
                   </View>
 
                   <TouchableOpacity
@@ -650,6 +696,16 @@ export default function SignupScreen() {
         onClose={() => setCountryPickerOpen(false)}
         onSelect={(c) => setCountry(c)}
         selectedCode={country.code}
+      />
+
+      <EditReviewFieldModal
+        visible={editingField !== null}
+        fieldLabel={editingField ? editConfig[editingField].label : ''}
+        initialValue={editingField ? editConfig[editingField].initial : ''}
+        kind={editingField ? editConfig[editingField].kind : 'text'}
+        checkConflict={editingField ? editConfig[editingField].check : undefined}
+        onSave={handleEditSave}
+        onClose={() => setEditingField(null)}
       />
     </SafeAreaView>
   );

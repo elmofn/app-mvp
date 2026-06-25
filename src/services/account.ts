@@ -182,6 +182,7 @@ export type AccountPreview = {
   email: string;
   phoneNumber: string;
   legalId: string;
+  language: SupportedLang;
   polices: AccountPreviewPolice[];
 };
 
@@ -226,7 +227,12 @@ export async function getAccountByCode(
 
   const accountDetails = (parsed.accountDetails ?? {}) as Record<string, unknown>;
   const account = (parsed.account ?? {}) as Record<string, unknown>;
+  const setups = (parsed.setups ?? {}) as Record<string, unknown>;
   const policesRaw = Array.isArray(parsed.polices) ? (parsed.polices as Record<string, unknown>[]) : [];
+
+  const rawLang = typeof setups.lang === 'string' ? setups.lang : '';
+  const language: SupportedLang =
+    rawLang === 'pt-BR' || rawLang === 'es-ES' || rawLang === 'en-US' ? rawLang : lang;
 
   const accountId = typeof accountDetails.accountId === 'string' ? accountDetails.accountId : '';
   if (!accountId) {
@@ -249,6 +255,7 @@ export async function getAccountByCode(
     phoneNumber:
       typeof accountDetails.phoneNumber === 'string' ? accountDetails.phoneNumber : '',
     legalId: typeof account.legalId === 'string' ? account.legalId : '',
+    language,
     polices,
   };
 }

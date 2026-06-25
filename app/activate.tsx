@@ -26,6 +26,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { EditFieldKind, EditReviewFieldModal } from '@/src/components/EditReviewFieldModal';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
@@ -34,9 +35,12 @@ import {
   ActivationCodeError,
   getAccountByCode,
   setNewPassword,
+  updateAccount,
 } from '@/src/services/account';
 import { confirmRead } from '@/src/services/alerts';
 import { getDeviceLanguage } from '@/src/services/locale';
+import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/src/services/location';
+import { searchByLegalId, searchByRawDigits } from '@/src/services/search';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -157,6 +161,13 @@ export default function ActivationScreen() {
   const [stepError, setStepError] = useState<string | null>(null);
 
   const [termsVisible, setTermsVisible] = useState(false);
+
+  // Edit-field modal: o usuario pode clicar em uma row do review pra
+  // corrigir name/phone/legalId via UpdateAccount sem voltar pro passo
+  // anterior. Email nao entra (mudar email exige verificacao em fluxos
+  // logados e nao tem prioridade aqui).
+  type EditableField = 'name' | 'phoneNumber' | 'legalId';
+  const [editingField, setEditingField] = useState<EditableField | null>(null);
 
   const progressWidth = useSharedValue(1 / STEPS.length);
   const contentOpacity = useSharedValue(1);
@@ -283,6 +294,58 @@ export default function ActivationScreen() {
     }
   };
 
+  // Resolve label/kind/initial/conflict checker para cada field editavel.
+  // Mantem o componente do modal generico.
+  const editConfig: Record<EditableField, {
+    label: string;
+    kind: EditFieldKind;
+    initial: string;
+    check?: (val: string) => Promise<boolean>;
+  }> = {
+    name: { label: 'Name', kind: 'text', initial: preview?.name ?? '' },
+    phoneNumber: {
+      label: 'Phone',
+      kind: 'phone',
+      initial: preview?.phoneNumber ?? '',
+      check: (digits) => searchByRawDigits(digits),
+    },
+    legalId: {
+      label: 'Legal ID',
+      kind: 'legalId',
+      initial: preview?.legalId ?? '',
+      check: (val) => searchByLegalId(val),
+    },
+  };
+
+  const handleEditSave = async (newValue: string) => {
+    if (!preview) return;
+    const patched: AccountPreview = (() => {
+      if (editingField === 'name') return { ...preview, name: newValue };
+      if (editingField === 'phoneNumber') return { ...preview, phoneNumber: newValue };
+      if (editingField === 'legalId') return { ...preview, legalId: newValue };
+      return preview;
+    })();
+
+    let coords = getCachedLocation();
+    if (!coords) coords = await getCurrentLocation();
+    const geolocation = formatLocationPayload(coords);
+
+    await updateAccount(
+      {
+        accountId: patched.accountId,
+        name: patched.name,
+        email: patched.email,
+        legalId: patched.legalId,
+        phoneNumber: patched.phoneNumber,
+        language: patched.language,
+        geolocation,
+      },
+      lang,
+    );
+
+    setPreview(patched);
+  };
+
   const step = STEPS[currentStep - 1];
   const isReview = currentStep === 3;
   const isPassword = currentStep === 2;
@@ -299,12 +362,14 @@ export default function ActivationScreen() {
   const ctaLabel = isReview ? 'Finish Activation' : 'Next';
   const disabled = (isReview && !acceptedTerms) || isBusy;
 
-  const reviewRows: { label: string; value: string }[] = preview
+  // Tipagem do `field` casa com EditableField para preservar a opcao de
+  // edicao. Email permanece read-only (null no field).
+  const reviewRows: { label: string; value: string; field: EditableField | null }[] = preview
     ? [
-        { label: 'Name', value: preview.name },
-        { label: 'E-mail', value: preview.email },
-        { label: 'Phone', value: preview.phoneNumber },
-        { label: 'Legal ID', value: preview.legalId },
+        { label: 'Name', value: preview.name, field: 'name' },
+        { label: 'E-mail', value: preview.email, field: null },
+        { label: 'Phone', value: preview.phoneNumber, field: 'phoneNumber' },
+        { label: 'Legal ID', value: preview.legalId, field: 'legalId' },
       ].filter((r) => r.value.trim().length > 0)
     : [];
 
@@ -363,12 +428,25 @@ export default function ActivationScreen() {
                 <View>
                   <View style={styles.reviewCard}>
                     {reviewRows.length > 0 ? (
-                      reviewRows.map((row) => (
-                        <View key={row.label} style={styles.reviewRow}>
-                          <Text style={styles.reviewLabel}>{row.label}</Text>
-                          <Text style={styles.reviewValue}>{row.value}</Text>
-                        </View>
-                      ))
+                      reviewRows.map((row) => {
+                        const field = row.field;
+                        return field ? (
+                          <TouchableOpacity
+                            key={row.label}
+                            style={styles.reviewRow}
+                            onPress={() => setEditingField(field)}
+                            activeOpacity={0.6}
+                          >
+                            <Text style={styles.reviewLabel}>{row.label} • tap to edit</Text>
+                            <Text style={styles.reviewValue}>{row.value}</Text>
+                          </TouchableOpacity>
+                        ) : (
+                          <View key={row.label} style={styles.reviewRow}>
+                            <Text style={styles.reviewLabel}>{row.label}</Text>
+                            <Text style={styles.reviewValue}>{row.value}</Text>
+                          </View>
+                        );
+                      })
                     ) : (
                       <Text style={styles.reviewValue}>—</Text>
                     )}
@@ -463,6 +541,16 @@ export default function ActivationScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <EditReviewFieldModal
+        visible={editingField !== null}
+        fieldLabel={editingField ? editConfig[editingField].label : ''}
+        initialValue={editingField ? editConfig[editingField].initial : ''}
+        kind={editingField ? editConfig[editingField].kind : 'text'}
+        checkConflict={editingField ? editConfig[editingField].check : undefined}
+        onSave={handleEditSave}
+        onClose={() => setEditingField(null)}
+      />
 
       <Modal
         visible={termsVisible}

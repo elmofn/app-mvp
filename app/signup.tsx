@@ -1,19 +1,22 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { CaretDownIcon, CheckCircleIcon, CheckIcon, EyeIcon, EyeSlashIcon } from 'phosphor-react-native';
+import { CaretDownIcon, CheckCircleIcon, CheckIcon, EyeIcon, EyeSlashIcon, XIcon } from 'phosphor-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import RenderHTML, { MixedStyleDeclaration } from 'react-native-render-html';
 import Animated, {
   interpolate,
   runOnJS,
@@ -39,6 +42,7 @@ import {
 import { getDeviceLanguage } from '@/src/services/locale';
 import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/src/services/location';
 import { EditFieldKind, EditReviewFieldModal } from '@/src/components/EditReviewFieldModal';
+import { getPolices, PoliceItem } from '@/src/services/policies';
 import { normalizeEmail, normalizePhone, searchByEmail, searchByPhone } from '@/src/services/search';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
@@ -113,9 +117,59 @@ const STEPS: Step[] = [
 
 type CheckStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid';
 
+// Estilos para o RenderHTML do modal de termos no review do signup.
+// Mesma vocabulary do app/terms.tsx e app/activate.tsx para manter a
+// renderizacao consistente entre as telas.
+const HTML_BASE_STYLE: MixedStyleDeclaration = {
+  color: colors.text.dark,
+  fontFamily: fonts.regular,
+  fontSize: 14,
+  lineHeight: 22,
+};
+
+const HTML_TAG_STYLES: Record<string, MixedStyleDeclaration> = {
+  h1: {
+    fontFamily: fonts.bold,
+    fontSize: 24,
+    color: colors.text.dark,
+    letterSpacing: -0.5,
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  h2: {
+    fontFamily: fonts.bold,
+    fontSize: 20,
+    color: colors.text.dark,
+    letterSpacing: -0.3,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  h3: {
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    color: colors.text.dark,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  p: {
+    fontFamily: fonts.regular,
+    color: colors.text.dark,
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: 10,
+  },
+  strong: { fontFamily: fonts.bold },
+  em: { fontFamily: fonts.italic },
+  ol: { marginBottom: 12, paddingLeft: 18 },
+  ul: { marginBottom: 12, paddingLeft: 18 },
+  li: { marginBottom: 4 },
+  a: { color: '#0F022D', textDecorationLine: 'underline' },
+};
+
 export default function SignupScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const { signIn } = useAuth();
   const showAlert = useAlert();
   // Idioma do device - usado tanto no payload do CreateAccount como na
@@ -147,6 +201,13 @@ export default function SignupScreen() {
   // corretos. BMG/search roda antes para checar conflito de telefone.
   type EditableField = 'name' | 'phone';
   const [editingField, setEditingField] = useState<EditableField | null>(null);
+
+  // Modal de termos do review (step 4). Diferente do activate, aqui a
+  // conta ainda nao existe, entao buscamos os polices pelo GetPolices
+  // generico (idioma do device) - sem ConfirmRead, soh exibicao.
+  const [termsVisible, setTermsVisible] = useState(false);
+  const [polices, setPolices] = useState<PoliceItem[]>([]);
+  const policesLoadedRef = useRef(false);
 
   // accountId real (retornado pelo CreateAccount). Usado no
   // RequestValidationCode e no SetNewPasswordAccount.
@@ -271,6 +332,20 @@ export default function SignupScreen() {
     sendValidationCode(accountId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep, accountId]);
+
+  // Pre-carrega os polices assim que o usuario chega no step 4 (review).
+  // O ref impede repetir a chamada se ele voltar pra cá depois.
+  useEffect(() => {
+    if (currentStep !== 4) return;
+    if (policesLoadedRef.current) return;
+    policesLoadedRef.current = true;
+    getPolices(deviceLang)
+      .then((items) => setPolices(items))
+      .catch((err) => {
+        console.warn('[signup] GetPolices failed', err);
+        policesLoadedRef.current = false;
+      });
+  }, [currentStep, deviceLang]);
 
   const handleResendCode = () => {
     if (!accountId || codeSending) return;
@@ -514,8 +589,15 @@ export default function SignupScreen() {
                       {acceptedTerms && <CheckIcon size={14} color={colors.text.light} weight="bold" />}
                     </View>
                     <Text style={styles.checkboxText}>
-                      I accept the <Text style={styles.linkText}>Terms and Conditions</Text> and the{' '}
-                      <Text style={styles.linkText}>Privacy Policy</Text>.
+                      I accept the{' '}
+                      <Text style={styles.linkText} onPress={() => setTermsVisible(true)}>
+                        Terms and Conditions
+                      </Text>{' '}
+                      and the{' '}
+                      <Text style={styles.linkText} onPress={() => setTermsVisible(true)}>
+                        Privacy Policy
+                      </Text>
+                      .
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -707,6 +789,56 @@ export default function SignupScreen() {
         onSave={handleEditSave}
         onClose={() => setEditingField(null)}
       />
+
+      <Modal
+        visible={termsVisible}
+        animationType="slide"
+        onRequestClose={() => setTermsVisible(false)}
+      >
+        <SafeAreaView style={styles.termsContainer} edges={['left', 'right', 'bottom']}>
+          <LinearGradient
+            colors={['#6444DA', '#4D2ACC', '#1B0F4A']}
+            start={{ x: 0.1, y: 0.1 }}
+            end={{ x: 0.8, y: 1.2 }}
+            locations={[0, 0.2, 0.7]}
+            style={[styles.termsHeader, { paddingTop: insets.top + 8 }]}
+          >
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
+            <TouchableOpacity
+              style={styles.termsClose}
+              onPress={() => setTermsVisible(false)}
+              hitSlop={10}
+            >
+              <XIcon size={22} color={colors.text.light} weight="bold" />
+            </TouchableOpacity>
+            <View style={styles.termsHeaderBody}>
+              <Text style={styles.termsEyebrow}>POLICIES</Text>
+              <Text style={styles.termsTitle}>
+                Terms & <Text style={styles.termsTitleAccent}>Conditions</Text>
+              </Text>
+            </View>
+          </LinearGradient>
+
+          <ScrollView contentContainerStyle={styles.termsBody} showsVerticalScrollIndicator={false}>
+            {polices.length > 0 ? (
+              polices.map((p) => (
+                <View key={p.contentId} style={styles.termsPolicy}>
+                  {p.title ? <Text style={styles.termsPolicyTitle}>{p.title}</Text> : null}
+                  <RenderHTML
+                    contentWidth={width - 48}
+                    source={{ html: p.richText }}
+                    baseStyle={HTML_BASE_STYLE}
+                    tagsStyles={HTML_TAG_STYLES}
+                    enableExperimentalMarginCollapsing
+                  />
+                </View>
+              ))
+            ) : (
+              <Text style={styles.termsEmpty}>Terms not available.</Text>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -950,5 +1082,61 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: fonts.bold,
     letterSpacing: 0.5,
+  },
+
+  termsContainer: { flex: 1, backgroundColor: '#FFFFFF' },
+  termsHeader: {
+    paddingBottom: 24,
+    paddingHorizontal: 24,
+  },
+  termsClose: {
+    position: 'absolute',
+    top: 18,
+    right: 18,
+    padding: 6,
+    zIndex: 2,
+  },
+  termsHeaderBody: {
+    marginTop: 12,
+  },
+  termsEyebrow: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
+  termsTitle: {
+    fontSize: 36,
+    fontFamily: fonts.bold,
+    color: colors.text.light,
+    letterSpacing: -1.2,
+  },
+  termsTitleAccent: {
+    color: '#85EDD3',
+    fontFamily: fonts.italic,
+  },
+  termsBody: {
+    paddingHorizontal: 24,
+    paddingTop: 18,
+    paddingBottom: 40,
+  },
+  termsPolicy: {
+    marginBottom: 24,
+  },
+  termsPolicyTitle: {
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    color: colors.text.muted,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    marginBottom: 12,
+  },
+  termsEmpty: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: colors.text.muted,
+    paddingVertical: 24,
+    textAlign: 'center',
   },
 });

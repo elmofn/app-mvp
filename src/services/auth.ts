@@ -83,18 +83,16 @@ export const SignInPolicySchema = z.object({
   richText: z.string(),
 });
 
-export const SignInHomeBannerSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  description: z.string(),
-  imageUrl: z.string(),
-});
+// Banners home e shop agora chegam num unico array, separados pelo campo
+// `category` ("Home" | "Shop"). Cada tela filtra a categoria que consome.
+export type BannerCategory = 'Home' | 'Shop';
 
-export const SignInShopBannerSchema = z.object({
+export const SignInBannerSchema = z.object({
   id: z.string(),
   title: z.string(),
   description: z.string(),
   imageUrl: z.string(),
+  category: z.string(),
 });
 
 export const SignInNextTripSchema = z.object({
@@ -129,8 +127,7 @@ export const SignInAccountDetailsSchema = z.object({
   setups: SignInSetupsSchema,
   statements: z.array(SignInStatementSchema).optional(),
   polices: z.array(SignInPolicySchema),
-  homeBanners: z.array(SignInHomeBannerSchema),
-  shopBanners: z.array(SignInShopBannerSchema),
+  banners: z.array(SignInBannerSchema),
   nextTrips: z.array(SignInNextTripSchema),
 });
 
@@ -142,20 +139,17 @@ export type SignInAccount = z.infer<typeof SignInAccountSchema>;
 export type SignInStatementDetails = z.infer<typeof SignInStatementDetailsSchema>;
 export type SignInStatement = z.infer<typeof SignInStatementSchema>;
 export type SignInPolicy = z.infer<typeof SignInPolicySchema>;
-export type SignInHomeBanner = z.infer<typeof SignInHomeBannerSchema>;
-export type SignInShopBanner = z.infer<typeof SignInShopBannerSchema>;
+export type SignInBanner = z.infer<typeof SignInBannerSchema>;
 export type SignInNextTrip = z.infer<typeof SignInNextTripSchema>;
 export type SignInAccountDetails = z.infer<typeof SignInAccountDetailsSchema>;
 
 export type SignInResponse = {
   accountDetails?: SignInAccountDetails;
   token?: string;
-  // homeBanners, shopBanners e nextTrips chegam no ROOT do response
-  // (irmaos de accountDetails), nao aninhados nele. O signIn move-os para
-  // dentro de accountDetails antes de retornar, para que o app acesse via
-  // account.
-  homeBanners?: SignInHomeBanner[];
-  shopBanners?: SignInShopBanner[];
+  // banners e nextTrips chegam no ROOT do response (irmaos de
+  // accountDetails), nao aninhados nele. O signIn move-os para dentro de
+  // accountDetails antes de retornar, para que o app acesse via account.
+  banners?: SignInBanner[];
   nextTrips?: SignInNextTrip[];
   result: boolean;
   message: string;
@@ -224,12 +218,11 @@ export async function signIn(
 
   try {
     const parsed = JSON.parse(rawBody) as SignInResponse;
-    // homeBanners/nextTrips vem no root do response; movemos para dentro de
+    // banners/nextTrips vem no root do response; movemos para dentro de
     // accountDetails para que todo o app (e o cache persistido) os acesse
-    // de forma uniforme via account.homeBanners / account.nextTrips.
+    // de forma uniforme via account.banners / account.nextTrips.
     if (parsed.accountDetails) {
-      parsed.accountDetails.homeBanners = parsed.homeBanners ?? [];
-      parsed.accountDetails.shopBanners = parsed.shopBanners ?? [];
+      parsed.accountDetails.banners = parsed.banners ?? [];
       parsed.accountDetails.nextTrips = parsed.nextTrips ?? [];
     }
     return parsed;

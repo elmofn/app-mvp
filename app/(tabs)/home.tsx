@@ -28,7 +28,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActivityHighlights } from '@/src/components/ActivityHighlights';
-import { HomeBannersCarousel } from '@/src/components/HomeBannersCarousel';
+import { BannersCarousel } from '@/src/components/BannersCarousel';
 import { NextTrips } from '@/src/components/NextTrips';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
@@ -246,8 +246,8 @@ export default function HomeScreen() {
 {/* --- NEXT TRIP IDEAS: via payload do SignIn --- */}
 <NextTrips trips={account?.nextTrips} />
 
-        {/* --- HOME BANNERS: via payload do SignIn --- */}
-        <HomeBannersCarousel banners={account?.homeBanners} />
+        {/* --- HOME BANNERS: via payload do SignIn (category=Home) --- */}
+        <BannersCarousel banners={account?.banners} category="Home" />
       </Animated.ScrollView>
 
       {/* --- MENU OVERLAY --- */}

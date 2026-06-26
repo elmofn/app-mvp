@@ -21,7 +21,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ShopBannersCarousel } from '@/src/components/ShopBannersCarousel';
+import { BannersCarousel } from '@/src/components/BannersCarousel';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
@@ -350,9 +350,9 @@ export default function TravelShopScreen() {
           ))}
         </ScrollView>
 
-        {/* --- SHOP BANNERS: via payload do SignIn --- */}
+        {/* --- SHOP BANNERS: via payload do SignIn (category=Shop) --- */}
         <View style={{ marginTop: 24 }}>
-          <ShopBannersCarousel banners={account?.shopBanners} />
+          <BannersCarousel banners={account?.banners} category="Shop" />
         </View>
       </ScrollView>
     </SafeAreaView>

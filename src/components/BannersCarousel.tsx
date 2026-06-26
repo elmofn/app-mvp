@@ -3,23 +3,29 @@ import React from 'react';
 import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInRight } from 'react-native-reanimated';
 
-import type { SignInShopBanner } from '@/src/services/auth';
+import type { BannerCategory, SignInBanner } from '@/src/services/auth';
 import { fonts } from '@/src/theme/typography';
 
 type Props = {
-  banners: SignInShopBanner[] | undefined;
+  banners: SignInBanner[] | undefined;
+  category: BannerCategory;
 };
 
-// Carousel de banners promocionais no rodape da travelshop. Espelha o
-// HomeBannersCarousel - mesmo template (foto + gradient overlay), apenas
-// alimentado pelo array shopBanners do payload de SignIn.
-export function ShopBannersCarousel({ banners }: Props) {
-  if (!banners || banners.length === 0) return null;
+// Carousel de banners promocionais. Template unico (foto + gradient
+// overlay) usado tanto na home quanto na travelshop. Os banners chegam
+// num unico array no payload de SignIn e sao separados pelo campo
+// `category`; o componente filtra a categoria pedida. Quando title vem
+// vazio (ver exemplo da API), so renderiza a description.
+export function BannersCarousel({ banners, category }: Props) {
+  const items = (banners ?? []).filter(
+    (b) => b.category.toLowerCase() === category.toLowerCase(),
+  );
+  if (items.length === 0) return null;
 
   return (
     <Animated.View entering={FadeInRight.delay(1100).duration(600)}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bannersSection}>
-        {banners.map((banner) => (
+        {items.map((banner) => (
           <View key={banner.id} style={styles.bannerCard}>
             <Image source={{ uri: banner.imageUrl }} style={styles.bannerImg} resizeMode="cover" />
             <LinearGradient
@@ -45,6 +51,7 @@ const styles = StyleSheet.create({
   bannersSection: {
     paddingLeft: 20,
     marginBottom: 20,
+    marginTop: 20,
   },
   bannerCard: {
     width: 200,

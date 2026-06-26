@@ -310,25 +310,10 @@ export async function getAccount(
     throw new Error(message);
   }
 
-  const rawBody = await response.text();
-  console.log('[account] GetAccount raw response:', rawBody);
-
-  let raw: unknown;
-  try {
-    raw = JSON.parse(rawBody);
-  } catch (err) {
-    console.warn('[account] GetAccount could not parse JSON:', err);
-    throw new Error('Invalid response from server.');
-  }
-
+  const raw = await response.json();
   const parsed = AccountSnapshotSchema.safeParse(raw);
   if (!parsed.success) {
-    // Loga cada campo que falhou (path + mensagem) para identificar o
-    // descasamento de shape entre o backend e o schema do app.
-    console.warn(
-      '[account] GetAccount schema mismatch:',
-      JSON.stringify(parsed.error.issues, null, 2),
-    );
+    console.warn('[account] GetAccount schema mismatch:', parsed.error.issues);
     throw new Error('Invalid response from server.');
   }
   return parsed.data;

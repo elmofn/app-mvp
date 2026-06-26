@@ -10,6 +10,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 
 import { BiometricGate } from '@/src/components/BiometricGate';
 import { AlertProvider } from '@/src/contexts/AlertContext';
@@ -42,11 +43,18 @@ export default function RootLayout() {
   }
 
   return (
-    <AlertProvider>
-      <AuthProvider>
-        <AppShell />
-      </AuthProvider>
-    </AlertProvider>
+    // SafeAreaProvider precisa envolver toda a arvore para que
+    // useSafeAreaInsets()/SafeAreaView retornem os insets reais do device.
+    // Sem ele, insets.bottom vinha 0 e a tab bar ficava atras dos botoes
+    // de navegacao do Android. initialMetrics evita flash de inset 0 no
+    // primeiro frame.
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <AlertProvider>
+        <AuthProvider>
+          <AppShell />
+        </AuthProvider>
+      </AlertProvider>
+    </SafeAreaProvider>
   );
 }
 

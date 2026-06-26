@@ -1,8 +1,11 @@
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 
+import { getAccount } from '@/src/services/account';
 import { authenticateWithBiometric, getBiometricStatus } from '@/src/services/biometric';
+import { getBanners, getNextTrips } from '@/src/services/content';
 import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/src/services/location';
+import { getUserLanguage } from '@/src/services/locale';
 import {
   signIn as apiSignIn,
   SignInAccountDetails,
@@ -26,6 +29,7 @@ type AuthContextValue = AuthState & {
   unlock: () => Promise<boolean>;
   lock: () => void;
   updateAccountDetails: (patch: AccountPatch) => Promise<void>;
+  refreshAccount: () => Promise<void>;
 };
 
 export type AccountPatch = {
@@ -105,11 +109,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const response = await apiSignIn(login, password, geolocation);
       if (response.success && response.token && response.accountDetails) {
-        setState({
-          account: response.accountDetails,
-          token: response.token,
-        });
-        await saveSession(response.token, response.accountDetails);
+        // Banners e nextTrips agora vem de endpoints de conteudo dedicados
+        // (GetBanners/GetNextTrips), localizados pelo idioma da conta. Falha
+        // aqui nao deve barrar o login - caimos no que o payload de SignIn
+        // tiver trazido.
+        const lang = getUserLanguage(response.accountDetails);
+        let { banners, nextTrips } = response.accountDetails;
+        try {
+          [banners, nextTrips] = await Promise.all([getBanners(lang), getNextTrips(lang)]);
+        } catch (err) {
+          console.warn('[auth] content fetch on signIn failed, using payload:', err);
+        }
+        const account: SignInAccountDetails = { ...response.accountDetails, banners, nextTrips };
+        setState({ account, token: response.token });
+        await saveSession(response.token, account);
         setIsLocked(false);
       }
       return response;
@@ -168,6 +181,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await saveSession(current.token, next);
   }, []);
 
+  // Re-busca o snapshot completo da conta sem novo login: GetAccount traz
+  // accountDetails/balance/setups/statements, e GetBanners/GetNextTrips
+  // (que sairam do payload de SignIn) trazem o conteudo localizado. Usado
+  // pelo pull-to-refresh da home. Propaga para o storage como o signIn.
+  const refreshAccount = useCallback(async () => {
+    const current = stateRef.current;
+    if (!current.account || !current.token) return;
+    const accountId = current.account.accountDetails.accountId;
+    const lang = getUserLanguage(current.account);
+
+    const [snapshot, banners, nextTrips] = await Promise.all([
+      getAccount(accountId, lang),
+      getBanners(lang),
+      getNextTrips(lang),
+    ]);
+
+    const next: SignInAccountDetails = { ...snapshot, banners, nextTrips };
+    setState({ account: next, token: current.token });
+    await saveSession(current.token, next);
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -181,6 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         unlock,
         lock,
         updateAccountDetails,
+        refreshAccount,
       }}
     >
       {children}

@@ -1,3 +1,6 @@
+import { z } from 'zod';
+
+import { SignInAccountDetailsSchema } from './auth';
 import type { SupportedLang } from './locale';
 
 const API_BASE_URL = 'https://travelcash-api-stg.azurewebsites.net';
@@ -269,6 +272,51 @@ export async function getAccountByCode(
     countryId,
     polices,
   };
+}
+
+// ----------------------------------------------------------------------------
+// GetAccount: GET /api/Account/GetAccount?accountId={accountId}
+// Re-busca o snapshot da conta (accountDetails/account/balance/setups/
+// statements/polices) usando so o accountId - usado pelo pull-to-refresh
+// da home para atualizar os dados sem novo login. Banners e nextTrips NAO
+// vem neste endpoint: sao buscados a parte (GetBanners / GetNextTrips),
+// por isso o schema abaixo omite esses dois campos do SignIn.
+// ----------------------------------------------------------------------------
+
+export const AccountSnapshotSchema = SignInAccountDetailsSchema.omit({
+  banners: true,
+  nextTrips: true,
+});
+
+export type AccountSnapshot = z.infer<typeof AccountSnapshotSchema>;
+
+export async function getAccount(
+  accountId: string,
+  lang: SupportedLang,
+): Promise<AccountSnapshot> {
+  const url = `${API_BASE_URL}/api/Account/GetAccount?accountId=${encodeURIComponent(accountId)}`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  });
+
+  if (!response.ok) {
+    const message = await parseLocalizedError(
+      response,
+      lang,
+      `GetAccount failed (${response.status})`,
+    );
+    console.warn('[account] GetAccount HTTP', response.status);
+    throw new Error(message);
+  }
+
+  const raw = await response.json();
+  const parsed = AccountSnapshotSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.warn('[account] GetAccount schema mismatch:', parsed.error.issues);
+    throw new Error('Invalid response from server.');
+  }
+  return parsed.data;
 }
 
 // ----------------------------------------------------------------------------

@@ -14,7 +14,7 @@ import {
   UserIcon
 } from 'phosphor-react-native';
 import React, { useCallback, useRef, useState } from 'react';
-import { BackHandler, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BackHandler, Image, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -39,8 +39,24 @@ import { formatCurrency } from '@/src/utils/format';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { account } = useAuth();
+  const { account, refreshAccount } = useAuth();
   const showAlert = useAlert();
+
+  // Pull-to-refresh: re-busca o snapshot da conta + banners + nextTrips
+  // (via GetAccount/GetBanners/GetNextTrips) para refletir mudancas sem
+  // o usuario precisar relogar.
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshAccount();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not refresh your data.';
+      showAlert('Refresh failed', message);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refreshAccount, showAlert]);
 
   const firstName = account?.accountDetails.name?.trim().split(/\s+/)[0] ?? '';
   // available vem sempre em USD; convertemos para a moeda local
@@ -115,12 +131,20 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <StatusBar style="light" />
       
-      <Animated.ScrollView 
+      <Animated.ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingBottom: tabBarHeight + 24 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor="#FFFFFF"
+            colors={['#4D2ACC']}
+          />
+        }
       >
         {/* --- HEADER SECTION --- */}
         <LinearGradient 

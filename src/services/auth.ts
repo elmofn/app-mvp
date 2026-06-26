@@ -73,7 +73,9 @@ export const SignInStatementDetailsSchema = z.object({
   marginValue: z.number(),
   idclientUnit: z.number().optional(),
   productName: z.string(),
-  unitName: z.string(),
+  // Nem todo statement tem unidade associada; o campo so vem quando ha.
+  // Todos os consumidores ja usam details?.unitName ?? '—'.
+  unitName: z.string().optional(),
   voucherURL: z.string().optional(),
 });
 

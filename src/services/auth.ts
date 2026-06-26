@@ -73,7 +73,10 @@ export const SignInStatementDetailsSchema = z.object({
   marginValue: z.number(),
   idclientUnit: z.number().optional(),
   productName: z.string(),
-  unitName: z.string(),
+  // GetAccount nem sempre devolve unitName (statements sem unidade
+  // associada vem sem o campo); todos os consumidores ja usam
+  // details?.unitName ?? '—', entao tratamos como opcional.
+  unitName: z.string().optional(),
   voucherURL: z.string().optional(),
 });
 

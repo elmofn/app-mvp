@@ -40,7 +40,7 @@ import {
 import { confirmRead } from '@/src/services/alerts';
 import { getDeviceLanguage } from '@/src/services/locale';
 import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/src/services/location';
-import { searchByLegalId, searchByRawDigits } from '@/src/services/search';
+import { searchByRawDigits } from '@/src/services/search';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -163,10 +163,10 @@ export default function ActivationScreen() {
   const [termsVisible, setTermsVisible] = useState(false);
 
   // Edit-field modal: o usuario pode clicar em uma row do review pra
-  // corrigir name/phone/legalId via UpdateAccount sem voltar pro passo
-  // anterior. Email nao entra (mudar email exige verificacao em fluxos
-  // logados e nao tem prioridade aqui).
-  type EditableField = 'name' | 'phoneNumber' | 'legalId';
+  // corrigir name/phone via APPUpdateAccount sem voltar pro passo
+  // anterior. Email e Legal ID ficam read-only (email exige verificacao
+  // em fluxos logados; legalId nao faz mais parte do payload de update).
+  type EditableField = 'name' | 'phoneNumber';
   const [editingField, setEditingField] = useState<EditableField | null>(null);
 
   const progressWidth = useSharedValue(1 / STEPS.length);
@@ -309,12 +309,6 @@ export default function ActivationScreen() {
       initial: preview?.phoneNumber ?? '',
       check: (digits) => searchByRawDigits(digits),
     },
-    legalId: {
-      label: 'Legal ID',
-      kind: 'legalId',
-      initial: preview?.legalId ?? '',
-      check: (val) => searchByLegalId(val),
-    },
   };
 
   const handleEditSave = async (newValue: string) => {
@@ -322,7 +316,6 @@ export default function ActivationScreen() {
     const patched: AccountPreview = (() => {
       if (editingField === 'name') return { ...preview, name: newValue };
       if (editingField === 'phoneNumber') return { ...preview, phoneNumber: newValue };
-      if (editingField === 'legalId') return { ...preview, legalId: newValue };
       return preview;
     })();
 
@@ -335,9 +328,9 @@ export default function ActivationScreen() {
         accountId: patched.accountId,
         name: patched.name,
         email: patched.email,
-        legalId: patched.legalId,
         phoneNumber: patched.phoneNumber,
-        language: patched.language,
+        currencyId: patched.currencyId,
+        countryId: patched.countryId,
         geolocation,
       },
       lang,
@@ -363,14 +356,17 @@ export default function ActivationScreen() {
   const disabled = (isReview && !acceptedTerms) || isBusy;
 
   // Tipagem do `field` casa com EditableField para preservar a opcao de
-  // edicao. Email permanece read-only (null no field).
-  const reviewRows: { label: string; value: string; field: EditableField | null }[] = preview
-    ? [
-        { label: 'Name', value: preview.name, field: 'name' },
-        { label: 'E-mail', value: preview.email, field: null },
-        { label: 'Phone', value: preview.phoneNumber, field: 'phoneNumber' },
-        { label: 'Legal ID', value: preview.legalId, field: 'legalId' },
-      ].filter((r) => r.value.trim().length > 0)
+  // edicao. Email e Legal ID permanecem read-only (null no field).
+  type ReviewRow = { label: string; value: string; field: EditableField | null };
+  const reviewRows: ReviewRow[] = preview
+    ? (
+        [
+          { label: 'Name', value: preview.name, field: 'name' },
+          { label: 'E-mail', value: preview.email, field: null },
+          { label: 'Phone', value: preview.phoneNumber, field: 'phoneNumber' },
+          { label: 'Legal ID', value: preview.legalId, field: null },
+        ] satisfies ReviewRow[]
+      ).filter((r) => r.value.trim().length > 0)
     : [];
 
   return (

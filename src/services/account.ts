@@ -183,6 +183,8 @@ export type AccountPreview = {
   phoneNumber: string;
   legalId: string;
   language: SupportedLang;
+  currencyId: string;
+  countryId: string;
   polices: AccountPreviewPolice[];
 };
 
@@ -248,6 +250,13 @@ export async function getAccountByCode(
     if (contentId) polices.push({ contentId, title, richText });
   }
 
+  const currencyId =
+    typeof setups.defaultCurrencyId === 'string' ? setups.defaultCurrencyId : '';
+  const accountCountryId = typeof account.countryId === 'string' ? account.countryId : '';
+  const setupsCountryId =
+    typeof setups.defaultCountryId === 'string' ? setups.defaultCountryId : '';
+  const countryId = accountCountryId || setupsCountryId;
+
   return {
     accountId,
     name: typeof accountDetails.name === 'string' ? accountDetails.name : '',
@@ -256,6 +265,8 @@ export async function getAccountByCode(
       typeof accountDetails.phoneNumber === 'string' ? accountDetails.phoneNumber : '',
     legalId: typeof account.legalId === 'string' ? account.legalId : '',
     language,
+    currencyId,
+    countryId,
     polices,
   };
 }
@@ -315,8 +326,9 @@ export async function validateCode(
 }
 
 // ----------------------------------------------------------------------------
-// UpdateAccount: PUT /api/Account/UpdateAccount
-// Atualiza name/email/legalId/phoneNumber/language de uma conta existente.
+// APPUpdateAccount: PUT /api/Account/APPUpdateAccount
+// Atualiza name/email/phoneNumber + currencyId/countryId de uma conta
+// existente numa unica chamada (cobre profile + moeda + pais default).
 // Mudancas em email ou phoneNumber sao gateadas pelo fluxo de verificacao
 // chamado a partir da tela de settings - este metodo soh dispara a PUT.
 // ----------------------------------------------------------------------------
@@ -325,33 +337,43 @@ export type UpdateAccountInput = {
   accountId: string;
   name: string;
   email: string;
-  legalId: string;
   phoneNumber: string;
-  language: SupportedLang;
-  geolocation: string;
+  currencyId: string;
+  countryId: string;
+  geolocation?: string;
 };
 
 export async function updateAccount(
   input: UpdateAccountInput,
   lang: SupportedLang,
 ): Promise<void> {
-  const url = `${API_BASE_URL}/api/Account/UpdateAccount`;
+  const url = `${API_BASE_URL}/api/Account/APPUpdateAccount`;
+  const body: Record<string, string> = {
+    accountId: input.accountId,
+    name: input.name,
+    email: input.email,
+    phoneNumber: input.phoneNumber,
+    currencyId: input.currencyId,
+    countryId: input.countryId,
+  };
+  if (input.geolocation) body.geolocation = input.geolocation;
+
   const response = await fetch(url, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    body: JSON.stringify(input),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
     const message = await parseLocalizedError(
       response,
       lang,
-      `UpdateAccount failed (${response.status})`,
+      `APPUpdateAccount failed (${response.status})`,
     );
-    console.warn('[account] UpdateAccount HTTP', response.status);
+    console.warn('[account] APPUpdateAccount HTTP', response.status);
     throw new Error(message);
   }
 }
@@ -422,64 +444,14 @@ export async function sendPasswordRecoveryToken(
   }
 }
 
-// ----------------------------------------------------------------------------
-// SetAccountSetup: POST /api/Account/SetAccountSetup
-// Atualiza as configuracoes de conta do usuario - hoje cobre apenas a
-// moeda default e o pais (= idioma do app). Os toggles de notificacao
-// ainda nao sao expostos na UI; mandamos true em todos para nao desligar
-// algo que o usuario nao escolheu.
-// ----------------------------------------------------------------------------
-
 // Mapeia o idioma do app para o UUID de pais usado pelo backend em
-// SetAccountSetup. Estes ids sao constantes do dominio do backend -
+// APPUpdateAccount. Estes ids sao constantes do dominio do backend -
 // trate como enums, nao como dados.
 export const LANGUAGE_COUNTRY_IDS: Record<SupportedLang, string> = {
   'en-US': '71a5e1a1-18eb-4e4a-9b7f-11c5bf8c4bb0',
   'es-ES': 'f4b3db4d-68d2-42a6-be2e-4d3bbe9fabb3',
   'pt-BR': '69518c70-d652-4408-9c69-c2858c83264c',
 };
-
-export type SetAccountSetupInput = {
-  accountId: string;
-  defaultCurrencyId: string;
-  language: SupportedLang;
-};
-
-export async function setAccountSetup(
-  input: SetAccountSetupInput,
-  lang: SupportedLang,
-): Promise<void> {
-  const url = `${API_BASE_URL}/api/Account/SetAccountSetup`;
-  const body = {
-    accountId: input.accountId,
-    defaultCurrencyId: input.defaultCurrencyId,
-    defaultCountryId: LANGUAGE_COUNTRY_IDS[input.language],
-    notificationByEmail: true,
-    notificationByPhone: true,
-    notificationByPush: true,
-    notificationByWhatsapp: true,
-    defaultChannel: 'string',
-  };
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const message = await parseLocalizedError(
-      response,
-      lang,
-      `SetAccountSetup failed (${response.status})`,
-    );
-    console.warn('[account] SetAccountSetup HTTP', response.status);
-    throw new Error(message);
-  }
-}
 
 // ----------------------------------------------------------------------------
 // SetNewPasswordAccount: POST /api/Account/SetNewPasswordAccount

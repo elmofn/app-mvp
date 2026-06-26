@@ -22,9 +22,9 @@ import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
 import {
+  LANGUAGE_COUNTRY_IDS,
   removeAccount,
   requestValidationCode,
-  setAccountSetup,
   setNewPassword,
   updateAccount,
   validateCode,
@@ -145,15 +145,15 @@ export default function SettingsScreen() {
   const isDirty = profileDirty || currencyDirty;
   const requiresVerification = emailDirty || phoneDirty;
 
-  // Executa as PUTs/POSTs do save em sequencia e propaga o novo estado
-  // para o AuthContext (que persiste no storage). UpdateAccount cuida
-  // de name/email/phone/language; SetAccountSetup cuida de currency.
-  // Sao chamadas separadas porque cobrem dominios diferentes do backend.
+  // Executa a PUT do save e propaga o novo estado para o AuthContext (que
+  // persiste no storage). APPUpdateAccount cobre profile + currency + country
+  // numa unica chamada, entao basta enviar todos os campos atuais quando
+  // qualquer um deles estiver dirty.
   const performUpdate = async () => {
     if (!account) return;
     setIsSaving(true);
     try {
-      if (profileDirty) {
+      if (isDirty) {
         let coords = getCachedLocation();
         if (!coords) coords = await getCurrentLocation();
         const geolocation = formatLocationPayload(coords);
@@ -163,21 +163,10 @@ export default function SettingsScreen() {
             accountId: account.accountDetails.accountId,
             name: nextName,
             email: nextEmail,
-            legalId: account.account.legalId,
             phoneNumber: phoneDigits,
-            language: language.value,
+            currencyId: (currency ?? account.setups.currency).id,
+            countryId: LANGUAGE_COUNTRY_IDS[language.value],
             geolocation,
-          },
-          lang,
-        );
-      }
-
-      if (currencyDirty && currency) {
-        await setAccountSetup(
-          {
-            accountId: account.accountDetails.accountId,
-            defaultCurrencyId: currency.id,
-            language: language.value,
           },
           lang,
         );

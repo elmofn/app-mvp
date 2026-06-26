@@ -179,6 +179,7 @@ export default function SettingsScreen() {
               email: nextEmail,
               phoneNumber: phoneDigits,
               lang: language.value,
+              countryId: LANGUAGE_COUNTRY_IDS[language.value],
             }
           : {}),
         ...(currencyDirty && currency

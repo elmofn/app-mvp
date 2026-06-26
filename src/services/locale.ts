@@ -1,5 +1,6 @@
 import * as Localization from 'expo-localization';
 
+import { getLanguageFromCountryId } from './account';
 import type { SignInAccountDetails } from './auth';
 
 export type SupportedLang = 'pt-BR' | 'en-US' | 'es-ES';
@@ -28,8 +29,12 @@ export function getDeviceLanguage(): SupportedLang {
 }
 
 export function getUserLanguage(account: SignInAccountDetails | null): SupportedLang {
-  // Usuario logado tem preferencia explicita gravada no setup; respeitamos
-  // antes de cair no idioma do device.
+  // Fonte de verdade do idioma e o countryId persistido na conta - eh o
+  // que o backend usa para resolver qual variante de conteudo entregar.
+  // Fallback: setups.lang (legado, mantem compat com sessoes antigas) e,
+  // por fim, o idioma do device.
+  const fromCountry = getLanguageFromCountryId(account?.account?.countryId);
+  if (fromCountry) return fromCountry;
   if (account?.setups?.lang) return normalize(account.setups.lang);
   return getDeviceLanguage();
 }

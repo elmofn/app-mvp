@@ -453,6 +453,19 @@ export const LANGUAGE_COUNTRY_IDS: Record<SupportedLang, string> = {
   'pt-BR': '69518c70-d652-4408-9c69-c2858c83264c',
 };
 
+// Reverso de LANGUAGE_COUNTRY_IDS - permite descobrir o idioma a partir
+// do countryId persistido na conta. Util para filtrar conteudo (alerts,
+// FAQ, polices) pela linguagem que corresponde ao pais do usuario.
+export function getLanguageFromCountryId(
+  countryId: string | null | undefined,
+): SupportedLang | null {
+  if (!countryId) return null;
+  for (const [lang, id] of Object.entries(LANGUAGE_COUNTRY_IDS)) {
+    if (id === countryId) return lang as SupportedLang;
+  }
+  return null;
+}
+
 // ----------------------------------------------------------------------------
 // SetNewPasswordAccount: POST /api/Account/SetNewPasswordAccount
 // ----------------------------------------------------------------------------

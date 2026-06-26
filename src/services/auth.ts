@@ -55,6 +55,7 @@ export const SignInAccountSchema = z.object({
   id: z.string(),
   legalId: z.string(),
   status: z.number(),
+  countryId: z.string().optional(),
 });
 
 export const SignInStatementDetailsSchema = z.object({

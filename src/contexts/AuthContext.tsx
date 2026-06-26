@@ -33,6 +33,10 @@ export type AccountPatch = {
   email?: string;
   phoneNumber?: string;
   lang?: string;
+  // countryId eh a fonte de verdade do idioma do usuario (espelha o que
+  // o backend persiste em account.countryId). Atualizamos junto com lang
+  // quando o picker de idioma muda no settings.
+  countryId?: string;
   // Currency vem inteira do picker (id + code + name + symbol + rate);
   // gravamos junto com defaultCurrencyId para manter os dois campos do
   // setups consistentes entre si.
@@ -147,6 +151,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...(patch.name !== undefined ? { name: patch.name } : {}),
         ...(patch.email !== undefined ? { email: patch.email } : {}),
         ...(patch.phoneNumber !== undefined ? { phoneNumber: patch.phoneNumber } : {}),
+      },
+      account: {
+        ...current.account.account,
+        ...(patch.countryId !== undefined ? { countryId: patch.countryId } : {}),
       },
       setups: {
         ...current.account.setups,

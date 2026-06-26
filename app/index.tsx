@@ -1,7 +1,15 @@
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  Image,
+  LayoutChangeEvent,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
@@ -12,7 +20,18 @@ import { fonts } from '@/src/theme/typography';
 export default function LoginScreen() {
   const router = useRouter();
   const { account } = useAuth();
-  const { width, height } = useWindowDimensions();
+  const window = useWindowDimensions();
+
+  // useWindowDimensions pode reportar uma altura menor que a area realmente
+  // pintada (Android edge-to-edge deixa uma faixa atras da nav bar), o que
+  // fazia o gradiente nao cobrir o rodape. Medimos o container de fato via
+  // onLayout e dimensionamos o SVG por ele. Inicial = window pra evitar
+  // flash no primeiro frame.
+  const [size, setSize] = useState({ width: window.width, height: window.height });
+  const onLayout = (e: LayoutChangeEvent) => {
+    const { width: w, height: h } = e.nativeEvent.layout;
+    if (w !== size.width || h !== size.height) setSize({ width: w, height: h });
+  };
 
   useEffect(() => {
     if (account) {
@@ -22,6 +41,7 @@ export default function LoginScreen() {
 
   if (account) return null;
 
+  const { width, height } = size;
   // epicentro do gradiente radial = ~30% da altura, alinhado com o logo
   const cx = width / 2;
   const cy = height * 0.3;
@@ -44,7 +64,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.gradient}>
+    <View style={styles.gradient} onLayout={onLayout}>
       <Svg width={width} height={height} style={StyleSheet.absoluteFillObject}>
         <Defs>
           <RadialGradient
@@ -112,7 +132,10 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  gradient: { flex: 1 },
+  // backgroundColor = tom final do gradiente: rede de seguranca pra que
+  // qualquer area nao coberta pelo SVG fique perfeitamente integrada (em
+  // vez do branco padrao da janela).
+  gradient: { flex: 1, backgroundColor: '#1B0F4A' },
   safeArea: {
     flex: 1,
     paddingHorizontal: 24,

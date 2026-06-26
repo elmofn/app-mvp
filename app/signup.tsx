@@ -32,6 +32,7 @@ import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { Country, DEFAULT_COUNTRY } from '@/src/data/countries';
 import { useDebounce } from '@/src/hooks/useDebounce';
+import { formatResendCountdown, useResendTimer } from '@/src/hooks/useResendTimer';
 import {
   createAccount,
   requestValidationCode,
@@ -221,6 +222,7 @@ export default function SignupScreen() {
 
   const debouncedEmail = useDebounce(formData.email, 500);
   const debouncedPhone = useDebounce(formData.phone, 500);
+  const resendTimer = useResendTimer();
 
   // Verifica e-mail no debounce: a flag cancelled descarta requests obsoletos.
   useEffect(() => {
@@ -314,6 +316,7 @@ export default function SignupScreen() {
     setCodeError(null);
     try {
       await requestValidationCode(id, 'email', deviceLang);
+      resendTimer.start();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not send the verification code.';
       showAlert('Verification', message);
@@ -348,7 +351,7 @@ export default function SignupScreen() {
   }, [currentStep, deviceLang]);
 
   const handleResendCode = () => {
-    if (!accountId || codeSending) return;
+    if (!accountId || codeSending || !resendTimer.canResend) return;
     codeRequestedRef.current = false;
     setFormData((curr) => ({ ...curr, code: '' }));
     setCodeError(null);
@@ -727,16 +730,21 @@ export default function SignupScreen() {
                   <TouchableOpacity
                     onPress={handleResendCode}
                     activeOpacity={0.7}
-                    disabled={codeSending || !accountId}
+                    disabled={codeSending || !accountId || !resendTimer.canResend}
                     style={styles.resendButton}
                   >
                     <Text
                       style={[
                         styles.resendButtonText,
-                        (codeSending || !accountId) && styles.resendButtonTextDisabled,
+                        (codeSending || !accountId || !resendTimer.canResend) &&
+                          styles.resendButtonTextDisabled,
                       ]}
                     >
-                      {codeSending ? 'Sending code…' : 'Resend code'}
+                      {codeSending
+                        ? 'Sending code…'
+                        : !resendTimer.canResend
+                          ? `Resend in ${formatResendCountdown(resendTimer.secondsLeft)}`
+                          : 'Resend code'}
                     </Text>
                   </TouchableOpacity>
                 </View>

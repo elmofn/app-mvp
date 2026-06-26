@@ -26,6 +26,7 @@ import {
   validateCode,
   ValidateCodeError,
 } from '@/src/services/account';
+import { formatResendCountdown, useResendTimer } from '@/src/hooks/useResendTimer';
 import { getDeviceLanguage } from '@/src/services/locale';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
@@ -34,6 +35,7 @@ export default function LoginFormScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { signIn, isSigningIn } = useAuth();
+  const resendTimer = useResendTimer();
   const showAlert = useAlert();
 
   const [email, setEmail] = useState('');
@@ -88,6 +90,7 @@ export default function LoginFormScreen() {
     setRecoveryPin('');
     setRecoveryAccountId('');
     setRecoveryError(null);
+    resendTimer.reset();
   };
 
   const closeRecoveryModal = () => {
@@ -114,6 +117,7 @@ export default function LoginFormScreen() {
     setRecoveryError(null);
     try {
       await sendPasswordRecoveryToken(target, recoveryLang);
+      resendTimer.start();
       setRecoveryEmail(target);
       setRecoveryStage('verifyCode');
     } catch (err) {
@@ -145,12 +149,13 @@ export default function LoginFormScreen() {
   };
 
   const handleResendRecoveryCode = async () => {
-    if (isResendingRecovery) return;
+    if (isResendingRecovery || !resendTimer.canResend) return;
     setIsResendingRecovery(true);
     setRecoveryError(null);
     setRecoveryCode('');
     try {
       await sendPasswordRecoveryToken(recoveryEmail, recoveryLang);
+      resendTimer.start();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not send the recovery code.';
       setRecoveryError(message);
@@ -402,16 +407,21 @@ export default function LoginFormScreen() {
                 <TouchableOpacity
                   onPress={handleResendRecoveryCode}
                   activeOpacity={0.7}
-                  disabled={isResendingRecovery}
+                  disabled={isResendingRecovery || !resendTimer.canResend}
                   style={styles.recoveryResend}
                 >
                   <Text
                     style={[
                       styles.recoveryResendText,
-                      isResendingRecovery && styles.recoveryResendTextDisabled,
+                      (isResendingRecovery || !resendTimer.canResend) &&
+                        styles.recoveryResendTextDisabled,
                     ]}
                   >
-                    {isResendingRecovery ? 'Sending code…' : 'Resend code'}
+                    {isResendingRecovery
+                      ? 'Sending code…'
+                      : !resendTimer.canResend
+                        ? `Resend in ${formatResendCountdown(resendTimer.secondsLeft)}`
+                        : 'Resend code'}
                   </Text>
                 </TouchableOpacity>
 

@@ -30,6 +30,7 @@ import {
   validateCode,
   ValidateCodeError,
 } from '@/src/services/account';
+import { formatResendCountdown, useResendTimer } from '@/src/hooks/useResendTimer';
 import { CurrencyOption, getCurrencies } from '@/src/services/financial';
 import { getUserLanguage, SupportedLang } from '@/src/services/locale';
 import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/src/services/location';
@@ -114,6 +115,7 @@ export default function SettingsScreen() {
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const resendTimer = useResendTimer();
 
   // O mesmo modal serve tres fluxos (atualizar perfil, trocar PIN e
   // deletar conta); pendingAction guarda qual deles esta em curso e
@@ -214,6 +216,7 @@ export default function SettingsScreen() {
     setVerifyError(null);
     setNewPin('');
     setPinError(null);
+    resendTimer.reset();
   };
 
   const closeVerifyModal = () => {
@@ -235,6 +238,7 @@ export default function SettingsScreen() {
     setVerifyVisible(true);
     try {
       await requestValidationCode(account.accountDetails.accountId, 'email', lang);
+      resendTimer.start();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not send the verification code.';
       showAlert('Verification', message);
@@ -251,6 +255,7 @@ export default function SettingsScreen() {
     setVerifyVisible(true);
     try {
       await requestValidationCode(account.accountDetails.accountId, 'email', lang);
+      resendTimer.start();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not send the verification code.';
       showAlert('Verification', message);
@@ -267,6 +272,7 @@ export default function SettingsScreen() {
     setVerifyVisible(true);
     try {
       await requestValidationCode(account.accountDetails.accountId, 'email', lang);
+      resendTimer.start();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not send the verification code.';
       showAlert('Verification', message);
@@ -345,12 +351,13 @@ export default function SettingsScreen() {
   };
 
   const handleResendCode = async () => {
-    if (!account || isResending) return;
+    if (!account || isResending || !resendTimer.canResend) return;
     setIsResending(true);
     setVerifyError(null);
     setVerifyCode('');
     try {
       await requestValidationCode(account.accountDetails.accountId, 'email', lang);
+      resendTimer.start();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not send the verification code.';
       showAlert('Verification', message);
@@ -758,16 +765,20 @@ export default function SettingsScreen() {
                 <TouchableOpacity
                   onPress={handleResendCode}
                   activeOpacity={0.7}
-                  disabled={isResending}
+                  disabled={isResending || !resendTimer.canResend}
                   style={styles.resendButton}
                 >
                   <Text
                     style={[
                       styles.resendButtonText,
-                      isResending && styles.resendButtonTextDisabled,
+                      (isResending || !resendTimer.canResend) && styles.resendButtonTextDisabled,
                     ]}
                   >
-                    {isResending ? 'Sending code…' : 'Resend code'}
+                    {isResending
+                      ? 'Sending code…'
+                      : !resendTimer.canResend
+                        ? `Resend in ${formatResendCountdown(resendTimer.secondsLeft)}`
+                        : 'Resend code'}
                   </Text>
                 </TouchableOpacity>
 

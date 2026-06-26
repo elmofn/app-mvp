@@ -45,6 +45,7 @@ const styles = StyleSheet.create({
   bannersSection: {
     paddingLeft: 20,
     marginBottom: 20,
+    marginTop: 20,
   },
   bannerCard: {
     width: 200,

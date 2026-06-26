@@ -61,6 +61,7 @@ const styles = StyleSheet.create({
   tripsSection: {
     padding: 20,
     paddingTop: 72,
+    marginBottom: -20,
   },
   sectionHeader: {
     marginBottom: 42,

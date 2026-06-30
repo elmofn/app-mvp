@@ -169,13 +169,13 @@ export default function HomeScreen() {
 
   {/* Greeting: cai de cima */}
   <Animated.Text entering={FadeInDown.delay(100).duration(500)} style={styles.greeting}>
-    Hello, <Text style={styles.firstName}>{firstName}</Text>
+    Olá, <Text style={styles.firstName}>{firstName}</Text>
   </Animated.Text>
 
   {/* Balance: entra da esquerda com delay */}
   <Animated.View entering={FadeInLeft.delay(200).duration(500)} style={styles.balanceSection}>
     <View>
-      <Text style={styles.balanceLabel}>Available Balance</Text>
+      <Text style={styles.balanceLabel}>Saldo Disponível</Text>
       <View style={styles.balanceValueContainer}>
         <Text style={styles.currency}>{local.symbol}</Text>
         <Text style={styles.balanceValue}>
@@ -209,7 +209,7 @@ export default function HomeScreen() {
         }
       </TouchableOpacity>
       <TouchableOpacity style={styles.statementBtn} onPress={() => router.push('/statement')}>
-        <Text style={styles.statementBtnText}>STATEMENT</Text>
+        <Text style={styles.statementBtnText}>EXTRATO</Text>
       </TouchableOpacity>
     </View>
   </Animated.View>
@@ -244,8 +244,8 @@ export default function HomeScreen() {
   <Animated.View entering={FadeInRight.delay(550).duration(500)}>
     <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/statement')} activeOpacity={0.8}>
       <View style={styles.actionInfo}>
-        <Text style={styles.actionTitle}>Balance</Text>
-        <Text style={styles.actionDesc}>Gerencie seus Travel Credits.</Text>
+        <Text style={styles.actionTitle}>Extrato</Text>
+        <Text style={styles.actionDesc}>Todas as transações.</Text>
       </View>
       <View style={styles.actionIconWrapper}>
         <CoinsIcon size={32} color="#0F022D" weight="regular" />
@@ -257,8 +257,8 @@ export default function HomeScreen() {
   <Animated.View entering={FadeInLeft.delay(650).duration(500)}>
     <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/assistant')} activeOpacity={0.8}>
       <View style={styles.actionInfo}>
-        <Text style={styles.actionTitle}>Travel Assistant</Text>
-        <Text style={styles.actionDesc}>Planeje sua próxima jornada.</Text>
+        <Text style={styles.actionTitle}>TravelBACK IA</Text>
+        <Text style={styles.actionDesc}>Seu assistente de viagem inteligente.</Text>
       </View>
       <View style={styles.actionIconWrapper}>
         <SparkleIcon size={32} color="#0F022D" weight="regular" />
@@ -297,7 +297,7 @@ export default function HomeScreen() {
                 <View style={styles.menuIconContainer}>
                   <UserIcon size={18} color="#0F022D" weight="bold" />
                 </View>
-                <Text style={styles.menuItemText}>My Profile</Text>
+                <Text style={styles.menuItemText}>Perfil</Text>
               </TouchableOpacity>
               
               <View style={styles.menuDivider} />
@@ -307,7 +307,7 @@ export default function HomeScreen() {
                 <View style={styles.menuIconContainer}>
                   <BellIcon size={18} color="#0F022D" weight="bold" />
                 </View>
-                <Text style={styles.menuItemText}>Notifications</Text>
+                <Text style={styles.menuItemText}>Notificações</Text>
               </TouchableOpacity>
 
             </Animated.View>

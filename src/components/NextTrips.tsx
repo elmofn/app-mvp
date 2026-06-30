@@ -18,11 +18,11 @@ export function NextTrips({ trips }: Props) {
   return (
     <View style={styles.tripsSection}>
       <Animated.View entering={FadeInDown.delay(750).duration(500)} style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Next Trip</Text>
+        <Text style={styles.sectionTitle}>Próximos</Text>
         <Text style={styles.sectionTitleItalic}>
-          Ideas<Text style={styles.sectionTitle}>.</Text>
+          Destinos<Text style={styles.sectionTitle}>.</Text>
         </Text>
-        <Text style={styles.sectionSubtitle}>BOOK YOUR TRIP</Text>
+        <Text style={styles.sectionSubtitle}>RESERVE SUA VIAGEM</Text>
       </Animated.View>
 
       {trips.map((trip, index) => (

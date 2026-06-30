@@ -21,6 +21,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { formatResendCountdown, useResendTimer } from '@/src/hooks/useResendTimer';
 import {
   LANGUAGE_COUNTRY_IDS,
   removeAccount,
@@ -30,7 +31,6 @@ import {
   validateCode,
   ValidateCodeError,
 } from '@/src/services/account';
-import { formatResendCountdown, useResendTimer } from '@/src/hooks/useResendTimer';
 import { CurrencyOption, getCurrencies } from '@/src/services/financial';
 import { getUserLanguage, SupportedLang } from '@/src/services/locale';
 import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/src/services/location';
@@ -475,17 +475,17 @@ export default function SettingsScreen() {
 
             <View style={styles.headerBody}>
               <Text style={styles.mainTitle}>
-                User <Text style={styles.mainTitleAccent}>Profile</Text>
+                Perfil do <Text style={styles.mainTitleAccent}>Usuário</Text>
               </Text>
               <Text style={styles.pageDescription}>
-                Update your personal information. Email and phone changes require verification.
+                Atualize ou configure seus dados de acordo com a sua preferência.
               </Text>
             </View>
           </LinearGradient>
 
           <View style={styles.formContainer}>
             <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>Name</Text>
+              <Text style={styles.inputLabel}>Nome</Text>
               <TextInput
                 style={[styles.inputField, focusedField === 'name' && styles.inputFieldFocused]}
                 value={name}
@@ -496,7 +496,7 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>Phone Number</Text>
+              <Text style={styles.inputLabel}>Número de Telefone</Text>
               <TextInput
                 style={[styles.inputField, focusedField === 'phone' && styles.inputFieldFocused]}
                 value={phone}
@@ -525,7 +525,7 @@ export default function SettingsScreen() {
               onPress={() => openPicker('currency')}
               activeOpacity={0.7}
             >
-              <Text style={styles.inputLabel}>Currency</Text>
+              <Text style={styles.inputLabel}>Moeda</Text>
               <View style={styles.selectField}>
                 <Text style={styles.selectValue}>
                   {currency ? `${currency.name} (${currency.code})` : 'Select currency'}
@@ -539,7 +539,7 @@ export default function SettingsScreen() {
               onPress={() => openPicker('language')}
               activeOpacity={0.7}
             >
-              <Text style={styles.inputLabel}>Language</Text>
+              <Text style={styles.inputLabel}>Idioma</Text>
               <View style={styles.selectField}>
                 <Text style={styles.selectValue}>{language.label}</Text>
                 <CaretDownIcon size={16} color={colors.text.muted} />
@@ -548,7 +548,7 @@ export default function SettingsScreen() {
 
             <View style={styles.buttonGroup}>
               <TouchableOpacity style={styles.buttonFilled} onPress={handleLogout} activeOpacity={0.8}>
-                <Text style={styles.buttonFilledText}>Logout</Text>
+                <Text style={styles.buttonFilledText}>Sair da Conta</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -556,7 +556,7 @@ export default function SettingsScreen() {
                 onPress={handleChangePassword}
                 activeOpacity={0.8}
               >
-                <Text style={styles.buttonFilledText}>Change Password</Text>
+                <Text style={styles.buttonFilledText}>Alterar Senha</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -564,7 +564,7 @@ export default function SettingsScreen() {
                 onPress={handleDeleteAccount}
                 activeOpacity={0.8}
               >
-                <Text style={styles.buttonOutlinedText}>Delete Account</Text>
+                <Text style={styles.buttonOutlinedText}>Deletar Conta</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -589,7 +589,7 @@ export default function SettingsScreen() {
               {isSaving ? (
                 <ActivityIndicator color={colors.text.light} />
               ) : (
-                <Text style={styles.buttonPrimaryText}>Save Changes</Text>
+                <Text style={styles.buttonPrimaryText}>Salvar Alterações</Text>
               )}
             </TouchableOpacity>
           </View>

@@ -48,7 +48,7 @@ export function ActivityHighlights({ statements }: Props) {
 
   return (
     <Animated.View entering={FadeInDown.delay(350).duration(500)}>
-      <Text style={styles.activityTitle}>Account Activity Highlights</Text>
+      <Text style={styles.activityTitle}>Últimas Movimentações</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.activityScroll}>
         {highlights.map((tx) => (
           <View key={tx.id} style={styles.activityCard}>

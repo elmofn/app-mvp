@@ -104,7 +104,7 @@ export default function NotificationsScreen() {
       })
       .catch((err) => {
         console.warn('[alerts] fetch failed:', err);
-        if (!cancelled) setError('Could not load alerts. Try again later.');
+        if (!cancelled) setError(t('notifications.error'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -166,15 +166,15 @@ export default function NotificationsScreen() {
           style={[styles.headerGradient, { paddingTop: insets.top }]}
         >
           <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
-          <ScreenHeader title="Inbox" dark={true} />
+          <ScreenHeader title={t('notifications.headerTitle')} dark={true} />
 
           <View style={styles.headerBody}>
-            <Text style={styles.headerLabel}>NOTIFICATIONS</Text>
+            <Text style={styles.headerLabel}>{t('notifications.label')}</Text>
             <Text style={styles.mainTitle}>
-              Your <Text style={styles.mainTitleAccent}>Alerts</Text>
+              {t('notifications.titleBase')} <Text style={styles.mainTitleAccent}>{t('notifications.titleAccent')}</Text>
             </Text>
             <Text style={styles.pageDescription}>
-              Stay up to date with your account activity and travel updates.
+              {t('notifications.pageDescription')}
             </Text>
           </View>
         </LinearGradient>
@@ -190,7 +190,7 @@ export default function NotificationsScreen() {
             </View>
           ) : items.length === 0 ? (
             <View style={styles.stateBox}>
-              <Text style={styles.stateText}>You don&apos;t have any alerts right now.</Text>
+              <Text style={styles.stateText}>{t('notifications.empty')}</Text>
             </View>
           ) : (
             <>
@@ -251,7 +251,7 @@ export default function NotificationsScreen() {
                   activeOpacity={0.7}
                   onPress={markAllRead}
                 >
-                  <Text style={styles.markAllText}>MARK ALL AS READ</Text>
+                  <Text style={styles.markAllText}>{t('notifications.markAllAsRead')}</Text>
                 </TouchableOpacity>
               ) : null}
             </>

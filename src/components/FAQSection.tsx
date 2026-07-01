@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import RenderHTML, { MixedStyleDeclaration } from 'react-native-render-html';
 
+import { useT } from '@/src/i18n';
 import { type FAQItem, getFAQ } from '@/src/services/faq';
 import type { SupportedLang } from '@/src/services/locale';
 import { colors } from '@/src/theme/colors';
@@ -47,6 +48,7 @@ type Props = {
 
 export function FAQSection({ lang }: Props) {
   const { width } = useWindowDimensions();
+  const { t } = useT();
   const [items, setItems] = useState<FAQItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +65,7 @@ export function FAQSection({ lang }: Props) {
       })
       .catch((err) => {
         console.warn('[FAQ] fetch failed:', err);
-        if (!cancelled) setError('Could not load FAQ. Try again later.');
+        if (!cancelled) setError(t('support.faqError'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -81,13 +83,13 @@ export function FAQSection({ lang }: Props) {
   return (
     <View style={styles.faqSection}>
       <Text style={styles.faqTitle}>
-        Frequent{'\n'}
+        {t('support.faqTitleFirst')}{'\n'}
         <Text style={styles.faqTitleAccent}>
-          Questions
+          {t('support.faqTitleAccent')}
           <Text style={styles.faqTitle}>.</Text>
         </Text>
       </Text>
-      <Text style={styles.faqSubtitle}>KNOWLEDGE BASE</Text>
+      <Text style={styles.faqSubtitle}>{t('support.faqSubtitle')}</Text>
 
       {loading ? (
         <View style={styles.stateBox}>
@@ -99,7 +101,7 @@ export function FAQSection({ lang }: Props) {
         </View>
       ) : items.length === 0 ? (
         <View style={styles.stateBox}>
-          <Text style={styles.stateText}>No FAQ available for your language.</Text>
+          <Text style={styles.stateText}>{t('support.faqEmpty')}</Text>
         </View>
       ) : (
         <View style={styles.faqList}>

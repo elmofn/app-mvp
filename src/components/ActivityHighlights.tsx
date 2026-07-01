@@ -3,15 +3,14 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import type { SignInStatement } from '@/src/services/auth';
+import { useT } from '@/src/i18n';
 import { fonts } from '@/src/theme/typography';
 import { formatCurrency } from '@/src/utils/format';
 
-const PT_MONTHS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
-
-function formatStatementDate(iso: string): string {
+function formatStatementDate(iso: string, monthsAbbr: string[]): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return `${String(d.getDate()).padStart(2, '0')} ${PT_MONTHS[d.getMonth()]}`;
+  return `${String(d.getDate()).padStart(2, '0')} ${monthsAbbr[d.getMonth()]}`;
 }
 
 type Props = {
@@ -22,6 +21,8 @@ type Props = {
 // Quando a conta ainda nao tem transacoes, o componente nao renderiza nada
 // (retorna null) - sem fallback para dados mockados.
 export function ActivityHighlights({ statements }: Props) {
+  const { t, tr } = useT();
+  const monthsAbbr = tr('statement.monthsAbbr') as string[];
   const highlights = useMemo(() => {
     if (!statements || statements.length === 0) return [];
     return statements.slice(0, 4).map((tx) => {
@@ -34,7 +35,7 @@ export function ActivityHighlights({ statements }: Props) {
       // usuario mudasse a defaultCurrency em settings.
       const valueLocal = tx.originValue;
       const productName = tx.details?.productName ?? '';
-      const date = formatStatementDate(tx.creationTime);
+      const date = formatStatementDate(tx.creationTime, monthsAbbr);
       return {
         id: tx.id,
         title: tx.details?.unitName ?? '—',
@@ -42,13 +43,13 @@ export function ActivityHighlights({ statements }: Props) {
         amount: `${isPositive ? '+' : '-'} ${tx.originCurrencySymbol} ${formatCurrency(valueLocal)}`,
       };
     });
-  }, [statements]);
+  }, [statements, monthsAbbr]);
 
   if (highlights.length === 0) return null;
 
   return (
     <Animated.View entering={FadeInDown.delay(350).duration(500)}>
-      <Text style={styles.activityTitle}>Últimas Movimentações</Text>
+      <Text style={styles.activityTitle}>{t('home.recentActivity')}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.activityScroll}>
         {highlights.map((tx) => (
           <View key={tx.id} style={styles.activityCard}>

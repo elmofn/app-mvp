@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import { useT } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -49,6 +50,7 @@ export function EditReviewFieldModal({
   checkConflict,
   onSave,
 }: Props) {
+  const { t } = useT();
   const [value, setValue] = useState(initialValue);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +70,7 @@ export function EditReviewFieldModal({
   const handleSave = async () => {
     const next = kind === 'text' ? value.trim() : value.replace(/\D/g, '');
     if (!next) {
-      setError('Please fill out this field.');
+      setError(t('common.editFieldFill'));
       return;
     }
     if (next === (kind === 'text' ? initialValue.trim() : initialValue.replace(/\D/g, ''))) {
@@ -81,7 +83,7 @@ export function EditReviewFieldModal({
       if (checkConflict) {
         const taken = await checkConflict(next);
         if (taken) {
-          setError('This value is already in use on another account.');
+          setError(t('common.editFieldInUse'));
           setIsSaving(false);
           return;
         }
@@ -89,7 +91,7 @@ export function EditReviewFieldModal({
       await onSave(next);
       onClose();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not save the change.';
+      const message = err instanceof Error ? err.message : t('common.editFieldSaveError');
       setError(message);
     } finally {
       setIsSaving(false);
@@ -123,15 +125,15 @@ export function EditReviewFieldModal({
             <XIcon size={18} color={colors.text.muted} weight="bold" />
           </TouchableOpacity>
 
-          <Text style={styles.eyebrow}>EDIT {fieldLabel.toUpperCase()}</Text>
+          <Text style={styles.eyebrow}>{t('common.editFieldEyebrow', { label: fieldLabel.toUpperCase() })}</Text>
           <Text style={styles.title}>
-            New <Text style={styles.titleAccent}>{fieldLabel.toLowerCase()}</Text>
+            {t('common.editFieldNewPrefix')}<Text style={styles.titleAccent}>{fieldLabel.toLowerCase()}</Text>
           </Text>
 
           <TextInput
             {...inputProps}
             style={[styles.input, error ? styles.inputError : null]}
-            placeholder={`Enter the new ${fieldLabel.toLowerCase()}`}
+            placeholder={t('common.editFieldPlaceholder', { label: fieldLabel.toLowerCase() })}
             placeholderTextColor="#B5B5BD"
           />
 
@@ -146,7 +148,7 @@ export function EditReviewFieldModal({
             {isSaving ? (
               <ActivityIndicator color={colors.text.light} />
             ) : (
-              <Text style={styles.buttonText}>Save</Text>
+              <Text style={styles.buttonText}>{t('common.save')}</Text>
             )}
           </TouchableOpacity>
         </View>

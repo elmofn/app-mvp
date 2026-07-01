@@ -11,11 +11,13 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/src/components/ScreenHeader';
+import { useT } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
 export default function SubscriptionsScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useT();
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
@@ -23,13 +25,13 @@ export default function SubscriptionsScreen() {
       
       {/* Seção Superior (Preta) */}
       <View style={[styles.darkHeader, { paddingTop: insets.top }]}>
-        <ScreenHeader title="ASSINATURAS" dark={true} />
+        <ScreenHeader title={t('subscriptions.headerTitle')} dark={true} />
         
         
         <View style={styles.headerContent}>
-          <Text style={styles.mainTitle}>Assinaturas</Text>
+          <Text style={styles.mainTitle}>{t('subscriptions.mainTitle')}</Text>
           <Text style={styles.pageDescription}>
-            Eleve sua experiência de viagem com benefícios pensados para quem não para de explorar.
+            {t('subscriptions.pageDescription')}
           </Text>
           <View style={styles.accentLine} />
         </View>
@@ -42,15 +44,15 @@ export default function SubscriptionsScreen() {
         <View style={styles.mainContent}>
           
           <View style={styles.sectionHeading}>
-            <Text style={styles.sectionHeadingText}>PLANO ATIVO</Text>
+            <Text style={styles.sectionHeadingText}>{t('subscriptions.activePlanHeading')}</Text>
           </View>
 
           {/* CARD DO PLANO TRAVELBACK CLUB */}
           <View style={styles.subscriptionCard}>
             <View style={styles.planHeader}>
               <View>
-                <Text style={styles.planName}>TRAVELBACK CLUB</Text>
-                <Text style={styles.planPrice}>R$ 20<Text style={styles.pricePeriod}>/mês</Text></Text>
+                <Text style={styles.planName}>{t('subscriptions.planName')}</Text>
+                <Text style={styles.planPrice}>R$ 20<Text style={styles.pricePeriod}>{t('subscriptions.pricePeriod')}</Text></Text>
               </View>
               <Crown size={32} color={colors.brand.primary} weight="duotone" />
             </View>
@@ -62,49 +64,49 @@ export default function SubscriptionsScreen() {
               <View style={styles.benefitItem}>
                 <CheckCircle size={20} color={colors.brand.primary} weight="fill" />
                 <Text style={styles.benefitText}>
-                  <Text style={styles.boldText}>+15% de cashback</Text> em todas as experiências da TravelShop.
+                  <Text style={styles.boldText}>{t('subscriptions.benefitCashbackBold')}</Text>{t('subscriptions.benefitCashbackRest')}
                 </Text>
               </View>
 
               <View style={styles.benefitItem}>
                 <Package size={20} color={colors.brand.primary} weight="fill" />
                 <Text style={styles.benefitText}>
-                  <Text style={styles.boldText}>Mochila TravelBack</Text> exclusiva entregue na sua casa todo mês.
+                  <Text style={styles.boldText}>{t('subscriptions.benefitBackpackBold')}</Text>{t('subscriptions.benefitBackpackRest')}
                 </Text>
               </View>
 
               <View style={styles.benefitItem}>
                 <ArrowUpRight size={20} color={colors.brand.primary} weight="fill" />
                 <Text style={styles.benefitText}>
-                  Acesso prioritário a <Text style={styles.boldText}>edições limitadas</Text> de malas e acessórios.
+                  {t('subscriptions.benefitLimitedPre')}<Text style={styles.boldText}>{t('subscriptions.benefitLimitedBold')}</Text>{t('subscriptions.benefitLimitedRest')}
                 </Text>
               </View>
             </View>
 
             <TouchableOpacity style={styles.primaryButton} activeOpacity={0.8}>
-              <Text style={styles.primaryButtonText}>GERENCIAR ASSINATURA</Text>
+              <Text style={styles.primaryButtonText}>{t('subscriptions.manageButton')}</Text>
             </TouchableOpacity>
           </View>
 
           {/* SEÇÃO DA MOCHILA (DETALHE DO PRODUTO) */}
           <View style={styles.sectionHeading}>
-            <Text style={styles.sectionHeadingText}>ESTE MÊS NA MOCHILA</Text>
+            <Text style={styles.sectionHeadingText}>{t('subscriptions.kitHeading')}</Text>
           </View>
 
           <View style={styles.kitCard}>
             <View style={styles.kitInfo}>
-              <Text style={styles.kitTitle}>KIT "SURPRESAS DE VIAGEM"</Text>
+              <Text style={styles.kitTitle}>{t('subscriptions.kitTitle')}</Text>
               <Text style={styles.kitDesc}>
-                Além da sua nova mochila, este mês incluímos um adaptador universal premium e um kit de higiene sólido sustentável.
+                {t('subscriptions.kitDesc')}
               </Text>
               <View style={styles.tag}>
-                <Text style={styles.tagText}>ENTREGA EM 04/05</Text>
+                <Text style={styles.tagText}>{t('subscriptions.deliveryTag')}</Text>
               </View>
             </View>
           </View>
 
           <TouchableOpacity style={styles.cancelLink}>
-            <Text style={styles.cancelLinkText}>Cancelar assinatura</Text>
+            <Text style={styles.cancelLinkText}>{t('subscriptions.cancelLink')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

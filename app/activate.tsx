@@ -30,6 +30,7 @@ import { EditFieldKind, EditReviewFieldModal } from '@/src/components/EditReview
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { useT } from '@/src/i18n';
 import {
   AccountPreview,
   ActivationCodeError,
@@ -46,47 +47,18 @@ import { fonts } from '@/src/theme/typography';
 
 type StepKey = 'code' | 'password';
 
-type Step = {
-  id: number;
+type StepText = {
   titleFirst: string;
   titleAccent: string;
   description: string;
   label: string;
   placeholder: string;
-  key?: StepKey;
 };
 
-const STEPS: Step[] = [
-  {
-    id: 1,
-    titleFirst: 'Activation',
-    titleAccent: 'Code',
-    description:
-      'Enter the activation code you received to confirm your TravelBACK account.',
-    label: 'Activation Code',
-    placeholder: 'Your activation code',
-    key: 'code',
-  },
-  {
-    id: 2,
-    titleFirst: 'Create',
-    titleAccent: 'Password',
-    description:
-      'Set a 4-digit PIN to protect your TravelBACK account.',
-    label: 'Password',
-    placeholder: '0 0 0 0',
-    key: 'password',
-  },
-  {
-    id: 3,
-    titleFirst: 'Review',
-    titleAccent: 'Details',
-    description:
-      'Check your account details and accept the terms to finish the activation.',
-    label: 'Account Summary',
-    placeholder: '',
-  },
-];
+// Os textos dos passos vivem no dicionario (activate.steps); aqui ficam
+// apenas os campos nao-traduziveis (a `key` do campo de formulario).
+const STEP_KEYS: (StepKey | undefined)[] = ['code', 'password', undefined];
+const STEP_COUNT = STEP_KEYS.length;
 
 // Estilos para o RenderHTML do modal de termos. Copiados de app/terms.tsx
 // porque a tela de ativacao precisa renderizar a police antes do login -
@@ -143,6 +115,7 @@ export default function ActivationScreen() {
   const { width } = useWindowDimensions();
   const showAlert = useAlert();
   const { signIn } = useAuth();
+  const { t, tr } = useT();
   // Usuario ainda nao esta logado nesse fluxo - locale fica no idioma do device.
   const lang = getDeviceLanguage();
 
@@ -169,11 +142,11 @@ export default function ActivationScreen() {
   type EditableField = 'name' | 'phoneNumber';
   const [editingField, setEditingField] = useState<EditableField | null>(null);
 
-  const progressWidth = useSharedValue(1 / STEPS.length);
+  const progressWidth = useSharedValue(1 / STEP_COUNT);
   const contentOpacity = useSharedValue(1);
 
   useEffect(() => {
-    progressWidth.value = withTiming(currentStep / STEPS.length, { duration: 500 });
+    progressWidth.value = withTiming(currentStep / STEP_COUNT, { duration: 500 });
   }, [currentStep]);
 
   const animatedProgressStyle = useAnimatedStyle(() => ({
@@ -199,7 +172,7 @@ export default function ActivationScreen() {
 
   const handleVerifyCode = async () => {
     if (code.trim().length === 0) {
-      setStepError('Enter your activation code.');
+      setStepError(t('activate.errors.enterCode'));
       return;
     }
     setIsVerifyingCode(true);
@@ -212,8 +185,8 @@ export default function ActivationScreen() {
       if (err instanceof ActivationCodeError) {
         setStepError(err.message);
       } else {
-        const message = err instanceof Error ? err.message : 'Could not validate the code.';
-        showAlert('Activation', message);
+        const message = err instanceof Error ? err.message : t('activate.errors.validateCode');
+        showAlert(t('activate.alerts.activationTitle'), message);
       }
     } finally {
       setIsVerifyingCode(false);
@@ -223,7 +196,7 @@ export default function ActivationScreen() {
   const handleSavePassword = async () => {
     if (!preview) return;
     if (password.length !== 4) {
-      setStepError('Use a 4-digit PIN.');
+      setStepError(t('activate.errors.usePin'));
       return;
     }
     setIsSavingPassword(true);
@@ -232,7 +205,7 @@ export default function ActivationScreen() {
       await setNewPassword(preview.accountId, password, lang);
       advanceTo(3);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not save your password.';
+      const message = err instanceof Error ? err.message : t('activate.errors.savePassword');
       setStepError(message);
     } finally {
       setIsSavingPassword(false);
@@ -242,7 +215,7 @@ export default function ActivationScreen() {
   const handleFinish = async () => {
     if (!preview) return;
     if (!acceptedTerms) {
-      showAlert('Terms', 'Please accept the Terms and Conditions to continue.');
+      showAlert(t('activate.alerts.termsTitle'), t('activate.alerts.termsMessage'));
       return;
     }
     setIsFinishing(true);
@@ -268,13 +241,13 @@ export default function ActivationScreen() {
       const message =
         response.errorMessage ||
         response.message ||
-        'Your account was activated but sign in failed. Please log in manually.';
-      showAlert('Activated', message, [
-        { text: 'OK', onPress: () => router.replace('/login') },
+        t('activate.alerts.signInFailed');
+      showAlert(t('activate.alerts.activatedTitle'), message, [
+        { text: t('common.ok'), onPress: () => router.replace('/login') },
       ]);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not finish the activation.';
-      showAlert('Activation', message);
+      const message = err instanceof Error ? err.message : t('activate.errors.finish');
+      showAlert(t('activate.alerts.activationTitle'), message);
     } finally {
       setIsFinishing(false);
     }
@@ -302,9 +275,9 @@ export default function ActivationScreen() {
     initial: string;
     check?: (val: string) => Promise<boolean>;
   }> = {
-    name: { label: 'Name', kind: 'text', initial: preview?.name ?? '' },
+    name: { label: t('activate.edit.name'), kind: 'text', initial: preview?.name ?? '' },
     phoneNumber: {
-      label: 'Phone',
+      label: t('activate.edit.phone'),
       kind: 'phone',
       initial: preview?.phoneNumber ?? '',
       check: (digits) => searchByRawDigits(digits),
@@ -339,7 +312,8 @@ export default function ActivationScreen() {
     setPreview(patched);
   };
 
-  const step = STEPS[currentStep - 1];
+  const stepsText = tr('activate.steps') as StepText[];
+  const step = { ...stepsText[currentStep - 1], key: STEP_KEYS[currentStep - 1] };
   const isReview = currentStep === 3;
   const isPassword = currentStep === 2;
   const isCode = currentStep === 1;
@@ -352,7 +326,7 @@ export default function ActivationScreen() {
   };
 
   const isBusy = isVerifyingCode || isSavingPassword || isFinishing;
-  const ctaLabel = isReview ? 'Finish Activation' : 'Next';
+  const ctaLabel = isReview ? t('activate.cta.finish') : t('activate.cta.next');
   const disabled = (isReview && !acceptedTerms) || isBusy;
 
   // Tipagem do `field` casa com EditableField para preservar a opcao de
@@ -361,10 +335,10 @@ export default function ActivationScreen() {
   const reviewRows: ReviewRow[] = preview
     ? (
         [
-          { label: 'Name', value: preview.name, field: 'name' },
-          { label: 'E-mail', value: preview.email, field: null },
-          { label: 'Phone', value: preview.phoneNumber, field: 'phoneNumber' },
-          { label: 'Legal ID', value: preview.legalId, field: null },
+          { label: t('activate.review.name'), value: preview.name, field: 'name' },
+          { label: t('activate.review.email'), value: preview.email, field: null },
+          { label: t('activate.review.phone'), value: preview.phoneNumber, field: 'phoneNumber' },
+          { label: t('activate.review.legalId'), value: preview.legalId, field: null },
         ] satisfies ReviewRow[]
       ).filter((r) => r.value.trim().length > 0)
     : [];
@@ -382,7 +356,7 @@ export default function ActivationScreen() {
       >
         <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
 
-        <ScreenHeader title="Activate Account" dark={true} />
+        <ScreenHeader title={t('activate.headerTitle')} dark={true} />
 
         <View style={styles.stepCounter}>
           <Text>
@@ -390,7 +364,7 @@ export default function ActivationScreen() {
               {String(currentStep).padStart(2, '0')}
             </Text>
             <Text style={styles.stepTotal}>
-              {` / ${String(STEPS.length).padStart(2, '0')}`}
+              {` / ${String(STEP_COUNT).padStart(2, '0')}`}
             </Text>
           </Text>
         </View>
@@ -433,7 +407,7 @@ export default function ActivationScreen() {
                             onPress={() => setEditingField(field)}
                             activeOpacity={0.6}
                           >
-                            <Text style={styles.reviewLabel}>{row.label} • tap to edit</Text>
+                            <Text style={styles.reviewLabel}>{t('activate.review.tapToEdit', { label: row.label })}</Text>
                             <Text style={styles.reviewValue}>{row.value}</Text>
                           </TouchableOpacity>
                         ) : (
@@ -444,7 +418,7 @@ export default function ActivationScreen() {
                         );
                       })
                     ) : (
-                      <Text style={styles.reviewValue}>—</Text>
+                      <Text style={styles.reviewValue}>{t('activate.review.empty')}</Text>
                     )}
                   </View>
 
@@ -459,15 +433,15 @@ export default function ActivationScreen() {
                       )}
                     </View>
                     <Text style={styles.checkboxText}>
-                      I accept the{' '}
+                      {t('activate.terms.accept')}
                       <Text style={styles.linkText} onPress={() => setTermsVisible(true)}>
-                        Terms and Conditions
-                      </Text>{' '}
-                      and the{' '}
-                      <Text style={styles.linkText} onPress={() => setTermsVisible(true)}>
-                        Privacy Policy
+                        {t('activate.terms.termsLink')}
                       </Text>
-                      .
+                      {t('activate.terms.and')}
+                      <Text style={styles.linkText} onPress={() => setTermsVisible(true)}>
+                        {t('activate.terms.privacyLink')}
+                      </Text>
+                      {t('activate.terms.end')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -570,9 +544,9 @@ export default function ActivationScreen() {
               <XIcon size={22} color={colors.text.light} weight="bold" />
             </TouchableOpacity>
             <View style={styles.termsHeaderBody}>
-              <Text style={styles.termsEyebrow}>POLICIES</Text>
+              <Text style={styles.termsEyebrow}>{t('activate.termsModal.eyebrow')}</Text>
               <Text style={styles.termsTitle}>
-                Terms & <Text style={styles.termsTitleAccent}>Conditions</Text>
+                {t('activate.termsModal.titleFirst')}<Text style={styles.termsTitleAccent}>{t('activate.termsModal.titleAccent')}</Text>
               </Text>
             </View>
           </LinearGradient>
@@ -587,7 +561,7 @@ export default function ActivationScreen() {
                 enableExperimentalMarginCollapsing
               />
             ) : (
-              <Text style={styles.termsEmpty}>Terms not available.</Text>
+              <Text style={styles.termsEmpty}>{t('activate.termsModal.empty')}</Text>
             )}
           </ScrollView>
         </SafeAreaView>

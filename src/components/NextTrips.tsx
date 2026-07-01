@@ -3,6 +3,7 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown, FadeInLeft, FadeInRight } from 'react-native-reanimated';
 
 import type { SignInNextTrip } from '@/src/services/auth';
+import { useT } from '@/src/i18n';
 import { fonts } from '@/src/theme/typography';
 
 type Props = {
@@ -13,16 +14,18 @@ type Props = {
 // payload; quando o array vem vazio (conta nova / backend sem conteudo)
 // nao renderiza nada, mesmo padrao do ActivityHighlights.
 export function NextTrips({ trips }: Props) {
+  const { t } = useT();
+
   if (!trips || trips.length === 0) return null;
 
   return (
     <View style={styles.tripsSection}>
       <Animated.View entering={FadeInDown.delay(750).duration(500)} style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Próximos</Text>
+        <Text style={styles.sectionTitle}>{t('home.nextTitle')}</Text>
         <Text style={styles.sectionTitleItalic}>
-          Destinos<Text style={styles.sectionTitle}>.</Text>
+          {t('home.destinationsTitle')}<Text style={styles.sectionTitle}>.</Text>
         </Text>
-        <Text style={styles.sectionSubtitle}>RESERVE SUA VIAGEM</Text>
+        <Text style={styles.sectionSubtitle}>{t('home.bookYourTrip')}</Text>
       </Animated.View>
 
       {trips.map((trip, index) => (

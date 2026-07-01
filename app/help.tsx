@@ -4,11 +4,13 @@ import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SupportContent } from '@/src/components/SupportContent';
+import { useT } from '@/src/i18n';
 import { getDeviceLanguage } from '@/src/services/locale';
 
 export default function HelpScreen() {
   // Tela acessada antes do login - usa o idioma configurado no dispositivo.
   const lang = getDeviceLanguage();
+  const { t } = useT();
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
@@ -16,9 +18,9 @@ export default function HelpScreen() {
       <SupportContent
         lang={lang}
         showTravelAssistant={false}
-        titleFirst="Need "
-        titleAccent="Help"
-        titleAfter="?"
+        titleFirst={t('support.helpTitleFirst')}
+        titleAccent={t('support.helpTitleAccent')}
+        titleAfter={t('support.helpTitleAfter')}
       />
     </SafeAreaView>
   );

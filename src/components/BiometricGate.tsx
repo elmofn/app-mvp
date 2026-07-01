@@ -5,6 +5,7 @@ import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'r
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { useAuth } from '@/src/contexts/AuthContext';
+import { useT } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -12,6 +13,7 @@ export function BiometricGate() {
   const router = useRouter();
   const { isLocked, isRestoring, account, biometricAvailable, unlock, signOut } = useAuth();
   const { width, height } = useWindowDimensions();
+  const { t } = useT();
 
   const autoTriggeredRef = useRef(false);
   const inFlightRef = useRef(false);
@@ -95,10 +97,10 @@ export function BiometricGate() {
         </View>
 
         <Text style={styles.title}>
-          Welcome <Text style={styles.titleAccent}>back</Text>
+          {t('common.biometricTitleFirst')} <Text style={styles.titleAccent}>{t('common.biometricTitleAccent')}</Text>
         </Text>
         <Text style={styles.subtitle}>
-          Tap below to unlock your TravelBACK account with biometric authentication.
+          {t('common.biometricSubtitle')}
         </Text>
 
         <TouchableOpacity
@@ -108,12 +110,12 @@ export function BiometricGate() {
           disabled={isAuthenticating}
         >
           <Text style={styles.primaryButtonText}>
-            {isAuthenticating ? 'Authenticating…' : 'Unlock'}
+            {isAuthenticating ? t('common.authenticating') : t('common.unlock')}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.secondaryButton} activeOpacity={0.7} onPress={handleSignOut}>
-          <Text style={styles.secondaryButtonText}>Sign out</Text>
+          <Text style={styles.secondaryButtonText}>{t('common.signOut')}</Text>
         </TouchableOpacity>
       </View>
     </View>

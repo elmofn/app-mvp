@@ -73,7 +73,7 @@ export default function TransactionDetailScreen() {
           style={[styles.headerGradient, { paddingTop: insets.top }]}
         >
           <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
-          <ScreenHeader title="Transaction" dark={true} />
+          <ScreenHeader title={t('transaction.header')} dark={true} />
           <View style={styles.headerInner}>
             <Text style={styles.mainTitle}>
               Transaction <Text style={styles.mainTitleAccent}>not found</Text>
@@ -132,7 +132,7 @@ export default function TransactionDetailScreen() {
         </LinearGradient>
 
         <View style={styles.body}>
-          <Section title="Description">
+          <Section title={t('transaction.sectionDescription')}>
             <Row label="Title" value={tx.title} />
             <Row label="Type" value={typeLabel} />
             {tx.details?.complement ? (
@@ -140,13 +140,13 @@ export default function TransactionDetailScreen() {
             ) : null}
           </Section>
 
-          <Section title="Vendor">
+          <Section title={t('transaction.sectionVendor')}>
             <Row label="Unit" value={tx.details?.unitName ?? '—'} />
             <Row label="Product" value={tx.details?.productName ?? '—'} />
             <Row label="Product ID" value={tx.details?.productId ?? '—'} />
           </Section>
 
-          <Section title="Financial">
+          <Section title={t('transaction.sectionFinancial')}>
             <Row
               label={`Value (${tx.originCurrencyCode})`}
               value={`${tx.originCurrencySymbol} ${formatCurrency(valueLocal)}`}
@@ -167,7 +167,7 @@ export default function TransactionDetailScreen() {
             ) : null}
           </Section>
 
-          <Section title="Identifiers">
+          <Section title={t('transaction.sectionIdentifiers')}>
             <Row label="Transaction ID" value={tx.id} />
             {tx.details?.internalCode ? (
               <Row label="Internal Code" value={tx.details.internalCode} />

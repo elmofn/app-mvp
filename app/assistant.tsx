@@ -16,6 +16,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { useT } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -27,15 +28,6 @@ type Message = {
   text: string;
 };
 
-// Prompts sugeridos que aparecem no estado inicial - placeholders ate
-// termos um endpoint de IA propriamente integrado.
-const SUGGESTED_PROMPTS = [
-  'Plan a 3-day weekend in Lisbon',
-  'What should I pack for Patagonia in winter?',
-  'Find me a romantic hotel in Florence',
-  'Best time to visit Tokyo',
-];
-
 function makeId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -43,7 +35,9 @@ function makeId() {
 export default function AssistantScreen() {
   const insets = useSafeAreaInsets();
   const { account } = useAuth();
+  const { t, tr } = useT();
   const firstName = account?.accountDetails?.name?.split(' ')[0] ?? 'traveler';
+  const suggestedPrompts = tr('assistant.prompts') as string[];
 
   const scrollRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
@@ -66,7 +60,7 @@ export default function AssistantScreen() {
       const reply: Message = {
         id: makeId(),
         role: 'assistant',
-        text: 'I can help with that. Booking integration is on the way - for now I am running on placeholder responses.',
+        text: t('assistant.placeholderReply'),
       };
       setMessages((curr) => [...curr, reply]);
       setIsTyping(false);
@@ -89,14 +83,14 @@ export default function AssistantScreen() {
           style={[styles.headerGradient, { paddingTop: insets.top + 16 }]}
         >
           <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
-          <ScreenHeader title="Travel AI" dark={true} />
+          <ScreenHeader title={t('assistant.headerTitle')} dark={true} />
 
           <View style={styles.headerInner}>
             <Text style={styles.mainTitle}>
-              Your Travel <Text style={styles.mainTitleAccent}>Concierge</Text>
+              {t('assistant.titleBase')} <Text style={styles.mainTitleAccent}>{t('assistant.titleAccent')}</Text>
             </Text>
             <Text style={styles.pageDescription}>
-              Ask anything about destinations, itineraries, or your next reservation.
+              {t('assistant.pageDescription')}
             </Text>
           </View>
         </LinearGradient>
@@ -111,21 +105,21 @@ export default function AssistantScreen() {
           <View style={styles.welcomeCard}>
             <View style={styles.welcomeBadge}>
               <SparkleIcon size={14} color="#0F022D" weight="fill" />
-              <Text style={styles.welcomeBadgeText}>WELCOME</Text>
+              <Text style={styles.welcomeBadgeText}>{t('assistant.badge')}</Text>
             </View>
             <Text style={styles.welcomeTitle}>
-              Hi {firstName}, what are we planning today?
+              {t('assistant.welcomeTitle', { name: firstName })}
             </Text>
             <Text style={styles.welcomeSubtitle}>
-              I can help you find hotels, plan routes, and pick the best dates for your trip.
+              {t('assistant.welcomeSubtitle')}
             </Text>
           </View>
 
           {isEmpty ? (
             <View style={styles.promptsBlock}>
-              <Text style={styles.promptsLabel}>TRY ASKING</Text>
+              <Text style={styles.promptsLabel}>{t('assistant.tryAsking')}</Text>
               <View style={styles.promptsList}>
-                {SUGGESTED_PROMPTS.map((prompt) => (
+                {suggestedPrompts.map((prompt) => (
                   <TouchableOpacity
                     key={prompt}
                     style={styles.promptChip}
@@ -170,7 +164,7 @@ export default function AssistantScreen() {
           <View style={styles.inputWrap}>
             <TextInput
               style={styles.input}
-              placeholder="Ask the concierge…"
+              placeholder={t('assistant.inputPlaceholder')}
               placeholderTextColor={colors.text.muted}
               value={draft}
               onChangeText={setDraft}

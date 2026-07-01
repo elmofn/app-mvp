@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { COUNTRIES, Country } from '@/src/data/countries';
+import { useT } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -26,6 +27,7 @@ type Props = {
 
 export function CountryPicker({ visible, onClose, onSelect, selectedCode }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useT();
   const [query, setQuery] = useState('');
 
   const filtered = useMemo(() => {
@@ -72,7 +74,7 @@ export function CountryPicker({ visible, onClose, onSelect, selectedCode }: Prop
             <MagnifyingGlassIcon size={18} color={colors.text.muted} weight="regular" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search country or code"
+              placeholder={t('settings.countrySearchPlaceholder')}
               placeholderTextColor="#B5B5BD"
               value={query}
               onChangeText={setQuery}

@@ -7,6 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { useT } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -64,6 +65,7 @@ export default function TermsScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { account } = useAuth();
+  const { t } = useT();
 
   const policies = account?.polices ?? [];
 
@@ -80,15 +82,15 @@ export default function TermsScreen() {
           style={[styles.headerGradient, { paddingTop: insets.top }]}
         >
           <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
-          <ScreenHeader title="Legal" dark={true} />
+          <ScreenHeader title={t('terms.screenHeaderTitle')} dark={true} />
 
           <View style={styles.headerBody}>
-            <Text style={styles.headerLabel}>POLICIES</Text>
+            <Text style={styles.headerLabel}>{t('terms.headerLabel')}</Text>
             <Text style={styles.mainTitle}>
-              Terms & <Text style={styles.mainTitleAccent}>Conditions</Text>
+              {t('terms.titleFirst')}<Text style={styles.mainTitleAccent}>{t('terms.titleAccent')}</Text>
             </Text>
             <Text style={styles.pageDescription}>
-              Review the policies that apply to your TravelBACK account.
+              {t('terms.pageDescription')}
             </Text>
           </View>
         </LinearGradient>
@@ -96,7 +98,7 @@ export default function TermsScreen() {
         <View style={styles.body}>
           {policies.length === 0 ? (
             <Text style={styles.emptyText}>
-              No policies available for your account at this moment.
+              {t('terms.empty')}
             </Text>
           ) : (
             policies.map((policy) => (

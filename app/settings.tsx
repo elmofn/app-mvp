@@ -473,7 +473,7 @@ export default function SettingsScreen() {
           >
             <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
 
-            <ScreenHeader title="User Data" dark={true} />
+            <ScreenHeader title={t('settings.headerTitle')} dark={true} />
 
             <View style={styles.headerBody}>
               <Text style={styles.mainTitle}>
@@ -620,7 +620,7 @@ export default function SettingsScreen() {
               <>
                 <TextInput
                   style={styles.modalSearch}
-                  placeholder="Search currency or code"
+                  placeholder={t('settings.currencySearchPlaceholder')}
                   placeholderTextColor="#B5B5BD"
                   value={currencySearch}
                   onChangeText={setCurrencySearch}

@@ -388,7 +388,7 @@ export default function SignupScreen() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not save your PIN.';
-      showAlert('Sign up failed', message);
+      showAlert(t('signup.alerts.signupFailedTitle'), message);
     } finally {
       setIsSubmitting(false);
     }
@@ -487,7 +487,7 @@ export default function SignupScreen() {
       >
         <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
 
-        <ScreenHeader title="Sign Up" dark={true} />
+        <ScreenHeader title={t('signup.headerTitle')} dark={true} />
 
         <View style={styles.stepCounter}>
           <Text>

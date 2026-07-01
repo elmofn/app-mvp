@@ -32,6 +32,7 @@ import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { Country, DEFAULT_COUNTRY } from '@/src/data/countries';
 import { useDebounce } from '@/src/hooks/useDebounce';
+import { useT } from '@/src/i18n';
 import { formatResendCountdown, useResendTimer } from '@/src/hooks/useResendTimer';
 import {
   createAccount,
@@ -50,70 +51,31 @@ import { fonts } from '@/src/theme/typography';
 
 type StepKey = 'name' | 'email' | 'phone' | 'code' | 'password';
 
-type Step = {
+// Campos nao-textuais dos steps (id/key). O texto traduzido vive no dict
+// signup.steps (mesma ordem) e e mesclado dentro do componente via tr().
+type StepMeta = {
   id: number;
+  key?: StepKey;
+};
+
+// Texto traduzido de cada step, resolvido por tr('signup.steps')[index].
+type StepText = {
   titleFirst: string;
   titleAccent: string;
   description: string;
   label: string;
   placeholder: string;
-  key?: StepKey;
 };
 
-const STEPS: Step[] = [
-  {
-    id: 1,
-    titleFirst: 'Full',
-    titleAccent: 'Name',
-    description: 'To get started, share your full name exactly as it appears on your ID.',
-    label: 'Full Name',
-    placeholder: 'Your full name',
-    key: 'name',
-  },
-  {
-    id: 2,
-    titleFirst: 'Your',
-    titleAccent: 'E-mail',
-    description: 'Now share the e-mail you want to use to access your TravelBACK account.',
-    label: 'E-mail',
-    placeholder: 'you@email.com',
-    key: 'email',
-  },
-  {
-    id: 3,
-    titleFirst: 'Phone',
-    titleAccent: 'Number',
-    description: 'Enter your mobile number with country code so we can keep your account safe.',
-    label: 'Phone Number',
-    placeholder: '11 99999-9999',
-    key: 'phone',
-  },
-  {
-    id: 4,
-    titleFirst: 'Review',
-    titleAccent: 'Details',
-    description: 'Make sure everything is correct and accept the terms to continue.',
-    label: 'Account Summary',
-    placeholder: '',
-  },
-  {
-    id: 5,
-    titleFirst: 'Verify',
-    titleAccent: 'E-mail',
-    description: 'We sent a 6-digit code to your e-mail. Enter it below to validate your address.',
-    label: 'Verification Code',
-    placeholder: '0 0 0 0 0 0',
-    key: 'code',
-  },
-  {
-    id: 6,
-    titleFirst: 'Create',
-    titleAccent: 'PIN',
-    description: 'Last step: choose a 4-digit PIN to protect your account.',
-    label: '4-digit PIN',
-    placeholder: '0 0 0 0',
-    key: 'password',
-  },
+type Step = StepMeta & StepText;
+
+const STEPS: StepMeta[] = [
+  { id: 1, key: 'name' },
+  { id: 2, key: 'email' },
+  { id: 3, key: 'phone' },
+  { id: 4 },
+  { id: 5, key: 'code' },
+  { id: 6, key: 'password' },
 ];
 
 type CheckStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid';
@@ -173,6 +135,7 @@ export default function SignupScreen() {
   const { width } = useWindowDimensions();
   const { signIn } = useAuth();
   const showAlert = useAlert();
+  const { t, tr } = useT();
   // Idioma do device - usado tanto no payload do CreateAccount como na
   // escolha da mensagem localizada dos erros retornados pelo backend.
   const deviceLang = getDeviceLanguage();
@@ -318,8 +281,8 @@ export default function SignupScreen() {
       await requestValidationCode(id, 'email', deviceLang);
       resendTimer.start();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not send the verification code.';
-      showAlert('Verification', message);
+      const message = err instanceof Error ? err.message : t('signup.alerts.verificationSendError');
+      showAlert(t('signup.alerts.verificationTitle'), message);
     } finally {
       setCodeSending(false);
     }
@@ -382,8 +345,8 @@ export default function SignupScreen() {
       setAccountId(newId);
       advanceStep();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not create your account.';
-      showAlert('Sign up failed', message);
+      const message = err instanceof Error ? err.message : t('signup.alerts.createError');
+      showAlert(t('signup.alerts.signupFailedTitle'), message);
     } finally {
       setIsSubmitting(false);
     }
@@ -399,8 +362,8 @@ export default function SignupScreen() {
       if (err instanceof ValidateCodeError) {
         setCodeError(err.message);
       } else {
-        const message = err instanceof Error ? err.message : 'Could not validate the code.';
-        showAlert('Verification', message);
+        const message = err instanceof Error ? err.message : t('signup.alerts.validateError');
+        showAlert(t('signup.alerts.verificationTitle'), message);
       }
     } finally {
       setIsSubmitting(false);
@@ -418,9 +381,9 @@ export default function SignupScreen() {
         const message =
           response.errorMessage ||
           response.message ||
-          'Your account was created but sign in failed. Please log in manually.';
-        showAlert('Almost there', message, [
-          { text: 'OK', onPress: () => router.replace('/login') },
+          t('signup.alerts.signInFailed');
+        showAlert(t('signup.alerts.almostThereTitle'), message, [
+          { text: t('common.ok'), onPress: () => router.replace('/login') },
         ]);
       }
     } catch (err) {
@@ -452,7 +415,11 @@ export default function SignupScreen() {
     advanceStep();
   };
 
-  const step = STEPS[currentStep - 1];
+  // Mescla os campos nao-textuais locais (id/key) com o texto traduzido do
+  // dict, mantendo `step` reativo a troca de idioma.
+  const stepsText = tr('signup.steps') as StepText[];
+  const meta = STEPS[currentStep - 1];
+  const step: Step = { ...meta, ...stepsText[currentStep - 1] };
   const isReview = currentStep === 4;
   const isPassword = currentStep === 6;
   const isCode = currentStep === 5;

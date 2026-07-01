@@ -7,24 +7,20 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { useT, type Translator } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 import { formatCurrency } from '@/src/utils/format';
 
-const PT_MONTHS = [
-  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
-];
-
-function formatLongDate(iso: string): string {
+function formatLongDate(iso: string, t: Translator['t'], monthsFull: string[]): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   const day = String(d.getDate()).padStart(2, '0');
-  const month = PT_MONTHS[d.getMonth()];
+  const month = monthsFull[d.getMonth()];
   const year = d.getFullYear();
   const hour = String(d.getHours()).padStart(2, '0');
   const minute = String(d.getMinutes()).padStart(2, '0');
-  return `${day} de ${month} de ${year} • ${hour}:${minute}`;
+  return t('transaction.dateFormat', { day, month, year, hour, minute });
 }
 
 function Row({ label, value }: { label: string; value: string | number }) {
@@ -59,6 +55,9 @@ export default function TransactionDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { account } = useAuth();
+  const { t, tr } = useT();
+
+  const monthsFull = tr('transaction.monthsFull') as string[];
 
   const tx = account?.statements?.find((s) => s.id === id);
 
@@ -127,7 +126,7 @@ export default function TransactionDetailScreen() {
               <Text style={styles.amountUsd}>
                 {isPositive ? '+' : '-'} US$ {formatCurrency(tx.value)}
               </Text>
-              <Text style={styles.dateText}>{formatLongDate(tx.creationTime)}</Text>
+              <Text style={styles.dateText}>{formatLongDate(tx.creationTime, t, monthsFull)}</Text>
             </View>
           </View>
         </LinearGradient>

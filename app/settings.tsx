@@ -22,6 +22,7 @@ import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { formatResendCountdown, useResendTimer } from '@/src/hooks/useResendTimer';
+import { useT } from '@/src/i18n';
 import {
   LANGUAGE_COUNTRY_IDS,
   removeAccount,
@@ -60,6 +61,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { account, signOut, updateAccountDetails } = useAuth();
   const showAlert = useAlert();
+  const { t } = useT();
 
   // Idioma usado nas chamadas localizadas (mensagens de erro). Pode mudar
   // localmente no formulario, mas as APIs ainda devolvem mensagens baseadas
@@ -198,10 +200,10 @@ export default function SettingsScreen() {
           : {}),
       });
 
-      showAlert('Profile updated', 'Your changes have been saved.');
+      showAlert(t('settings.profileUpdatedTitle'), t('settings.profileUpdatedMessage'));
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not save your changes.';
-      showAlert('Update failed', message);
+      const message = err instanceof Error ? err.message : t('settings.updateFailedMessage');
+      showAlert(t('settings.updateFailedTitle'), message);
     } finally {
       setIsSaving(false);
     }
@@ -240,8 +242,8 @@ export default function SettingsScreen() {
       await requestValidationCode(account.accountDetails.accountId, 'email', lang);
       resendTimer.start();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not send the verification code.';
-      showAlert('Verification', message);
+      const message = err instanceof Error ? err.message : t('settings.sendCodeFailedMessage');
+      showAlert(t('common.verification'), message);
     }
   };
 
@@ -257,8 +259,8 @@ export default function SettingsScreen() {
       await requestValidationCode(account.accountDetails.accountId, 'email', lang);
       resendTimer.start();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not send the verification code.';
-      showAlert('Verification', message);
+      const message = err instanceof Error ? err.message : t('settings.sendCodeFailedMessage');
+      showAlert(t('common.verification'), message);
     }
   };
 
@@ -274,8 +276,8 @@ export default function SettingsScreen() {
       await requestValidationCode(account.accountDetails.accountId, 'email', lang);
       resendTimer.start();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not send the verification code.';
-      showAlert('Verification', message);
+      const message = err instanceof Error ? err.message : t('settings.sendCodeFailedMessage');
+      showAlert(t('common.verification'), message);
     }
   };
 
@@ -287,10 +289,10 @@ export default function SettingsScreen() {
     try {
       await removeAccount(account.accountDetails.accountId, deleteBlockAccount, lang);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not delete your account.';
+      const message = err instanceof Error ? err.message : t('settings.deleteFailedMessage');
       setVerifyVisible(false);
       resetModalState();
-      showAlert('Delete failed', message);
+      showAlert(t('settings.deleteFailedTitle'), message);
       return;
     }
     await signOut();
@@ -324,8 +326,8 @@ export default function SettingsScreen() {
       if (err instanceof ValidateCodeError) {
         setVerifyError(err.message);
       } else {
-        const message = err instanceof Error ? err.message : 'Could not validate the code.';
-        showAlert('Verification', message);
+        const message = err instanceof Error ? err.message : t('settings.validateCodeFailedMessage');
+        showAlert(t('common.verification'), message);
       }
     } finally {
       setIsVerifying(false);
@@ -341,9 +343,9 @@ export default function SettingsScreen() {
       await setNewPassword(account.accountDetails.accountId, newPin, lang);
       setVerifyVisible(false);
       resetModalState();
-      showAlert('Password updated', 'Your new PIN has been saved.');
+      showAlert(t('settings.passwordUpdatedTitle'), t('settings.passwordUpdatedMessage'));
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not save your new PIN.';
+      const message = err instanceof Error ? err.message : t('settings.saveNewPinFailedMessage');
       setPinError(message);
     } finally {
       setIsSavingPin(false);
@@ -359,18 +361,18 @@ export default function SettingsScreen() {
       await requestValidationCode(account.accountDetails.accountId, 'email', lang);
       resendTimer.start();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not send the verification code.';
-      showAlert('Verification', message);
+      const message = err instanceof Error ? err.message : t('settings.sendCodeFailedMessage');
+      showAlert(t('common.verification'), message);
     } finally {
       setIsResending(false);
     }
   };
 
   const handleLogout = () => {
-    showAlert('Logout', 'Do you want to end your TravelBACK session?', [
-      { text: 'Cancel', style: 'cancel' },
+    showAlert(t('settings.logoutTitle'), t('settings.logoutMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Logout',
+        text: t('settings.logOut'),
         style: 'destructive',
         onPress: () => {
           signOut();
@@ -382,17 +384,17 @@ export default function SettingsScreen() {
 
   const handleDeleteAccount = () => {
     showAlert(
-      'Delete Account',
-      'Choose how to proceed. You can delete only this account, or also block any future account from being created for this email. This action is irreversible.',
+      t('settings.deleteAccountTitle'),
+      t('settings.deleteAccountMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete account',
+          text: t('settings.deleteOnlyAccount'),
           style: 'destructive',
           onPress: () => startDeleteFlow(false),
         },
         {
-          text: 'Delete and block this email',
+          text: t('settings.deleteAndBlockEmail'),
           style: 'destructive',
           onPress: () => startDeleteFlow(true),
         },
@@ -413,7 +415,7 @@ export default function SettingsScreen() {
         getCurrencies(lang)
           .then((list) => setCurrencies(list))
           .catch((err) => {
-            const message = err instanceof Error ? err.message : 'Could not load currencies.';
+            const message = err instanceof Error ? err.message : t('settings.currenciesError');
             setCurrenciesError(message);
           })
           .finally(() => setCurrenciesLoading(false));

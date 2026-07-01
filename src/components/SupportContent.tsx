@@ -11,6 +11,7 @@ import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'r
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FAQSection } from '@/src/components/FAQSection';
+import { useT } from '@/src/i18n';
 import type { SupportedLang } from '@/src/services/locale';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
@@ -41,12 +42,13 @@ export function SupportContent({
   lang,
   showTravelAssistant = true,
   bottomInset = 24,
-  titleFirst = 'How Can\nWe ',
-  titleAccent = 'Assist',
-  titleAfter = '\nYou?',
+  titleFirst,
+  titleAccent,
+  titleAfter,
   onTermsPress,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useT();
 
   const openExternal = (url: string) => {
     Linking.openURL(url).catch((err) => {
@@ -69,11 +71,11 @@ export function SupportContent({
         <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
 
         <View style={styles.headerBody}>
-          <Text style={styles.headerLabel}>SUPPORT</Text>
+          <Text style={styles.headerLabel}>{t('support.headerLabel')}</Text>
           <Text style={styles.mainTitle}>
-            {titleFirst}
-            <Text style={styles.mainTitleAccent}>{titleAccent}</Text>
-            {titleAfter}
+            {titleFirst ?? t('support.titleFirst')}
+            <Text style={styles.mainTitleAccent}>{titleAccent ?? t('support.titleAccent')}</Text>
+            {titleAfter ?? t('support.titleAfter')}
           </Text>
         </View>
 
@@ -84,8 +86,10 @@ export function SupportContent({
             onPress={() => openExternal(WHATSAPP_LINKS[lang])}
           >
             <View style={styles.contactCardBody}>
-              <Text style={[styles.contactCardTitle, { color: '#85EDD3' }]}>Whatsapp</Text>
-              <Text style={styles.contactCardSubtitle}>Direct Support</Text>
+              <Text style={[styles.contactCardTitle, { color: '#85EDD3' }]}>
+                {t('support.whatsappTitle')}
+              </Text>
+              <Text style={styles.contactCardSubtitle}>{t('support.whatsappSubtitle')}</Text>
             </View>
             <WhatsappLogoIcon size={32} color="#85EDD3" weight="regular" />
           </TouchableOpacity>
@@ -96,8 +100,8 @@ export function SupportContent({
             onPress={() => openExternal(VIDEO_CALL_LINK)}
           >
             <View style={styles.contactCardBody}>
-              <Text style={styles.contactCardTitle}>Video Call</Text>
-              <Text style={styles.contactCardSubtitle}>Lorem Ipsum, Lorem Ipsum.</Text>
+              <Text style={styles.contactCardTitle}>{t('support.videoCallTitle')}</Text>
+              <Text style={styles.contactCardSubtitle}>{t('support.videoCallSubtitle')}</Text>
             </View>
             <VideoCameraIcon size={32} color={colors.text.light} weight="regular" />
           </TouchableOpacity>

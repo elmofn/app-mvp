@@ -14,12 +14,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { useAuth } from '@/src/contexts/AuthContext';
+import { useT } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
 export default function LoginScreen() {
   const router = useRouter();
   const { account } = useAuth();
+  const { t } = useT();
   const window = useWindowDimensions();
 
   // useWindowDimensions pode reportar uma altura menor que a area realmente
@@ -101,19 +103,19 @@ export default function LoginScreen() {
 
         <View style={styles.actionsSection}>
           <TouchableOpacity style={styles.button} onPress={handleLogin} activeOpacity={0.8}>
-            <Text style={styles.buttonText}>Login</Text>
+            <Text style={styles.buttonText}>{t('welcome.login')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.button} onPress={handleSignup} activeOpacity={0.8}>
-            <Text style={styles.buttonText}>Sign Up</Text>
+            <Text style={styles.buttonText}>{t('welcome.signUp')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.buttonAccent} onPress={handleActivate} activeOpacity={0.8}>
-            <Text style={styles.buttonAccentText}>Activate Account</Text>
+            <Text style={styles.buttonAccentText}>{t('welcome.activateAccount')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.helpButton} onPress={handleHelp} activeOpacity={0.7}>
-            <Text style={styles.helpLink}>Help</Text>
+            <Text style={styles.helpLink}>{t('welcome.help')}</Text>
           </TouchableOpacity>
         </View>
 

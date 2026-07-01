@@ -18,6 +18,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { useT, type Translator } from '@/src/i18n';
 import { type AlertItem, confirmRead, getAlerts } from '@/src/services/alerts';
 import { getUserLanguage } from '@/src/services/locale';
 import { colors } from '@/src/theme/colors';
@@ -47,7 +48,7 @@ const HTML_TAG_STYLES: Record<string, MixedStyleDeclaration> = {
   span: { fontSize: 14, lineHeight: 22 },
 };
 
-function formatPublishDate(raw?: string): string {
+function formatPublishDate(raw: string | undefined, t: Translator['t']): string {
   if (!raw) return '';
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return '';
@@ -56,11 +57,14 @@ function formatPublishDate(raw?: string): string {
   const oneMin = 60 * 1000;
   const oneHour = 60 * oneMin;
   const oneDay = 24 * oneHour;
-  if (diffMs < oneMin) return 'Just now';
-  if (diffMs < oneHour) return `${Math.floor(diffMs / oneMin)}m ago`;
-  if (diffMs < oneDay) return `${Math.floor(diffMs / oneHour)}h ago`;
-  if (diffMs < 2 * oneDay) return 'Yesterday';
-  if (diffMs < 7 * oneDay) return `${Math.floor(diffMs / oneDay)}d ago`;
+  if (diffMs < oneMin) return t('notifications.time.justNow');
+  if (diffMs < oneHour)
+    return t('notifications.time.minutesAgo', { count: Math.floor(diffMs / oneMin) });
+  if (diffMs < oneDay)
+    return t('notifications.time.hoursAgo', { count: Math.floor(diffMs / oneHour) });
+  if (diffMs < 2 * oneDay) return t('notifications.time.yesterday');
+  if (diffMs < 7 * oneDay)
+    return t('notifications.time.daysAgo', { count: Math.floor(diffMs / oneDay) });
   return date.toLocaleDateString(undefined, {
     day: '2-digit',
     month: 'short',
@@ -72,6 +76,7 @@ export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { account } = useAuth();
+  const { t } = useT();
   const lang = getUserLanguage(account);
   const accountId = account?.account?.id ?? '';
 
@@ -233,7 +238,7 @@ export default function NotificationsScreen() {
                         </View>
                       ) : null}
                       {alert.publishDate ? (
-                        <Text style={styles.cardTime}>{formatPublishDate(alert.publishDate)}</Text>
+                        <Text style={styles.cardTime}>{formatPublishDate(alert.publishDate, t)}</Text>
                       ) : null}
                     </TouchableOpacity>
                   );

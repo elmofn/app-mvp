@@ -18,17 +18,12 @@ import Animated, {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/src/contexts/AuthContext';
+import { useT } from '@/src/i18n';
 import { SignInStatement } from '@/src/services/auth';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 import { getLocalCurrency } from '@/src/utils/balance';
 import { formatCurrency } from '@/src/utils/format';
-
-const MONTH_ABBR = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
 
 type StatementGroup = {
   date: string;
@@ -48,6 +43,10 @@ export default function StatementScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const { account } = useAuth();
+  const { t, tr } = useT();
+
+  const monthsAbbr = tr('statement.monthsAbbr') as string[];
+  const monthsFull = tr('statement.monthsFull') as string[];
 
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedMonth, setSelectedMonth] = useState<string>('');
@@ -105,14 +104,14 @@ export default function StatementScreen() {
         groups[date] = {
           date,
           day,
-          month: MONTH_ABBR[parseInt(month, 10) - 1] ?? month,
+          month: monthsAbbr[parseInt(month, 10) - 1] ?? month,
           items: [],
         };
       }
       groups[date].items.push(tx);
     }
     return Object.values(groups).sort((a, b) => b.date.localeCompare(a.date));
-  }, [statements, selectedYear, selectedMonth]);
+  }, [statements, selectedYear, selectedMonth, monthsAbbr]);
 
   const handleYearSelect = (year: string) => {
     if (selectedYear === year) {
@@ -142,13 +141,14 @@ export default function StatementScreen() {
           <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
 
           <View style={styles.headerInner}>
-            <Text style={styles.headerLabel}>EXTRATO</Text>
+            <Text style={styles.headerLabel}>{t('statement.header')}</Text>
             <Text style={styles.mainTitle}>
-              Balance & <Text style={styles.mainTitleAccent}>Statement</Text>
+              {t('statement.titleMain')}
+              <Text style={styles.mainTitleAccent}>{t('statement.titleAccent')}</Text>
             </Text>
 
             <View style={styles.balanceSection}>
-              <Text style={styles.balanceLabel}>Available Balance</Text>
+              <Text style={styles.balanceLabel}>{t('statement.availableBalance')}</Text>
               <Text style={styles.balanceMain}>
                 <Text style={styles.balanceCurrency}>{local.symbol} </Text>
                 {balanceLocal}
@@ -182,7 +182,7 @@ export default function StatementScreen() {
               >
                 {availableMonths.map((m) => {
                   const idx = parseInt(m, 10) - 1;
-                  const label = MONTH_NAMES[idx] ?? m;
+                  const label = monthsFull[idx] ?? m;
                   const isActive = selectedMonth === m;
                   return (
                     <TouchableOpacity
@@ -205,9 +205,9 @@ export default function StatementScreen() {
         <View style={styles.timelineSection}>
           {groupedStatements.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>No transactions yet</Text>
+              <Text style={styles.emptyTitle}>{t('statement.emptyTitle')}</Text>
               <Text style={styles.emptyText}>
-                When you start earning cashback or making redemptions, your activity will show up here.
+                {t('statement.emptyText')}
               </Text>
             </View>
           ) : (

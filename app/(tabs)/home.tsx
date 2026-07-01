@@ -32,6 +32,7 @@ import { BannersCarousel } from '@/src/components/BannersCarousel';
 import { NextTrips } from '@/src/components/NextTrips';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { useT } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 import { getLocalCurrency } from '@/src/utils/balance';
@@ -41,6 +42,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { account, refreshAccount } = useAuth();
   const showAlert = useAlert();
+  const { t } = useT();
 
   // Pull-to-refresh: re-busca o snapshot da conta + banners + nextTrips
   // (via GetAccount/GetBanners/GetNextTrips) para refletir mudancas sem
@@ -51,12 +53,12 @@ export default function HomeScreen() {
     try {
       await refreshAccount();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not refresh your data.';
-      showAlert('Refresh failed', message);
+      const message = err instanceof Error ? err.message : t('home.refreshFailedBody');
+      showAlert(t('home.refreshFailedTitle'), message);
     } finally {
       setIsRefreshing(false);
     }
-  }, [refreshAccount, showAlert]);
+  }, [refreshAccount, showAlert, t]);
 
   const firstName = account?.accountDetails.name?.trim().split(/\s+/)[0] ?? '';
   // available vem sempre em USD; convertemos para a moeda local
@@ -112,11 +114,11 @@ export default function HomeScreen() {
     useCallback(() => {
       const onBackPress = () => {
         showAlert(
-          'Exit app',
-          'Are you sure you want to leave TravelBACK?',
+          t('home.exitTitle'),
+          t('home.exitBody'),
           [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Exit', style: 'destructive', onPress: () => BackHandler.exitApp() },
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('home.exit'), style: 'destructive', onPress: () => BackHandler.exitApp() },
           ],
         );
         return true;
@@ -124,7 +126,7 @@ export default function HomeScreen() {
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [showAlert]),
+    }, [showAlert, t]),
   );
 
   return (
@@ -169,13 +171,13 @@ export default function HomeScreen() {
 
   {/* Greeting: cai de cima */}
   <Animated.Text entering={FadeInDown.delay(100).duration(500)} style={styles.greeting}>
-    Olá, <Text style={styles.firstName}>{firstName}</Text>
+    {t('home.greeting')} <Text style={styles.firstName}>{firstName}</Text>
   </Animated.Text>
 
   {/* Balance: entra da esquerda com delay */}
   <Animated.View entering={FadeInLeft.delay(200).duration(500)} style={styles.balanceSection}>
     <View>
-      <Text style={styles.balanceLabel}>Saldo Disponível</Text>
+      <Text style={styles.balanceLabel}>{t('home.availableBalance')}</Text>
       <View style={styles.balanceValueContainer}>
         <Text style={styles.currency}>{local.symbol}</Text>
         <Text style={styles.balanceValue}>
@@ -189,8 +191,8 @@ export default function HomeScreen() {
         <TouchableOpacity
           onPress={() =>
             showAlert(
-              'Your Wallet is dollarized.',
-              'You can choose the currency and display, and the balance will be updated according to the dollar exchange rate. The balance expires after 12 months of Inactivity',
+              t('home.walletDollarizedTitle'),
+              t('home.walletDollarizedBody'),
             )
           }
           activeOpacity={0.7}
@@ -209,7 +211,7 @@ export default function HomeScreen() {
         }
       </TouchableOpacity>
       <TouchableOpacity style={styles.statementBtn} onPress={() => router.push('/statement')}>
-        <Text style={styles.statementBtnText}>EXTRATO</Text>
+        <Text style={styles.statementBtnText}>{t('home.statement').toUpperCase()}</Text>
       </TouchableOpacity>
     </View>
   </Animated.View>
@@ -231,7 +233,7 @@ export default function HomeScreen() {
       >
         <View style={styles.actionInfo}>
           <Text style={styles.actionTitlePurple}>TravelShop</Text>
-          <Text style={styles.actionDescPurple}>Explore destinos incríveis.</Text>
+          <Text style={styles.actionDescPurple}>{t('home.travelshopDesc')}</Text>
         </View>
         <View style={styles.actionIconWrapper}>
           <SuitcaseRollingIcon size={32} color="#85EDD3" weight="regular" />
@@ -244,8 +246,8 @@ export default function HomeScreen() {
   <Animated.View entering={FadeInRight.delay(550).duration(500)}>
     <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/statement')} activeOpacity={0.8}>
       <View style={styles.actionInfo}>
-        <Text style={styles.actionTitle}>Extrato</Text>
-        <Text style={styles.actionDesc}>Todas as transações.</Text>
+        <Text style={styles.actionTitle}>{t('home.statement')}</Text>
+        <Text style={styles.actionDesc}>{t('home.statementDesc')}</Text>
       </View>
       <View style={styles.actionIconWrapper}>
         <CoinsIcon size={32} color="#0F022D" weight="regular" />
@@ -258,7 +260,7 @@ export default function HomeScreen() {
     <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/assistant')} activeOpacity={0.8}>
       <View style={styles.actionInfo}>
         <Text style={styles.actionTitle}>TravelBACK IA</Text>
-        <Text style={styles.actionDesc}>Seu assistente de viagem inteligente.</Text>
+        <Text style={styles.actionDesc}>{t('home.assistantDesc')}</Text>
       </View>
       <View style={styles.actionIconWrapper}>
         <SparkleIcon size={32} color="#0F022D" weight="regular" />
@@ -297,7 +299,7 @@ export default function HomeScreen() {
                 <View style={styles.menuIconContainer}>
                   <UserIcon size={18} color="#0F022D" weight="bold" />
                 </View>
-                <Text style={styles.menuItemText}>Perfil</Text>
+                <Text style={styles.menuItemText}>{t('home.profile')}</Text>
               </TouchableOpacity>
               
               <View style={styles.menuDivider} />
@@ -307,7 +309,7 @@ export default function HomeScreen() {
                 <View style={styles.menuIconContainer}>
                   <BellIcon size={18} color="#0F022D" weight="bold" />
                 </View>
-                <Text style={styles.menuItemText}>Notificações</Text>
+                <Text style={styles.menuItemText}>{t('home.notifications')}</Text>
               </TouchableOpacity>
 
             </Animated.View>

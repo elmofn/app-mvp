@@ -20,6 +20,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { useT } from '@/src/i18n';
 import {
   sendPasswordRecoveryToken,
   setNewPassword,
@@ -37,6 +38,7 @@ export default function LoginFormScreen() {
   const { signIn, isSigningIn } = useAuth();
   const resendTimer = useResendTimer();
   const showAlert = useAlert();
+  const { t } = useT();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -64,7 +66,7 @@ export default function LoginFormScreen() {
   const handleSignIn = async () => {
     const login = email.trim();
     if (!login || !password) {
-      showAlert('Missing information', 'Please enter your e-mail and password to continue.');
+      showAlert(t('login.missingInfoTitle'), t('login.missingInfoMessage'));
       return;
     }
 
@@ -74,13 +76,13 @@ export default function LoginFormScreen() {
         router.replace('/(tabs)/home');
       } else {
         showAlert(
-          'Login failed',
-          response.errorMessage || response.message || 'Invalid e-mail or password.',
+          t('login.loginFailedTitle'),
+          response.errorMessage || response.message || t('login.invalidCredentials'),
         );
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unexpected error. Please try again.';
-      showAlert('Login failed', message);
+      const message = err instanceof Error ? err.message : t('login.unexpectedError');
+      showAlert(t('login.loginFailedTitle'), message);
     }
   };
 
@@ -110,7 +112,7 @@ export default function LoginFormScreen() {
   const handleSendRecoveryCode = async () => {
     const target = recoveryEmail.trim().toLowerCase();
     if (!target) {
-      setRecoveryError('Please enter your e-mail.');
+      setRecoveryError(t('login.recoveryEnterEmailError'));
       return;
     }
     setIsSendingRecovery(true);
@@ -121,7 +123,7 @@ export default function LoginFormScreen() {
       setRecoveryEmail(target);
       setRecoveryStage('verifyCode');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not send the recovery code.';
+      const message = err instanceof Error ? err.message : t('login.recoverySendCodeError');
       setRecoveryError(message);
     } finally {
       setIsSendingRecovery(false);
@@ -140,7 +142,7 @@ export default function LoginFormScreen() {
       if (err instanceof ValidateCodeError) {
         setRecoveryError(err.message);
       } else {
-        const message = err instanceof Error ? err.message : 'Could not validate the code.';
+        const message = err instanceof Error ? err.message : t('login.recoveryValidateCodeError');
         setRecoveryError(message);
       }
     } finally {
@@ -157,7 +159,7 @@ export default function LoginFormScreen() {
       await sendPasswordRecoveryToken(recoveryEmail, recoveryLang);
       resendTimer.start();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not send the recovery code.';
+      const message = err instanceof Error ? err.message : t('login.recoverySendCodeError');
       setRecoveryError(message);
     } finally {
       setIsResendingRecovery(false);
@@ -172,9 +174,9 @@ export default function LoginFormScreen() {
       await setNewPassword(recoveryAccountId, recoveryPin, recoveryLang);
       setRecoveryVisible(false);
       resetRecoveryState();
-      showAlert('Password updated', 'Your new PIN has been saved. Please sign in.');
+      showAlert(t('login.passwordUpdatedTitle'), t('login.passwordUpdatedMessage'));
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not save your new PIN.';
+      const message = err instanceof Error ? err.message : t('login.recoverySavePinError');
       setRecoveryError(message);
     } finally {
       setIsSavingRecoveryPin(false);
@@ -207,28 +209,27 @@ export default function LoginFormScreen() {
           >
             <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
 
-            <ScreenHeader title="Login" dark={true} />
+            <ScreenHeader title={t('login.header')} dark={true} />
 
             <View style={styles.headerBody}>
               <Text style={styles.mainTitle}>
-                Welcome <Text style={styles.mainTitleAccent}>Back</Text>
+                {t('login.welcomeTitle')}{' '}
+                <Text style={styles.mainTitleAccent}>{t('login.welcomeTitleAccent')}</Text>
               </Text>
-              <Text style={styles.pageDescription}>
-                Enter your credentials to access your TravelBACK account.
-              </Text>
+              <Text style={styles.pageDescription}>{t('login.description')}</Text>
             </View>
           </LinearGradient>
 
           <View style={styles.formContainer}>
             <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>E-mail</Text>
+              <Text style={styles.inputLabel}>{t('login.emailLabel')}</Text>
               <TextInput
                 style={[styles.inputField, focusedField === 'email' && styles.inputFieldFocused]}
                 value={email}
                 onChangeText={setEmail}
                 onFocus={() => setFocusedField('email')}
                 onBlur={() => setFocusedField(null)}
-                placeholder="you@email.com"
+                placeholder={t('login.emailPlaceholder')}
                 placeholderTextColor="#B5B5BD"
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -238,7 +239,7 @@ export default function LoginFormScreen() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>Password</Text>
+              <Text style={styles.inputLabel}>{t('login.passwordLabel')}</Text>
               <View
                 style={[
                   styles.passwordRow,
@@ -251,7 +252,7 @@ export default function LoginFormScreen() {
                   onChangeText={(val) => setPassword(val.replace(/\D/g, ''))}
                   onFocus={() => setFocusedField('password')}
                   onBlur={() => setFocusedField(null)}
-                  placeholder="0 0 0 0"
+                  placeholder={t('login.passwordPlaceholder')}
                   placeholderTextColor="#B5B5BD"
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
@@ -279,7 +280,7 @@ export default function LoginFormScreen() {
                 onPress={handleForgotPassword}
                 activeOpacity={0.6}
               >
-                <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
+                <Text style={styles.forgotPasswordText}>{t('login.forgotPassword')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -292,14 +293,14 @@ export default function LoginFormScreen() {
               {isSigningIn ? (
                 <ActivityIndicator color={colors.text.light} />
               ) : (
-                <Text style={styles.primaryButtonText}>Sign In</Text>
+                <Text style={styles.primaryButtonText}>{t('login.signIn')}</Text>
               )}
             </TouchableOpacity>
 
             <View style={styles.signupRow}>
-              <Text style={styles.signupText}>Don&apos;t have an account?</Text>
+              <Text style={styles.signupText}>{t('login.noAccount')}</Text>
               <TouchableOpacity onPress={handleSignUp} activeOpacity={0.6} hitSlop={8}>
-                <Text style={styles.signupLink}>Sign up</Text>
+                <Text style={styles.signupLink}>{t('login.signUpLink')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -327,12 +328,15 @@ export default function LoginFormScreen() {
 
             {recoveryStage === 'enterEmail' ? (
               <>
-                <Text style={styles.recoveryEyebrow}>FORGOT PASSWORD</Text>
+                <Text style={styles.recoveryEyebrow}>{t('login.recoveryEyebrow')}</Text>
                 <Text style={styles.recoveryTitle}>
-                  Recover <Text style={styles.recoveryTitleAccent}>account</Text>
+                  {t('login.recoveryEnterEmailTitle')}{' '}
+                  <Text style={styles.recoveryTitleAccent}>
+                    {t('login.recoveryEnterEmailTitleAccent')}
+                  </Text>
                 </Text>
                 <Text style={styles.recoveryDescription}>
-                  Enter the e-mail associated with your account and we will send a verification code.
+                  {t('login.recoveryEnterEmailDescription')}
                 </Text>
 
                 <TextInput
@@ -340,7 +344,7 @@ export default function LoginFormScreen() {
                     styles.recoveryInput,
                     recoveryError ? styles.recoveryInputError : null,
                   ]}
-                  placeholder="you@email.com"
+                  placeholder={t('login.recoveryEmailPlaceholder')}
                   placeholderTextColor="#B5B5BD"
                   value={recoveryEmail}
                   onChangeText={(val) => {
@@ -369,18 +373,21 @@ export default function LoginFormScreen() {
                   {isSendingRecovery ? (
                     <ActivityIndicator color={colors.text.light} />
                   ) : (
-                    <Text style={styles.recoveryButtonText}>Send Code</Text>
+                    <Text style={styles.recoveryButtonText}>{t('login.recoverySendCode')}</Text>
                   )}
                 </TouchableOpacity>
               </>
             ) : recoveryStage === 'verifyCode' ? (
               <>
-                <Text style={styles.recoveryEyebrow}>FORGOT PASSWORD</Text>
+                <Text style={styles.recoveryEyebrow}>{t('login.recoveryEyebrow')}</Text>
                 <Text style={styles.recoveryTitle}>
-                  Verify <Text style={styles.recoveryTitleAccent}>code</Text>
+                  {t('login.recoveryVerifyCodeTitle')}{' '}
+                  <Text style={styles.recoveryTitleAccent}>
+                    {t('login.recoveryVerifyCodeTitleAccent')}
+                  </Text>
                 </Text>
                 <Text style={styles.recoveryDescription}>
-                  We sent a verification code to {recoveryEmail}. Enter it below to continue.
+                  {t('login.recoveryVerifyCodeDescription', { email: recoveryEmail })}
                 </Text>
 
                 <TextInput
@@ -388,7 +395,7 @@ export default function LoginFormScreen() {
                     styles.recoveryInput,
                     recoveryError ? styles.recoveryInputError : null,
                   ]}
-                  placeholder="0 0 0 0 0 0"
+                  placeholder={t('login.recoveryCodePlaceholder')}
                   placeholderTextColor="#B5B5BD"
                   value={recoveryCode}
                   onChangeText={(val) => {
@@ -418,16 +425,16 @@ export default function LoginFormScreen() {
                     ]}
                   >
                     {isResendingRecovery
-                      ? 'Sending code…'
+                      ? t('login.recoverySendingCode')
                       : !resendTimer.canResend
-                        ? `Resend in ${formatResendCountdown(resendTimer.secondsLeft)}`
-                        : 'Resend code'}
+                        ? t('login.recoveryResendIn', {
+                            countdown: formatResendCountdown(resendTimer.secondsLeft),
+                          })
+                        : t('login.recoveryResendCode')}
                   </Text>
                 </TouchableOpacity>
 
-                <Text style={styles.recoveryHelpNotice}>
-                  If you don&apos;t have access to this email, please contact support.
-                </Text>
+                <Text style={styles.recoveryHelpNotice}>{t('login.recoveryHelpNotice')}</Text>
 
                 <TouchableOpacity
                   style={[
@@ -441,7 +448,7 @@ export default function LoginFormScreen() {
                   {isVerifyingRecovery ? (
                     <ActivityIndicator color={colors.text.light} />
                   ) : (
-                    <Text style={styles.recoveryButtonText}>Verify</Text>
+                    <Text style={styles.recoveryButtonText}>{t('login.recoveryVerify')}</Text>
                   )}
                 </TouchableOpacity>
               </>

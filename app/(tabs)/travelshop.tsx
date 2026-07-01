@@ -23,6 +23,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { BannersCarousel } from '@/src/components/BannersCarousel';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { useT } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -184,6 +185,7 @@ const NEARBY: Hotel[] = [
 ];
 
 function HotelCard({ hotel }: { hotel: Hotel }) {
+  const { t } = useT();
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.9}>
       <Image source={{ uri: hotel.image }} style={styles.cardImage} resizeMode="cover" />
@@ -219,13 +221,13 @@ function HotelCard({ hotel }: { hotel: Hotel }) {
             </View>
             <View style={styles.scoreText}>
               <Text style={styles.scoreLabel}>{hotel.scoreLabel}</Text>
-              <Text style={styles.reviewCount}>{hotel.reviewCount} avaliações</Text>
+              <Text style={styles.reviewCount}>{t('travelshop.reviewCount', { count: hotel.reviewCount })}</Text>
             </View>
           </View>
           <View style={styles.priceBlock}>
             <Text style={styles.priceValue}>{hotel.pricePerNight}</Text>
             <Text style={styles.priceCaption} numberOfLines={2}>
-              1 quarto x 1 noite incluindo impostos
+              {t('travelshop.priceCaption')}
             </Text>
           </View>
         </View>
@@ -239,6 +241,7 @@ export default function TravelShopScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const router = useRouter();
   const { account } = useAuth();
+  const { t } = useT();
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
@@ -258,12 +261,12 @@ export default function TravelShopScreen() {
           <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
 
           <View style={styles.headerInner}>
-            <Text style={styles.headerLabel}>TRAVELSHOP</Text>
+            <Text style={styles.headerLabel}>{t('travelshop.headerLabel')}</Text>
             <Text style={styles.mainTitle}>
-              Find Your <Text style={styles.mainTitleAccent}>Stay</Text>
+              {t('travelshop.mainTitle')} <Text style={styles.mainTitleAccent}>{t('travelshop.mainTitleAccent')}</Text>
             </Text>
             <Text style={styles.pageDescription}>
-              Search hotels, compare deals and book your next trip with TravelBACK cashback.
+              {t('travelshop.pageDescription')}
             </Text>
           </View>
 
@@ -271,8 +274,8 @@ export default function TravelShopScreen() {
             <TouchableOpacity style={styles.searchField} activeOpacity={0.7}>
               <MapPinIcon size={20} color="#0F022D" weight="regular" />
               <View style={styles.searchFieldText}>
-                <Text style={styles.searchFieldLabel}>Destinos</Text>
-                <Text style={styles.searchFieldValue}>Para onde você vai?</Text>
+                <Text style={styles.searchFieldLabel}>{t('travelshop.searchDestinationsLabel')}</Text>
+                <Text style={styles.searchFieldValue}>{t('travelshop.searchDestinationsValue')}</Text>
               </View>
             </TouchableOpacity>
 
@@ -281,8 +284,8 @@ export default function TravelShopScreen() {
             <TouchableOpacity style={styles.searchField} activeOpacity={0.7}>
               <CalendarIcon size={20} color="#0F022D" weight="regular" />
               <View style={styles.searchFieldText}>
-                <Text style={styles.searchFieldLabel}>Datas</Text>
-                <Text style={styles.searchFieldValue}>Check-in — Check-out</Text>
+                <Text style={styles.searchFieldLabel}>{t('travelshop.searchDatesLabel')}</Text>
+                <Text style={styles.searchFieldValue}>{t('travelshop.searchDatesValue')}</Text>
               </View>
             </TouchableOpacity>
 

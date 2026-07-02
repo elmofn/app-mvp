@@ -197,7 +197,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       getNextTrips(lang),
     ]);
 
-    const next: SignInAccountDetails = { ...snapshot, banners, nextTrips };
+    // O idioma do app e uma preferencia do usuario (countryId/setups.lang, o
+    // que getUserLanguage le). Um pull-to-refresh atualiza dados, mas NAO deve
+    // reverter o idioma escolhido: preservamos esses campos da conta local em
+    // vez de deixar o snapshot do backend sobrescreve-los. O conteudo ja veio
+    // buscado no idioma correto (lang), entao tudo fica consistente.
+    const next: SignInAccountDetails = {
+      ...snapshot,
+      banners,
+      nextTrips,
+      account: { ...snapshot.account, countryId: current.account.account.countryId },
+      setups: { ...snapshot.setups, lang: current.account.setups.lang },
+    };
     setState({ account: next, token: current.token });
     await saveSession(current.token, next);
   }, []);

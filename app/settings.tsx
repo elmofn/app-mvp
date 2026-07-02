@@ -22,7 +22,7 @@ import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { formatResendCountdown, useResendTimer } from '@/src/hooks/useResendTimer';
-import { useT } from '@/src/i18n';
+import { translate, useT } from '@/src/i18n';
 import {
   LANGUAGE_COUNTRY_IDS,
   removeAccount,
@@ -200,7 +200,13 @@ export default function SettingsScreen() {
           : {}),
       });
 
-      showAlert(t('settings.profileUpdatedTitle'), t('settings.profileUpdatedMessage'));
+      // Usa o idioma-alvo (o que acabou de ser salvo), nao o `t` do render
+      // anterior: apos updateAccountDetails a conta ja mudou de idioma, mas o
+      // closure de `t` aqui ainda aponta pro idioma antigo.
+      showAlert(
+        translate(language.value, 'settings.profileUpdatedTitle'),
+        translate(language.value, 'settings.profileUpdatedMessage'),
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : t('settings.updateFailedMessage');
       showAlert(t('settings.updateFailedTitle'), message);

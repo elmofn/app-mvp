@@ -24,9 +24,9 @@ export const SignInUserSchema = z.object({
   name: z.string(),
   email: z.string(),
   phoneNumber: z.string(),
-  picture: z.string(),
+  picture: z.string().optional(),
   accountId: z.string(),
-  role: z.string(),
+  role: z.string().optional(),
   validEmail: z.boolean(),
   validPhoneNumber: z.boolean(),
 });

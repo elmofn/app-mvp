@@ -483,17 +483,17 @@ export default function SettingsScreen() {
 
             <View style={styles.headerBody}>
               <Text style={styles.mainTitle}>
-                Perfil do <Text style={styles.mainTitleAccent}>Usuário</Text>
+                {t('settings.titleLine1')} <Text style={styles.mainTitleAccent}>{t('settings.titleAccent')}</Text>
               </Text>
               <Text style={styles.pageDescription}>
-                Atualize ou configure seus dados de acordo com a sua preferência.
+                {t('settings.pageDescription')}
               </Text>
             </View>
           </LinearGradient>
 
           <View style={styles.formContainer}>
             <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>Nome</Text>
+              <Text style={styles.inputLabel}>{t('settings.nameLabel')}</Text>
               <TextInput
                 style={[styles.inputField, focusedField === 'name' && styles.inputFieldFocused]}
                 value={name}
@@ -504,7 +504,7 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>Número de Telefone</Text>
+              <Text style={styles.inputLabel}>{t('settings.phoneLabel')}</Text>
               <TextInput
                 style={[styles.inputField, focusedField === 'phone' && styles.inputFieldFocused]}
                 value={phone}
@@ -516,7 +516,7 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>E-mail</Text>
+              <Text style={styles.inputLabel}>{t('settings.emailLabel')}</Text>
               <TextInput
                 style={[styles.inputField, focusedField === 'email' && styles.inputFieldFocused]}
                 value={email}
@@ -533,10 +533,10 @@ export default function SettingsScreen() {
               onPress={() => openPicker('currency')}
               activeOpacity={0.7}
             >
-              <Text style={styles.inputLabel}>Moeda</Text>
+              <Text style={styles.inputLabel}>{t('settings.currencyLabel')}</Text>
               <View style={styles.selectField}>
                 <Text style={styles.selectValue}>
-                  {currency ? `${currency.name} (${currency.code})` : 'Select currency'}
+                  {currency ? `${currency.name} (${currency.code})` : t('settings.selectCurrency')}
                 </Text>
                 <CaretDownIcon size={16} color={colors.text.muted} />
               </View>
@@ -547,7 +547,7 @@ export default function SettingsScreen() {
               onPress={() => openPicker('language')}
               activeOpacity={0.7}
             >
-              <Text style={styles.inputLabel}>Idioma</Text>
+              <Text style={styles.inputLabel}>{t('settings.languageLabel')}</Text>
               <View style={styles.selectField}>
                 <Text style={styles.selectValue}>{language.label}</Text>
                 <CaretDownIcon size={16} color={colors.text.muted} />
@@ -556,7 +556,7 @@ export default function SettingsScreen() {
 
             <View style={styles.buttonGroup}>
               <TouchableOpacity style={styles.buttonFilled} onPress={handleLogout} activeOpacity={0.8}>
-                <Text style={styles.buttonFilledText}>Sair da Conta</Text>
+                <Text style={styles.buttonFilledText}>{t('settings.logOut')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -564,7 +564,7 @@ export default function SettingsScreen() {
                 onPress={handleChangePassword}
                 activeOpacity={0.8}
               >
-                <Text style={styles.buttonFilledText}>Alterar Senha</Text>
+                <Text style={styles.buttonFilledText}>{t('settings.changePassword')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -572,7 +572,7 @@ export default function SettingsScreen() {
                 onPress={handleDeleteAccount}
                 activeOpacity={0.8}
               >
-                <Text style={styles.buttonOutlinedText}>Deletar Conta</Text>
+                <Text style={styles.buttonOutlinedText}>{t('settings.deleteAccount')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -597,7 +597,7 @@ export default function SettingsScreen() {
               {isSaving ? (
                 <ActivityIndicator color={colors.text.light} />
               ) : (
-                <Text style={styles.buttonPrimaryText}>Salvar Alterações</Text>
+                <Text style={styles.buttonPrimaryText}>{t('settings.saveChanges')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -619,7 +619,9 @@ export default function SettingsScreen() {
             onPress={() => undefined}
           >
             <Text style={styles.modalTitle}>
-              {modalVisible.type === 'currency' ? 'SELECT CURRENCY' : 'SELECT LANGUAGE'}
+              {modalVisible.type === 'currency'
+                ? t('settings.selectCurrencyTitle')
+                : t('settings.selectLanguageTitle')}
             </Text>
 
             {modalVisible.type === 'currency' ? (
@@ -676,7 +678,7 @@ export default function SettingsScreen() {
                       );
                     }}
                     ListEmptyComponent={
-                      <Text style={styles.modalStateText}>No currencies match your search.</Text>
+                      <Text style={styles.modalStateText}>{t('settings.currenciesEmpty')}</Text>
                     }
                   />
                 )}
@@ -727,28 +729,28 @@ export default function SettingsScreen() {
               <>
                 <Text style={styles.verifyEyebrow}>
                   {pendingAction === 'changePassword'
-                    ? 'CHANGE PASSWORD'
+                    ? t('settings.eyebrowChangePassword')
                     : pendingAction === 'deleteAccount'
-                    ? 'DELETE ACCOUNT'
-                    : 'VERIFY YOUR IDENTITY'}
+                    ? t('settings.eyebrowDeleteAccount')
+                    : t('settings.eyebrowVerifyIdentity')}
                 </Text>
                 <Text style={styles.verifyTitle}>
                   {pendingAction === 'changePassword' ? (
                     <>
-                      Verify <Text style={styles.verifyTitleAccent}>identity</Text>
+                      {t('settings.verifyTitleBase')} <Text style={styles.verifyTitleAccent}>{t('settings.verifyTitleAccent')}</Text>
                     </>
                   ) : pendingAction === 'deleteAccount' ? (
                     <>
-                      Confirm <Text style={styles.verifyTitleAccent}>delete</Text>
+                      {t('settings.deleteTitleBase')} <Text style={styles.verifyTitleAccent}>{t('settings.deleteTitleAccent')}</Text>
                     </>
                   ) : (
                     <>
-                      Confirm <Text style={styles.verifyTitleAccent}>changes</Text>
+                      {t('settings.confirmTitleBase')} <Text style={styles.verifyTitleAccent}>{t('settings.confirmTitleAccent')}</Text>
                     </>
                   )}
                 </Text>
                 <Text style={styles.verifyDescription}>
-                  We sent a verification code to {original.email}. Enter it below to continue.
+                  {t('settings.verifyDescription', { email: original.email })}
                 </Text>
 
                 <TextInput
@@ -756,7 +758,7 @@ export default function SettingsScreen() {
                     styles.verifyInput,
                     verifyError ? styles.verifyInputError : null,
                   ]}
-                  placeholder="0 0 0 0 0 0"
+                  placeholder={t('settings.codePlaceholder')}
                   placeholderTextColor="#B5B5BD"
                   value={verifyCode}
                   onChangeText={(val) => {
@@ -783,15 +785,15 @@ export default function SettingsScreen() {
                     ]}
                   >
                     {isResending
-                      ? 'Sending code…'
+                      ? t('settings.resendSending')
                       : !resendTimer.canResend
-                        ? `Resend in ${formatResendCountdown(resendTimer.secondsLeft)}`
-                        : 'Resend code'}
+                        ? t('settings.resendIn', { time: formatResendCountdown(resendTimer.secondsLeft) })
+                        : t('settings.resendCode')}
                   </Text>
                 </TouchableOpacity>
 
                 <Text style={styles.verifyHelpNotice}>
-                  If you don&apos;t have access to this email or phone, please contact support.
+                  {t('settings.helpNotice')}
                 </Text>
 
                 <TouchableOpacity
@@ -809,22 +811,22 @@ export default function SettingsScreen() {
                   ) : (
                     <Text style={styles.buttonPrimaryText}>
                       {pendingAction === 'changePassword'
-                        ? 'Verify'
+                        ? t('settings.verify')
                         : pendingAction === 'deleteAccount'
-                        ? 'Verify & Delete'
-                        : 'Verify & Save'}
+                        ? t('settings.verifyAndDelete')
+                        : t('settings.verifyAndSave')}
                     </Text>
                   )}
                 </TouchableOpacity>
               </>
             ) : (
               <>
-                <Text style={styles.verifyEyebrow}>CHANGE PASSWORD</Text>
+                <Text style={styles.verifyEyebrow}>{t('settings.newPinEyebrow')}</Text>
                 <Text style={styles.verifyTitle}>
-                  New <Text style={styles.verifyTitleAccent}>PIN</Text>
+                  {t('settings.newPinTitleBase')} <Text style={styles.verifyTitleAccent}>{t('settings.newPinTitleAccent')}</Text>
                 </Text>
                 <Text style={styles.verifyDescription}>
-                  Choose a new 4-digit PIN to protect your account.
+                  {t('settings.newPinDescription')}
                 </Text>
 
                 <TextInput
@@ -833,7 +835,7 @@ export default function SettingsScreen() {
                     styles.pinInput,
                     pinError ? styles.verifyInputError : null,
                   ]}
-                  placeholder="0 0 0 0"
+                  placeholder={t('settings.newPinPlaceholder')}
                   placeholderTextColor="#B5B5BD"
                   value={newPin}
                   onChangeText={(val) => {
@@ -861,7 +863,7 @@ export default function SettingsScreen() {
                   {isSavingPin ? (
                     <ActivityIndicator color={colors.text.light} />
                   ) : (
-                    <Text style={styles.buttonPrimaryText}>Save New PIN</Text>
+                    <Text style={styles.buttonPrimaryText}>{t('settings.saveNewPin')}</Text>
                   )}
                 </TouchableOpacity>
               </>

@@ -33,6 +33,8 @@ import { NextTrips } from '@/src/components/NextTrips';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useT } from '@/src/i18n';
+import { getAlerts } from '@/src/services/alerts';
+import { getUserLanguage } from '@/src/services/locale';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 import { getLocalCurrency } from '@/src/utils/balance';
@@ -74,6 +76,31 @@ export default function HomeScreen() {
 
   // Controle do Menu Suspenso
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Indicador de notificacoes nao lidas no botao de menu. Consultamos os
+  // alertas (mesma fonte da tela de notificacoes) a cada foco da home, para
+  // que o badge reflita leituras feitas na tela de notificacoes assim que o
+  // usuario volta. Falha silenciosa: sem badge e melhor do que derrubar a home.
+  const [hasUnreadAlerts, setHasUnreadAlerts] = useState(false);
+  const lang = getUserLanguage(account);
+  const accountId = account?.account?.id ?? '';
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!accountId) return;
+      let cancelled = false;
+      getAlerts(accountId, lang)
+        .then((data) => {
+          if (!cancelled) setHasUnreadAlerts(data.some((it) => !it.readed));
+        })
+        .catch((err) => {
+          console.warn('[alerts] unread check failed:', err);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [accountId, lang]),
+  );
 
   const scrollY = useSharedValue(0);
   const scrollViewRef = useRef<Animated.ScrollView>(null);
@@ -165,6 +192,7 @@ export default function HomeScreen() {
     <View style={styles.headerIcons}>
       <TouchableOpacity style={styles.iconBtn} onPress={() => setIsMenuOpen(true)}>
         <ListIcon size={20} color="#FFF" weight="bold" />
+        {hasUnreadAlerts ? <View style={styles.iconBadge} /> : null}
       </TouchableOpacity>
     </View>
   </Animated.View>
@@ -308,6 +336,7 @@ export default function HomeScreen() {
               <TouchableOpacity style={styles.menuItem} onPress={() => { setIsMenuOpen(false); router.push('/notifications'); }}>
                 <View style={styles.menuIconContainer}>
                   <BellIcon size={18} color="#0F022D" weight="bold" />
+                  {hasUnreadAlerts ? <View style={styles.menuItemBadge} /> : null}
                 </View>
                 <Text style={styles.menuItemText}>{t('home.notifications')}</Text>
               </TouchableOpacity>
@@ -356,6 +385,20 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  // Badge de nao lidas: circulo mint (mesmo indicador dos cards da tela de
+  // notificacoes) no canto do botao. A borda escura o separa do icone e casa
+  // com o fundo do header.
+  iconBadge: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: colors.brand.details,
+    borderWidth: 1.5,
+    borderColor: '#1B0F4A',
   },
   greeting: {
     fontSize: 20,
@@ -520,6 +563,19 @@ const styles = StyleSheet.create({
   menuIconContainer: {
     width: 28,
     alignItems: 'center',
+  },
+  // Mesmo badge, posicionado sobre o sino do item de notificacoes. Borda
+  // branca para separar do fundo do dropdown.
+  menuItemBadge: {
+    position: 'absolute',
+    top: -2,
+    right: 1,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: colors.brand.details,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
   },
   menuItemText: {
     fontSize: 14,

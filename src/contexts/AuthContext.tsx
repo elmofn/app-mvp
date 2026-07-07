@@ -4,8 +4,9 @@ import { AppState, AppStateStatus } from 'react-native';
 import { getAccount } from '@/src/services/account';
 import { authenticateWithBiometric, getBiometricStatus } from '@/src/services/biometric';
 import { getBanners, getNextTrips } from '@/src/services/content';
+import { getFAQ, type FAQItem } from '@/src/services/faq';
 import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/src/services/location';
-import { getUserLanguage } from '@/src/services/locale';
+import { getUserLanguage, type SupportedLang } from '@/src/services/locale';
 import {
   signIn as apiSignIn,
   SignInAccountDetails,
@@ -19,17 +20,24 @@ type AuthState = {
   token: string | null;
 };
 
+// Estado compartilhado da FAQ (GetFAQ). Fica no AuthContext, junto com o
+// resto do conteudo localizado, para que a tela de support (FAQSection) e o
+// pull-to-refresh da home leiam/atualizem a mesma fonte.
+type FAQState = { items: FAQItem[]; loading: boolean; error: boolean };
+
 type AuthContextValue = AuthState & {
   isRestoring: boolean;
   isSigningIn: boolean;
   isLocked: boolean;
   biometricAvailable: boolean;
+  faq: FAQState;
   signIn: (login: string, password: string) => Promise<SignInResponse>;
   signOut: () => Promise<void>;
   unlock: () => Promise<boolean>;
   lock: () => void;
   updateAccountDetails: (patch: AccountPatch) => Promise<void>;
   refreshAccount: () => Promise<void>;
+  reloadFAQ: (langOverride?: SupportedLang) => Promise<void>;
 };
 
 export type AccountPatch = {
@@ -55,6 +63,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  // Comeca em loading para o primeiro render do FAQSection ja mostrar o
+  // spinner (em vez de piscar o estado vazio antes do fetch inicial).
+  const [faq, setFaq] = useState<FAQState>({ items: [], loading: true, error: false });
 
   // Mantemos um ref do state atual para o AppState listener acessar sem
   // virar dependencia (re-attachar listener a cada render seria caro).
@@ -181,6 +192,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await saveSession(current.token, next);
   }, []);
 
+  // Busca a FAQ (GetFAQ) no idioma informado, ou no idioma atual da conta se
+  // omitido. Estado unico compartilhado com o FAQSection (tela de support) e
+  // usado pelo pull-to-refresh da home. Resiliente: um erro vira flag e nao
+  // derruba quem chamou.
+  const reloadFAQ = useCallback(async (langOverride?: SupportedLang) => {
+    const lang = langOverride ?? getUserLanguage(stateRef.current.account);
+    setFaq((prev) => ({ ...prev, loading: true, error: false }));
+    try {
+      const items = await getFAQ(lang);
+      setFaq({ items, loading: false, error: false });
+    } catch (err) {
+      console.warn('[auth] FAQ reload failed:', err);
+      setFaq((prev) => ({ ...prev, loading: false, error: true }));
+    }
+  }, []);
+
   // Re-busca o snapshot completo da conta sem novo login: GetAccount traz
   // accountDetails/balance/setups/statements, e GetBanners/GetNextTrips
   // (que sairam do payload de SignIn) trazem o conteudo localizado. Usado
@@ -211,7 +238,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     setState({ account: next, token: current.token });
     await saveSession(current.token, next);
-  }, []);
+
+    // Junto com o resto do conteudo, repopula a FAQ no mesmo idioma. Resiliente
+    // (reloadFAQ trata o proprio erro), entao nao compromete o refresh.
+    await reloadFAQ(lang);
+  }, [reloadFAQ]);
 
   return (
     <AuthContext.Provider
@@ -221,12 +252,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isSigningIn,
         isLocked,
         biometricAvailable,
+        faq,
         signIn,
         signOut,
         unlock,
         lock,
         updateAccountDetails,
         refreshAccount,
+        reloadFAQ,
       }}
     >
       {children}

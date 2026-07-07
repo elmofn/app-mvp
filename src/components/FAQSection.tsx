@@ -1,5 +1,5 @@
 import { CaretDownIcon } from 'phosphor-react-native';
-import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   LayoutAnimation,
@@ -13,8 +13,8 @@ import {
 } from 'react-native';
 import RenderHTML, { MixedStyleDeclaration } from 'react-native-render-html';
 
+import { useAuth } from '@/src/contexts/AuthContext';
 import { useT } from '@/src/i18n';
-import { type FAQItem, getFAQ } from '@/src/services/faq';
 import type { SupportedLang } from '@/src/services/locale';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
@@ -46,53 +46,26 @@ type Props = {
   lang: SupportedLang;
 };
 
-// Handle imperativo exposto ao SupportContent: permite que o pull-to-refresh
-// da tela de support repopule a FAQ no idioma atual e saiba quando terminou.
-export type FAQSectionHandle = { refresh: () => Promise<void> };
-
-export const FAQSection = forwardRef<FAQSectionHandle, Props>(function FAQSection(
-  { lang },
-  ref,
-) {
+export function FAQSection({ lang }: Props) {
   const { width } = useWindowDimensions();
   const { t } = useT();
-  const [items, setItems] = useState<FAQItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // A FAQ vive no AuthContext (fonte unica): carregamos aqui no mount / troca
+  // de idioma, e o pull-to-refresh da home tambem chama reloadFAQ. Assim esta
+  // secao e repopulada pelo refresh da home sem buscar por conta propria.
+  const { faq: faqState, reloadFAQ } = useAuth();
+  const { items, loading, error } = faqState;
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Busca a FAQ (GetFAQ) no idioma atual. isActive() descarta respostas
-  // obsoletas (troca de idioma / desmontagem) sem duplicar o fetch entre o
-  // carregamento reativo e o pull-to-refresh imperativo.
-  const runFetch = useCallback(
-    async (isActive: () => boolean) => {
-      setLoading(true);
-      setError(null);
-      setExpandedId(null);
-      try {
-        const data = await getFAQ(lang);
-        if (isActive()) setItems(data);
-      } catch (err) {
-        console.warn('[FAQ] fetch failed:', err);
-        if (isActive()) setError(t('support.faqError'));
-      } finally {
-        if (isActive()) setLoading(false);
-      }
-    },
-    [lang, t],
-  );
-
   useEffect(() => {
-    let active = true;
-    runFetch(() => active);
-    return () => {
-      active = false;
-    };
-  }, [runFetch]);
+    reloadFAQ(lang);
+    setExpandedId(null);
+  }, [lang, reloadFAQ]);
 
-  // O RefreshControl aguarda esta promise para fechar o spinner no momento
-  // certo. Sempre aplica (o componente esta montado durante o gesto).
-  useImperativeHandle(ref, () => ({ refresh: () => runFetch(() => true) }), [runFetch]);
+  // So mostramos spinner/erro quando ainda nao ha itens: reabrir a tela ou um
+  // refresh da home (que re-dispara reloadFAQ) nao deve apagar o conteudo ja
+  // carregado - mantemos o atual ate a nova resposta chegar.
+  const showLoading = loading && items.length === 0;
+  const showError = error && items.length === 0;
 
   const toggle = (id: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -110,13 +83,13 @@ export const FAQSection = forwardRef<FAQSectionHandle, Props>(function FAQSectio
       </Text>
       <Text style={styles.faqSubtitle}>{t('support.faqSubtitle')}</Text>
 
-      {loading ? (
+      {showLoading ? (
         <View style={styles.stateBox}>
           <ActivityIndicator color={colors.text.dark} />
         </View>
-      ) : error ? (
+      ) : showError ? (
         <View style={styles.stateBox}>
-          <Text style={styles.stateText}>{error}</Text>
+          <Text style={styles.stateText}>{t('support.faqError')}</Text>
         </View>
       ) : items.length === 0 ? (
         <View style={styles.stateBox}>
@@ -156,7 +129,7 @@ export const FAQSection = forwardRef<FAQSectionHandle, Props>(function FAQSectio
       )}
     </View>
   );
-});
+}
 
 const styles = StyleSheet.create({
   faqSection: {

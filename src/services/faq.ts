@@ -39,8 +39,26 @@ export const FAQItemSchema: z.ZodType<FAQItem> = z.lazy(() =>
 
 export const FAQListSchema = z.array(FAQItemSchema);
 
+// O GetFAQ espera o idioma em lowercase com hifen (pt-br / en-us / es-es),
+// como o GetPolices - diferente do SupportedLang (pt-BR / en-US / es-ES).
+// Mapeamos antes de montar a URL e caimos em en-us para qualquer valor fora
+// dessas tres opcoes.
+function toFAQLang(lang: SupportedLang): string {
+  switch (lang) {
+    case 'pt-BR':
+      return 'pt-br';
+    case 'es-ES':
+      return 'es-es';
+    case 'en-US':
+      return 'en-us';
+    default:
+      return 'en-us';
+  }
+}
+
 export async function getFAQ(lang: SupportedLang): Promise<FAQItem[]> {
-  const url = `${API_BASE_URL}/api/Content/GetFAQ?query=${encodeURIComponent(lang)}`;
+  const query = toFAQLang(lang);
+  const url = `${API_BASE_URL}/api/Content/GetFAQ?query=${encodeURIComponent(query)}`;
   const response = await fetch(url, {
     method: 'GET',
     headers: { Accept: '*/*' },
@@ -54,14 +72,15 @@ export async function getFAQ(lang: SupportedLang): Promise<FAQItem[]> {
   // Aceitamos itens parcialmente invalidos: filtramos com safeParse item-a-item
   // para nao perder a tela inteira por causa de um campo esquisito em um
   // unico FAQ. A API tem devolvido itens dos tres idiomas mesmo com o ?query
-  // setado, entao filtramos client-side pelo campo language do proprio item.
+  // setado, entao filtramos client-side pelo campo language do proprio item -
+  // comparando em lowercase para tolerar variacoes de caixa do backend.
   if (!Array.isArray(raw)) return [];
   const valid: FAQItem[] = [];
   for (const item of raw) {
     const parsed = FAQItemSchema.safeParse(item);
     if (!parsed.success) continue;
     if (!parsed.data.isActive) continue;
-    if (parsed.data.language !== lang) continue;
+    if (parsed.data.language.toLowerCase() !== query) continue;
     valid.push(parsed.data);
   }
   return valid;

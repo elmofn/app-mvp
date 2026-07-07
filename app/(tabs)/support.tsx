@@ -12,7 +12,7 @@ import { getUserLanguage } from '@/src/services/locale';
 export default function SupportScreen() {
   const router = useRouter();
   const tabBarHeight = useBottomTabBarHeight();
-  const { account } = useAuth();
+  const { account, refreshAccount } = useAuth();
   const lang = getUserLanguage(account);
 
   return (
@@ -22,6 +22,7 @@ export default function SupportScreen() {
         lang={lang}
         bottomInset={tabBarHeight + 24}
         onTermsPress={() => router.push('/terms')}
+        onRefresh={refreshAccount}
       />
     </SafeAreaView>
   );

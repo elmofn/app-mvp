@@ -6,11 +6,11 @@ import {
   VideoCameraIcon,
   WhatsappLogoIcon,
 } from 'phosphor-react-native';
-import React from 'react';
-import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { Linking, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { FAQSection } from '@/src/components/FAQSection';
+import { FAQSection, type FAQSectionHandle } from '@/src/components/FAQSection';
 import { useT } from '@/src/i18n';
 import type { SupportedLang } from '@/src/services/locale';
 import { colors } from '@/src/theme/colors';
@@ -36,6 +36,11 @@ type Props = {
   titleAccent?: string;
   titleAfter?: string;
   onTermsPress?: () => void;
+  // Quando fornecido, habilita o pull-to-refresh: chamado primeiro (atualiza
+  // a conta via GetAccount, trazendo o setups.lang atual) e, na sequencia,
+  // a FAQ e repopulada com esse idioma. Ausente (ex.: tela de help pre-login)
+  // = sem RefreshControl.
+  onRefresh?: () => Promise<void>;
 };
 
 export function SupportContent({
@@ -46,9 +51,28 @@ export function SupportContent({
   titleAccent,
   titleAfter,
   onTermsPress,
+  onRefresh,
 }: Props) {
   const insets = useSafeAreaInsets();
   const { t } = useT();
+
+  const faqRef = useRef<FAQSectionHandle>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Pull-to-refresh: atualiza a conta (onRefresh -> GetAccount) e entao
+  // repopula a FAQ com o idioma atual. Mantemos o spinner ate ambos
+  // terminarem; falha e silenciosa (o conteudo atual permanece).
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await onRefresh?.();
+      await faqRef.current?.refresh();
+    } catch (err) {
+      console.warn('[support] pull-to-refresh failed:', err);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [onRefresh]);
 
   const openExternal = (url: string) => {
     Linking.openURL(url).catch((err) => {
@@ -60,6 +84,16 @@ export function SupportContent({
     <ScrollView
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ paddingBottom: bottomInset }}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#FFFFFF"
+            colors={['#4D2ACC']}
+          />
+        ) : undefined
+      }
     >
       <LinearGradient
         colors={['#6444DA', '#4D2ACC', '#1B0F4A']}
@@ -118,7 +152,7 @@ export function SupportContent({
         </View>
       </LinearGradient>
 
-      <FAQSection lang={lang} />
+      <FAQSection ref={faqRef} lang={lang} />
 
       <View style={styles.bottomSection}>
         <View style={styles.divider} />

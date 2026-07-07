@@ -1,5 +1,5 @@
 import { CaretDownIcon } from 'phosphor-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from 'react';
 import {
   ActivityIndicator,
   LayoutAnimation,
@@ -46,7 +46,14 @@ type Props = {
   lang: SupportedLang;
 };
 
-export function FAQSection({ lang }: Props) {
+// Handle imperativo exposto ao SupportContent: permite que o pull-to-refresh
+// da tela de support repopule a FAQ no idioma atual e saiba quando terminou.
+export type FAQSectionHandle = { refresh: () => Promise<void> };
+
+export const FAQSection = forwardRef<FAQSectionHandle, Props>(function FAQSection(
+  { lang },
+  ref,
+) {
   const { width } = useWindowDimensions();
   const { t } = useT();
   const [items, setItems] = useState<FAQItem[]>([]);
@@ -54,26 +61,38 @@ export function FAQSection({ lang }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setExpandedId(null);
-    getFAQ(lang)
-      .then((data) => {
-        if (!cancelled) setItems(data);
-      })
-      .catch((err) => {
+  // Busca a FAQ (GetFAQ) no idioma atual. isActive() descarta respostas
+  // obsoletas (troca de idioma / desmontagem) sem duplicar o fetch entre o
+  // carregamento reativo e o pull-to-refresh imperativo.
+  const runFetch = useCallback(
+    async (isActive: () => boolean) => {
+      setLoading(true);
+      setError(null);
+      setExpandedId(null);
+      try {
+        const data = await getFAQ(lang);
+        if (isActive()) setItems(data);
+      } catch (err) {
         console.warn('[FAQ] fetch failed:', err);
-        if (!cancelled) setError(t('support.faqError'));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+        if (isActive()) setError(t('support.faqError'));
+      } finally {
+        if (isActive()) setLoading(false);
+      }
+    },
+    [lang, t],
+  );
+
+  useEffect(() => {
+    let active = true;
+    runFetch(() => active);
     return () => {
-      cancelled = true;
+      active = false;
     };
-  }, [lang]);
+  }, [runFetch]);
+
+  // O RefreshControl aguarda esta promise para fechar o spinner no momento
+  // certo. Sempre aplica (o componente esta montado durante o gesto).
+  useImperativeHandle(ref, () => ({ refresh: () => runFetch(() => true) }), [runFetch]);
 
   const toggle = (id: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -137,7 +156,7 @@ export function FAQSection({ lang }: Props) {
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   faqSection: {

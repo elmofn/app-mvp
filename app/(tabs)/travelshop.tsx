@@ -299,9 +299,13 @@ export default function TravelShopScreen() {
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.searchButton} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={styles.searchButton}
+              activeOpacity={0.85}
+              onPress={() => router.push('/hotel-search')}
+            >
               <MagnifyingGlassIcon size={18} color={colors.text.light} weight="bold" />
-              <Text style={styles.searchButtonText}>Buscar Hotéis</Text>
+              <Text style={styles.searchButtonText}>{t('travelshop.searchButton')}</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>

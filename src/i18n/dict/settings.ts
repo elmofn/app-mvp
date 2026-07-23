@@ -18,12 +18,23 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     currencyLabel: 'Currency',
     languageLabel: 'Language',
     selectCurrency: 'Select currency',
+    verified: 'Verified',
+    notVerified: 'Not verified',
 
     // Action buttons
     logOut: 'Log Out',
     changePassword: 'Change Password',
     deleteAccount: 'Delete Account',
     saveChanges: 'Save Changes',
+    authCodeButton: 'Authentication Code',
+
+    // Authentication code modal (rotating 6-digit code)
+    authCodeEyebrow: 'AUTHENTICATION',
+    authCodeTitleBase: 'Your',
+    authCodeTitleAccent: 'code',
+    authCodeDescription:
+      'This code refreshes automatically every 30 seconds. Use it when asked to confirm your identity.',
+    authCodeExpiresIn: 'Expires in {seconds}s',
 
     // Pickers modal
     selectCurrencyTitle: 'SELECT CURRENCY',
@@ -112,12 +123,23 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     currencyLabel: 'Moeda',
     languageLabel: 'Idioma',
     selectCurrency: 'Selecionar moeda',
+    verified: 'Verificado',
+    notVerified: 'Não verificado',
 
     // Action buttons
     logOut: 'Sair da Conta',
     changePassword: 'Alterar Senha',
     deleteAccount: 'Deletar Conta',
     saveChanges: 'Salvar Alterações',
+    authCodeButton: 'Código de Autenticação',
+
+    // Authentication code modal (rotating 6-digit code)
+    authCodeEyebrow: 'AUTENTICAÇÃO',
+    authCodeTitleBase: 'Seu',
+    authCodeTitleAccent: 'código',
+    authCodeDescription:
+      'Este código é atualizado automaticamente a cada 30 segundos. Use-o quando for solicitado a confirmar sua identidade.',
+    authCodeExpiresIn: 'Expira em {seconds}s',
 
     // Pickers modal
     selectCurrencyTitle: 'SELECIONAR MOEDA',
@@ -206,12 +228,23 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     currencyLabel: 'Moneda',
     languageLabel: 'Idioma',
     selectCurrency: 'Seleccionar moneda',
+    verified: 'Verificado',
+    notVerified: 'No verificado',
 
     // Action buttons
     logOut: 'Cerrar Sesión',
     changePassword: 'Cambiar Contraseña',
     deleteAccount: 'Eliminar Cuenta',
     saveChanges: 'Guardar Cambios',
+    authCodeButton: 'Código de Autenticación',
+
+    // Authentication code modal (rotating 6-digit code)
+    authCodeEyebrow: 'AUTENTICACIÓN',
+    authCodeTitleBase: 'Tu',
+    authCodeTitleAccent: 'código',
+    authCodeDescription:
+      'Este código se actualiza automáticamente cada 30 segundos. Úsalo cuando se te pida confirmar tu identidad.',
+    authCodeExpiresIn: 'Expira en {seconds}s',
 
     // Pickers modal
     selectCurrencyTitle: 'SELECCIONAR MONEDA',

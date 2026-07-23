@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { CaretDownIcon, XIcon } from 'phosphor-react-native';
+import { CaretDownIcon, CheckCircleIcon, WarningCircleIcon, XIcon } from 'phosphor-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AuthCodeModal } from '@/src/components/AuthCodeModal';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
@@ -55,6 +56,23 @@ const LANGUAGES: { label: string; value: SupportedLang }[] = [
   { label: 'Português - BR', value: 'pt-BR' },
   { label: 'Español', value: 'es-ES' },
 ];
+
+// Badge inline que indica se o contato (email/telefone) esta verificado.
+// Le validEmail/validPhoneNumber que ja vem em accountDetails no SignIn/GetAccount.
+function VerificationBadge({ verified }: { verified: boolean }) {
+  const { t } = useT();
+  return verified ? (
+    <View style={styles.badge}>
+      <CheckCircleIcon size={13} color="#0E9F6E" weight="fill" />
+      <Text style={[styles.badgeText, { color: '#0E9F6E' }]}>{t('settings.verified')}</Text>
+    </View>
+  ) : (
+    <View style={styles.badge}>
+      <WarningCircleIcon size={13} color="#C77700" weight="fill" />
+      <Text style={[styles.badgeText, { color: '#C77700' }]}>{t('settings.notVerified')}</Text>
+    </View>
+  );
+}
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -109,6 +127,7 @@ export default function SettingsScreen() {
     LANGUAGES.find((l) => l.value === original.lang) ?? LANGUAGES[0],
   );
   const [modalVisible, setModalVisible] = useState<{ type: 'currency' | 'language' | null }>({ type: null });
+  const [authCodeVisible, setAuthCodeVisible] = useState(false);
 
   // Save / verification state
   const [isSaving, setIsSaving] = useState(false);
@@ -504,7 +523,10 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>{t('settings.phoneLabel')}</Text>
+              <View style={styles.labelRow}>
+                <Text style={styles.inputLabel}>{t('settings.phoneLabel')}</Text>
+                <VerificationBadge verified={!!account?.accountDetails.validPhoneNumber} />
+              </View>
               <TextInput
                 style={[styles.inputField, focusedField === 'phone' && styles.inputFieldFocused]}
                 value={phone}
@@ -516,7 +538,10 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>{t('settings.emailLabel')}</Text>
+              <View style={styles.labelRow}>
+                <Text style={styles.inputLabel}>{t('settings.emailLabel')}</Text>
+                <VerificationBadge verified={!!account?.accountDetails.validEmail} />
+              </View>
               <TextInput
                 style={[styles.inputField, focusedField === 'email' && styles.inputFieldFocused]}
                 value={email}
@@ -555,6 +580,14 @@ export default function SettingsScreen() {
             </TouchableOpacity>
 
             <View style={styles.buttonGroup}>
+              <TouchableOpacity
+                style={styles.buttonFilled}
+                onPress={() => setAuthCodeVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.buttonFilledText}>{t('settings.authCodeButton')}</Text>
+              </TouchableOpacity>
+
               <TouchableOpacity style={styles.buttonFilled} onPress={handleLogout} activeOpacity={0.8}>
                 <Text style={styles.buttonFilledText}>{t('settings.logOut')}</Text>
               </TouchableOpacity>
@@ -602,6 +635,8 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
         ) : null}
+
+      <AuthCodeModal visible={authCodeVisible} onClose={() => setAuthCodeVisible(false)} />
 
       <Modal
         visible={modalVisible.type !== null}
@@ -909,11 +944,27 @@ const styles = StyleSheet.create({
   formContainer: { padding: 24, paddingTop: 28 },
 
   formGroup: { marginBottom: 22 },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   inputLabel: {
     fontSize: 12,
     fontFamily: fonts.bold,
     color: colors.text.dark,
     marginBottom: 6,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 6,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.2,
   },
   inputField: {
     width: '100%',

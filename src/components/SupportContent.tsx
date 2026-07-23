@@ -128,7 +128,7 @@ export function SupportContent({
             <View style={[styles.darkButtonIcon, { backgroundColor: '#85EDD3' }]}>
               <ShieldCheckIcon size={24} color="#0F022D" weight="bold" />
             </View>
-            <Text style={styles.darkButtonText}>About the app</Text>
+            <Text style={styles.darkButtonText}>{t('support.aboutApp')}</Text>
           </TouchableOpacity>
 
           {onTermsPress ? (
@@ -136,7 +136,7 @@ export function SupportContent({
               <View style={[styles.darkButtonIcon, { backgroundColor: '#f07167' }]}>
                 <FileTextIcon size={24} color="#0F022D" weight="bold" />
               </View>
-              <Text style={styles.darkButtonText}>Terms and Conditions</Text>
+              <Text style={styles.darkButtonText}>{t('support.termsAndConditions')}</Text>
             </TouchableOpacity>
           ) : null}
         </View>

@@ -1,9 +1,10 @@
 import * as Clipboard from 'expo-clipboard';
-import { XIcon } from 'phosphor-react-native';
+import { WhatsappLogoIcon, XIcon } from 'phosphor-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Linking,
   Modal,
   StyleSheet,
   Text,
@@ -41,7 +42,7 @@ interface AuthCodeModalProps {
 
 export function AuthCodeModal({ visible, onClose }: AuthCodeModalProps) {
   const { t } = useT();
-  const { token, refreshSession } = useAuth();
+  const { token, refreshSession, account } = useAuth();
   // Ref para ler o token atual dentro do efeito sem re-disparar o efeito
   // (e sem fechar sobre um valor obsoleto apos o refreshSession).
   const tokenRef = useRef(token);
@@ -158,6 +159,22 @@ export function AuthCodeModal({ visible, onClose }: AuthCodeModalProps) {
     setCopied(true);
   }, []);
 
+  // Abre o WhatsApp na conversa do usuario "consigo mesmo" (wa.me com o proprio
+  // numero) ja com o codigo no texto - o WhatsApp reconhece o proprio numero e
+  // abre o chat "Mensagem para si mesmo". Usa https://wa.me para degradar bem
+  // (cai no navegador/WhatsApp Web) se o app nao estiver instalado.
+  const phoneDigits = account?.accountDetails.phoneNumber?.replace(/\D/g, '') ?? '';
+  const handleSendToWhatsApp = useCallback(async () => {
+    const code = dataRef.current?.navigationCode;
+    if (!code || !phoneDigits) return;
+    const url = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(code)}`;
+    try {
+      await Linking.openURL(url);
+    } catch (err) {
+      console.warn('[authcode] could not open WhatsApp:', err);
+    }
+  }, [phoneDigits]);
+
   // Some com o feedback "Copiado!" apos um instante.
   useEffect(() => {
     if (!copied) return;
@@ -202,43 +219,56 @@ export function AuthCodeModal({ visible, onClose }: AuthCodeModalProps) {
               </TouchableOpacity>
             </View>
           ) : (
-            <View style={styles.ringWrap}>
-              <Svg width={SIZE} height={SIZE}>
-                <Circle
-                  cx={SIZE / 2}
-                  cy={SIZE / 2}
-                  r={RADIUS}
-                  stroke="#EDEDF2"
-                  strokeWidth={STROKE}
-                  fill="none"
-                />
-                <AnimatedCircle
-                  cx={SIZE / 2}
-                  cy={SIZE / 2}
-                  r={RADIUS}
-                  stroke={colors.brand.primary}
-                  strokeWidth={STROKE}
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeDasharray={CIRCUMFERENCE}
-                  strokeDashoffset={strokeDashoffset}
-                  transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
-                />
-              </Svg>
+            <>
+              <View style={styles.ringWrap}>
+                <Svg width={SIZE} height={SIZE}>
+                  <Circle
+                    cx={SIZE / 2}
+                    cy={SIZE / 2}
+                    r={RADIUS}
+                    stroke="#EDEDF2"
+                    strokeWidth={STROKE}
+                    fill="none"
+                  />
+                  <AnimatedCircle
+                    cx={SIZE / 2}
+                    cy={SIZE / 2}
+                    r={RADIUS}
+                    stroke={colors.brand.primary}
+                    strokeWidth={STROKE}
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeDasharray={CIRCUMFERENCE}
+                    strokeDashoffset={strokeDashoffset}
+                    transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
+                  />
+                </Svg>
 
-              <View style={styles.ringCenter}>
-                <TouchableOpacity onPress={handleCopy} activeOpacity={0.6} hitSlop={10}>
-                  <Text style={styles.codeText} numberOfLines={2} adjustsFontSizeToFit>
-                    {data?.navigationCode}
+                <View style={styles.ringCenter}>
+                  <TouchableOpacity onPress={handleCopy} activeOpacity={0.6} hitSlop={10}>
+                    <Text style={styles.codeText} numberOfLines={2} adjustsFontSizeToFit>
+                      {data?.navigationCode}
+                    </Text>
+                  </TouchableOpacity>
+                  <Text style={[styles.codeSeconds, copied && styles.codeCopied]}>
+                    {copied
+                      ? t('settings.authCodeCopied')
+                      : t('settings.authCodeExpiresIn', { time: formatResendCountdown(secondsLeft) })}
                   </Text>
-                </TouchableOpacity>
-                <Text style={[styles.codeSeconds, copied && styles.codeCopied]}>
-                  {copied
-                    ? t('settings.authCodeCopied')
-                    : t('settings.authCodeExpiresIn', { time: formatResendCountdown(secondsLeft) })}
-                </Text>
+                </View>
               </View>
-            </View>
+
+              {phoneDigits ? (
+                <TouchableOpacity
+                  style={styles.whatsappButton}
+                  onPress={handleSendToWhatsApp}
+                  activeOpacity={0.85}
+                >
+                  <WhatsappLogoIcon size={20} color="#FFFFFF" weight="fill" />
+                  <Text style={styles.whatsappButtonText}>{t('settings.authCodeWhatsApp')}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </>
           )}
         </View>
       </View>
@@ -350,5 +380,22 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: 18,
+  },
+  whatsappButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#25D366',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  whatsappButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.3,
   },
 });

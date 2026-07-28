@@ -39,6 +39,7 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     authCodeError: "Couldn't generate the code.",
     authCodeRetry: 'Try again',
     authCodeCopied: 'Copied!',
+    authCodeWhatsApp: 'Send to myself on WhatsApp',
 
     // Pickers modal
     selectCurrencyTitle: 'SELECT CURRENCY',
@@ -148,6 +149,7 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     authCodeError: 'Não foi possível gerar o código.',
     authCodeRetry: 'Tentar novamente',
     authCodeCopied: 'Copiado!',
+    authCodeWhatsApp: 'Enviar para mim no WhatsApp',
 
     // Pickers modal
     selectCurrencyTitle: 'SELECIONAR MOEDA',
@@ -257,6 +259,7 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     authCodeError: 'No se pudo generar el código.',
     authCodeRetry: 'Reintentar',
     authCodeCopied: '¡Copiado!',
+    authCodeWhatsApp: 'Enviarme por WhatsApp',
 
     // Pickers modal
     selectCurrencyTitle: 'SELECCIONAR MONEDA',

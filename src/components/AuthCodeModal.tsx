@@ -1,5 +1,6 @@
+import * as Clipboard from 'expo-clipboard';
 import { XIcon } from 'phosphor-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -49,6 +50,8 @@ export function AuthCodeModal({ visible, onClose }: AuthCodeModalProps) {
   const [status, setStatus] = useState<Status>('loading');
   const [data, setData] = useState<NavigationCode | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  // Feedback momentaneo ao copiar o codigo para o clipboard.
+  const [copied, setCopied] = useState(false);
   // Incrementar forca o efeito a rodar de novo (usado pelo botao "tentar de novo").
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -69,6 +72,7 @@ export function AuthCodeModal({ visible, onClose }: AuthCodeModalProps) {
   // so quando expira (refetch automatico, padrao Authy).
   useEffect(() => {
     if (!visible) return;
+    setCopied(false);
 
     let active = true;
     let lastSec = -1;
@@ -146,6 +150,21 @@ export function AuthCodeModal({ visible, onClose }: AuthCodeModalProps) {
     };
   }, [visible, progress, reloadKey, refreshSession]);
 
+  // Copia o codigo atual para o clipboard e mostra o feedback "Copiado!".
+  const handleCopy = useCallback(async () => {
+    const code = dataRef.current?.navigationCode;
+    if (!code) return;
+    await Clipboard.setStringAsync(code);
+    setCopied(true);
+  }, []);
+
+  // Some com o feedback "Copiado!" apos um instante.
+  useEffect(() => {
+    if (!copied) return;
+    const id = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(id);
+  }, [copied]);
+
   const strokeDashoffset = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [0, CIRCUMFERENCE],
@@ -207,12 +226,16 @@ export function AuthCodeModal({ visible, onClose }: AuthCodeModalProps) {
                 />
               </Svg>
 
-              <View style={styles.ringCenter} pointerEvents="none">
-                <Text style={styles.codeText} numberOfLines={2} adjustsFontSizeToFit>
-                  {data?.navigationCode}
-                </Text>
-                <Text style={styles.codeSeconds}>
-                  {t('settings.authCodeExpiresIn', { time: formatResendCountdown(secondsLeft) })}
+              <View style={styles.ringCenter}>
+                <TouchableOpacity onPress={handleCopy} activeOpacity={0.6} hitSlop={10}>
+                  <Text style={styles.codeText} numberOfLines={2} adjustsFontSizeToFit>
+                    {data?.navigationCode}
+                  </Text>
+                </TouchableOpacity>
+                <Text style={[styles.codeSeconds, copied && styles.codeCopied]}>
+                  {copied
+                    ? t('settings.authCodeCopied')
+                    : t('settings.authCodeExpiresIn', { time: formatResendCountdown(secondsLeft) })}
                 </Text>
               </View>
             </View>
@@ -300,6 +323,10 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
     color: colors.text.muted,
     letterSpacing: 0.3,
+  },
+  codeCopied: {
+    color: '#0E9F6E',
+    fontFamily: fonts.bold,
   },
   stateText: {
     marginTop: 14,

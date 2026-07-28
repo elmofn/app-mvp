@@ -38,6 +38,7 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     authCodeLoading: 'Generating code…',
     authCodeError: "Couldn't generate the code.",
     authCodeRetry: 'Try again',
+    authCodeCopied: 'Copied!',
 
     // Pickers modal
     selectCurrencyTitle: 'SELECT CURRENCY',
@@ -146,6 +147,7 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     authCodeLoading: 'Gerando código…',
     authCodeError: 'Não foi possível gerar o código.',
     authCodeRetry: 'Tentar novamente',
+    authCodeCopied: 'Copiado!',
 
     // Pickers modal
     selectCurrencyTitle: 'SELECIONAR MOEDA',
@@ -254,6 +256,7 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     authCodeLoading: 'Generando código…',
     authCodeError: 'No se pudo generar el código.',
     authCodeRetry: 'Reintentar',
+    authCodeCopied: '¡Copiado!',
 
     // Pickers modal
     selectCurrencyTitle: 'SELECCIONAR MONEDA',

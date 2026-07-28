@@ -158,7 +158,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Retorna o novo token, ou null se nao ha credenciais / o re-signin falhou.
   const refreshSession = useCallback(async (): Promise<string | null> => {
     const creds = await loadCredentials();
-    if (!creds) return null;
+    if (!creds) {
+      // Sessao restaurada/destravada por biometria sem login novo apos esta
+      // feature -> nao ha credenciais salvas. Precisa de login manual.
+      console.warn('[auth] refreshSession: no stored credentials (needs fresh login)');
+      return null;
+    }
     try {
       let coords = getCachedLocation();
       if (!coords) coords = await getCurrentLocation();

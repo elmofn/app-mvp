@@ -35,7 +35,20 @@ export async function createNavigationCode(token: string): Promise<NavigationCod
   });
 
   if (!response.ok) {
-    console.warn('[marketplace] CreateNavigationCode HTTP', response.status);
+    // Diagnostico: num 401 do middleware JWT do .NET, o header
+    // WWW-Authenticate distingue token expirado/invalido ("invalid_token",
+    // "The token expired at ...") de problema de esquema. Logamos junto com o
+    // corpo para pinpointar a causa sem precisar adivinhar.
+    const challenge = response.headers.get('WWW-Authenticate') ?? '';
+    const rawBody = await response.text().catch(() => '');
+    console.warn(
+      '[marketplace] CreateNavigationCode HTTP',
+      response.status,
+      'challenge:',
+      challenge,
+      'body:',
+      rawBody.slice(0, 300),
+    );
     throw new Error(`CreateNavigationCode failed (${response.status})`);
   }
 

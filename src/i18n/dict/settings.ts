@@ -28,13 +28,16 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     saveChanges: 'Save Changes',
     authCodeButton: 'Authentication Code',
 
-    // Authentication code modal (rotating 6-digit code)
+    // Authentication code modal (rotating navigation code)
     authCodeEyebrow: 'AUTHENTICATION',
     authCodeTitleBase: 'Your',
     authCodeTitleAccent: 'code',
     authCodeDescription:
-      'This code refreshes automatically every 30 seconds. Use it when asked to confirm your identity.',
-    authCodeExpiresIn: 'Expires in {seconds}s',
+      'Use this code to securely access the marketplace. It refreshes automatically when it expires.',
+    authCodeExpiresIn: 'Expires in {time}',
+    authCodeLoading: 'Generating code…',
+    authCodeError: "Couldn't generate the code.",
+    authCodeRetry: 'Try again',
 
     // Pickers modal
     selectCurrencyTitle: 'SELECT CURRENCY',
@@ -133,13 +136,16 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     saveChanges: 'Salvar Alterações',
     authCodeButton: 'Código de Autenticação',
 
-    // Authentication code modal (rotating 6-digit code)
+    // Authentication code modal (rotating navigation code)
     authCodeEyebrow: 'AUTENTICAÇÃO',
     authCodeTitleBase: 'Seu',
     authCodeTitleAccent: 'código',
     authCodeDescription:
-      'Este código é atualizado automaticamente a cada 30 segundos. Use-o quando for solicitado a confirmar sua identidade.',
-    authCodeExpiresIn: 'Expira em {seconds}s',
+      'Use este código para acessar o marketplace com segurança. Ele é renovado automaticamente ao expirar.',
+    authCodeExpiresIn: 'Expira em {time}',
+    authCodeLoading: 'Gerando código…',
+    authCodeError: 'Não foi possível gerar o código.',
+    authCodeRetry: 'Tentar novamente',
 
     // Pickers modal
     selectCurrencyTitle: 'SELECIONAR MOEDA',
@@ -238,13 +244,16 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     saveChanges: 'Guardar Cambios',
     authCodeButton: 'Código de Autenticación',
 
-    // Authentication code modal (rotating 6-digit code)
+    // Authentication code modal (rotating navigation code)
     authCodeEyebrow: 'AUTENTICACIÓN',
     authCodeTitleBase: 'Tu',
     authCodeTitleAccent: 'código',
     authCodeDescription:
-      'Este código se actualiza automáticamente cada 30 segundos. Úsalo cuando se te pida confirmar tu identidad.',
-    authCodeExpiresIn: 'Expira en {seconds}s',
+      'Usa este código para acceder al marketplace de forma segura. Se renueva automáticamente al expirar.',
+    authCodeExpiresIn: 'Expira en {time}',
+    authCodeLoading: 'Generando código…',
+    authCodeError: 'No se pudo generar el código.',
+    authCodeRetry: 'Reintentar',
 
     // Pickers modal
     selectCurrencyTitle: 'SELECCIONAR MONEDA',

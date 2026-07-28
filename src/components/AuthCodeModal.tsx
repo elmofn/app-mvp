@@ -1,15 +1,23 @@
 import { XIcon } from 'phosphor-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Animated,
+  Easing,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
+import { useAuth } from '@/src/contexts/AuthContext';
+import { formatResendCountdown } from '@/src/hooks/useResendTimer';
 import { useT } from '@/src/i18n';
+import { createNavigationCode, expiresAtToMs, type NavigationCode } from '@/src/services/marketplace';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
-
-// Janela de validade do codigo (segundos). Padrao TOTP e 30s; quando a API
-// passar a fornecer o codigo, esse valor deve espelhar o TTL real do backend.
-const PERIOD = 30;
 
 // Geometria do anel de contagem regressiva ("timer" ao redor do codigo).
 const SIZE = 208;
@@ -19,11 +27,7 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-// Frontend-only: gera um codigo aleatorio de 6 digitos. Sera substituido pelo
-// codigo vindo da API futuramente.
-function generateCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
+type Status = 'loading' | 'ready' | 'error';
 
 interface AuthCodeModalProps {
   visible: boolean;
@@ -32,61 +36,90 @@ interface AuthCodeModalProps {
 
 export function AuthCodeModal({ visible, onClose }: AuthCodeModalProps) {
   const { t } = useT();
-  const [code, setCode] = useState(generateCode);
-  const [secondsLeft, setSecondsLeft] = useState(PERIOD);
+  const { token } = useAuth();
+
+  const [status, setStatus] = useState<Status>('loading');
+  const [data, setData] = useState<NavigationCode | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  // Incrementar forca o efeito a rodar de novo (usado pelo botao "tentar de novo").
+  const [reloadKey, setReloadKey] = useState(0);
+
   const progress = useRef(new Animated.Value(0)).current;
   const animationRef = useRef<Animated.CompositeAnimation | null>(null);
+  // Janela total (segundos) do codigo atual - o texto e o anel derivam dela.
+  const totalSecondsRef = useRef(1);
 
-  // Roda o ciclo do codigo apenas enquanto o modal esta visivel: um novo
-  // codigo a cada PERIOD segundos, com o anel drenando linearmente. O
-  // secondsLeft e derivado do proprio progress (fonte unica) para o texto e
-  // o anel nunca dessincronizarem. Ao fechar, paramos animacao e listener.
+  // Busca o navigationCode na API e dirige o anel pelo expiresAt. Ao expirar,
+  // refetch automatico (padrao Authy continuo). So roda enquanto o modal esta
+  // visivel; ao fechar, para animacao e listener.
   useEffect(() => {
     if (!visible) return;
 
     let active = true;
-    let lastSec = PERIOD;
+    let lastSec = -1;
 
     const listenerId = progress.addListener(({ value }) => {
-      const s = Math.max(0, Math.ceil((1 - value) * PERIOD));
+      const s = Math.max(0, Math.ceil((1 - value) * totalSecondsRef.current));
       if (s !== lastSec) {
         lastSec = s;
         setSecondsLeft(s);
       }
     });
 
-    const startCycle = () => {
-      setCode(generateCode());
-      setSecondsLeft(PERIOD);
-      lastSec = PERIOD;
+    const runRing = (totalMs: number) => {
+      totalSecondsRef.current = Math.max(1, Math.round(totalMs / 1000));
+      setSecondsLeft(totalSecondsRef.current);
+      lastSec = totalSecondsRef.current;
       progress.setValue(0);
       const anim = Animated.timing(progress, {
         toValue: 1,
-        duration: PERIOD * 1000,
+        duration: totalMs,
         easing: Easing.linear,
         useNativeDriver: false,
       });
       animationRef.current = anim;
       anim.start(({ finished }) => {
-        if (finished && active) startCycle();
+        if (finished && active) load();
       });
     };
 
-    startCycle();
+    const load = async () => {
+      animationRef.current?.stop();
+      if (!token) {
+        if (active) setStatus('error');
+        return;
+      }
+      if (active) setStatus('loading');
+      try {
+        const nav = await createNavigationCode(token);
+        if (!active) return;
+        setData(nav);
+        setStatus('ready');
+        const remaining = expiresAtToMs(nav.expiresAt) - Date.now();
+        if (remaining <= 0) {
+          // Ja expirado (provavel skew de relogio) - busca outro imediatamente.
+          load();
+          return;
+        }
+        runRing(remaining);
+      } catch {
+        if (active) setStatus('error');
+      }
+    };
+
+    load();
 
     return () => {
       active = false;
       animationRef.current?.stop();
       progress.removeListener(listenerId);
     };
-  }, [visible, progress]);
+  }, [visible, token, progress, reloadKey]);
 
   const strokeDashoffset = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [0, CIRCUMFERENCE],
   });
-
-  const formattedCode = `${code.slice(0, 3)} ${code.slice(3)}`;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -103,37 +136,57 @@ export function AuthCodeModal({ visible, onClose }: AuthCodeModalProps) {
           </Text>
           <Text style={styles.description}>{t('settings.authCodeDescription')}</Text>
 
-          <View style={styles.ringWrap}>
-            <Svg width={SIZE} height={SIZE}>
-              <Circle
-                cx={SIZE / 2}
-                cy={SIZE / 2}
-                r={RADIUS}
-                stroke="#EDEDF2"
-                strokeWidth={STROKE}
-                fill="none"
-              />
-              <AnimatedCircle
-                cx={SIZE / 2}
-                cy={SIZE / 2}
-                r={RADIUS}
-                stroke={colors.brand.primary}
-                strokeWidth={STROKE}
-                fill="none"
-                strokeLinecap="round"
-                strokeDasharray={CIRCUMFERENCE}
-                strokeDashoffset={strokeDashoffset}
-                transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
-              />
-            </Svg>
-
-            <View style={styles.ringCenter} pointerEvents="none">
-              <Text style={styles.codeText}>{formattedCode}</Text>
-              <Text style={styles.codeSeconds}>
-                {t('settings.authCodeExpiresIn', { seconds: secondsLeft })}
-              </Text>
+          {status === 'loading' ? (
+            <View style={styles.ringWrap}>
+              <ActivityIndicator size="large" color={colors.brand.primary} />
+              <Text style={styles.stateText}>{t('settings.authCodeLoading')}</Text>
             </View>
-          </View>
+          ) : status === 'error' ? (
+            <View style={styles.ringWrap}>
+              <Text style={styles.stateText}>{t('settings.authCodeError')}</Text>
+              <TouchableOpacity
+                style={[styles.buttonPrimary, styles.retryButton]}
+                onPress={() => setReloadKey((k) => k + 1)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.buttonPrimaryText}>{t('settings.authCodeRetry')}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.ringWrap}>
+              <Svg width={SIZE} height={SIZE}>
+                <Circle
+                  cx={SIZE / 2}
+                  cy={SIZE / 2}
+                  r={RADIUS}
+                  stroke="#EDEDF2"
+                  strokeWidth={STROKE}
+                  fill="none"
+                />
+                <AnimatedCircle
+                  cx={SIZE / 2}
+                  cy={SIZE / 2}
+                  r={RADIUS}
+                  stroke={colors.brand.primary}
+                  strokeWidth={STROKE}
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeDasharray={CIRCUMFERENCE}
+                  strokeDashoffset={strokeDashoffset}
+                  transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
+                />
+              </Svg>
+
+              <View style={styles.ringCenter} pointerEvents="none">
+                <Text style={styles.codeText} numberOfLines={2} adjustsFontSizeToFit>
+                  {data?.navigationCode}
+                </Text>
+                <Text style={styles.codeSeconds}>
+                  {t('settings.authCodeExpiresIn', { time: formatResendCountdown(secondsLeft) })}
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
       </View>
     </Modal>
@@ -202,18 +255,43 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 24,
   },
   codeText: {
-    fontSize: 40,
+    fontSize: 26,
     fontFamily: fonts.bold,
     color: colors.text.dark,
-    letterSpacing: 4,
+    letterSpacing: 1,
+    textAlign: 'center',
   },
   codeSeconds: {
-    marginTop: 6,
+    marginTop: 8,
     fontSize: 13,
     fontFamily: fonts.medium,
     color: colors.text.muted,
     letterSpacing: 0.3,
+  },
+  stateText: {
+    marginTop: 14,
+    fontSize: 14,
+    fontFamily: fonts.medium,
+    color: colors.text.muted,
+    textAlign: 'center',
+  },
+  buttonPrimary: {
+    backgroundColor: colors.brand.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  buttonPrimaryText: {
+    color: colors.text.light,
+    fontSize: 14,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.5,
+  },
+  retryButton: {
+    marginTop: 18,
   },
 });

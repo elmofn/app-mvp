@@ -3,7 +3,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
-  Easing,
   Modal,
   StyleSheet,
   Text,
@@ -54,42 +53,50 @@ export function AuthCodeModal({ visible, onClose }: AuthCodeModalProps) {
   const [reloadKey, setReloadKey] = useState(0);
 
   const progress = useRef(new Animated.Value(0)).current;
-  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
-  // Janela total (segundos) do codigo atual - o texto e o anel derivam dela.
-  const totalSecondsRef = useRef(1);
+  const rafRef = useRef<number | null>(null);
+  // Espelha o codigo atual + sua janela (fetch/expiracao) para o loop de tick
+  // e para reusar um codigo ainda valido ao reabrir o modal, refletindo o
+  // tempo que passou.
+  const dataRef = useRef<NavigationCode | null>(null);
+  dataRef.current = data;
+  const fetchTimeRef = useRef(0);
+  const expiresAtMsRef = useRef(0);
 
-  // Busca o navigationCode na API e dirige o anel pelo expiresAt. Ao expirar,
-  // refetch automatico (padrao Authy continuo). So roda enquanto o modal esta
-  // visivel; ao fechar, para animacao e listener.
+  // Dirige o anel e a contagem pelo RELOGIO REAL (expiresAt absoluto), via
+  // requestAnimationFrame, em vez de uma animacao de duracao fixa. Assim o
+  // tempo restante fica sempre correto - inclusive ao fechar e reabrir o modal
+  // (reflete o tempo decorrido). Reusa o codigo enquanto valido; busca um novo
+  // so quando expira (refetch automatico, padrao Authy).
   useEffect(() => {
     if (!visible) return;
 
     let active = true;
     let lastSec = -1;
 
-    const listenerId = progress.addListener(({ value }) => {
-      const s = Math.max(0, Math.ceil((1 - value) * totalSecondsRef.current));
+    const tick = () => {
+      if (!active) return;
+      const now = Date.now();
+      const total = Math.max(1, expiresAtMsRef.current - fetchTimeRef.current);
+      const remaining = expiresAtMsRef.current - now;
+      if (remaining <= 0) {
+        progress.setValue(1);
+        setSecondsLeft(0);
+        load(); // expirou -> busca um novo
+        return;
+      }
+      progress.setValue(Math.min(1, Math.max(0, (now - fetchTimeRef.current) / total)));
+      const s = Math.ceil(remaining / 1000);
       if (s !== lastSec) {
         lastSec = s;
         setSecondsLeft(s);
       }
-    });
+      rafRef.current = requestAnimationFrame(tick);
+    };
 
-    const runRing = (totalMs: number) => {
-      totalSecondsRef.current = Math.max(1, Math.round(totalMs / 1000));
-      setSecondsLeft(totalSecondsRef.current);
-      lastSec = totalSecondsRef.current;
-      progress.setValue(0);
-      const anim = Animated.timing(progress, {
-        toValue: 1,
-        duration: totalMs,
-        easing: Easing.linear,
-        useNativeDriver: false,
-      });
-      animationRef.current = anim;
-      anim.start(({ finished }) => {
-        if (finished && active) load();
-      });
+    const startTicking = () => {
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+      lastSec = -1;
+      rafRef.current = requestAnimationFrame(tick);
     };
 
     // Busca o codigo; se o token estiver expirado (401), faz re-signin
@@ -110,31 +117,32 @@ export function AuthCodeModal({ visible, onClose }: AuthCodeModalProps) {
     };
 
     const load = async () => {
-      animationRef.current?.stop();
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       if (active) setStatus('loading');
       try {
         const nav = await fetchCode();
         if (!active) return;
         setData(nav);
+        fetchTimeRef.current = Date.now();
+        expiresAtMsRef.current = expiresAtToMs(nav.expiresAt);
         setStatus('ready');
-        const remaining = expiresAtToMs(nav.expiresAt) - Date.now();
-        if (remaining <= 0) {
-          // Ja expirado (provavel skew de relogio) - busca outro imediatamente.
-          load();
-          return;
-        }
-        runRing(remaining);
+        startTicking();
       } catch {
         if (active) setStatus('error');
       }
     };
 
-    load();
+    // Reusa o codigo atual se ainda for valido; senao busca um novo.
+    if (dataRef.current && expiresAtMsRef.current - Date.now() > 0) {
+      setStatus('ready');
+      startTicking();
+    } else {
+      load();
+    }
 
     return () => {
       active = false;
-      animationRef.current?.stop();
-      progress.removeListener(listenerId);
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
     };
   }, [visible, progress, reloadKey, refreshSession]);
 

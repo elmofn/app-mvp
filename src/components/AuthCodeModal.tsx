@@ -15,7 +15,12 @@ import Svg, { Circle } from 'react-native-svg';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { formatResendCountdown } from '@/src/hooks/useResendTimer';
 import { useT } from '@/src/i18n';
-import { createNavigationCode, expiresAtToMs, type NavigationCode } from '@/src/services/marketplace';
+import {
+  createNavigationCode,
+  expiresAtToMs,
+  NavigationCodeError,
+  type NavigationCode,
+} from '@/src/services/marketplace';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -36,7 +41,11 @@ interface AuthCodeModalProps {
 
 export function AuthCodeModal({ visible, onClose }: AuthCodeModalProps) {
   const { t } = useT();
-  const { token } = useAuth();
+  const { token, refreshSession } = useAuth();
+  // Ref para ler o token atual dentro do efeito sem re-disparar o efeito
+  // (e sem fechar sobre um valor obsoleto apos o refreshSession).
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
 
   const [status, setStatus] = useState<Status>('loading');
   const [data, setData] = useState<NavigationCode | null>(null);
@@ -83,15 +92,28 @@ export function AuthCodeModal({ visible, onClose }: AuthCodeModalProps) {
       });
     };
 
+    // Busca o codigo; se o token estiver expirado (401), faz re-signin
+    // silencioso e tenta uma vez mais com o token novo.
+    const fetchCode = async (): Promise<NavigationCode> => {
+      const tk = tokenRef.current;
+      if (!tk) throw new NavigationCodeError('no token', 401);
+      try {
+        return await createNavigationCode(tk);
+      } catch (err) {
+        if (err instanceof NavigationCodeError && err.status === 401) {
+          const fresh = await refreshSession();
+          if (!fresh) throw err;
+          return await createNavigationCode(fresh);
+        }
+        throw err;
+      }
+    };
+
     const load = async () => {
       animationRef.current?.stop();
-      if (!token) {
-        if (active) setStatus('error');
-        return;
-      }
       if (active) setStatus('loading');
       try {
-        const nav = await createNavigationCode(token);
+        const nav = await fetchCode();
         if (!active) return;
         setData(nav);
         setStatus('ready');
@@ -114,7 +136,7 @@ export function AuthCodeModal({ visible, onClose }: AuthCodeModalProps) {
       animationRef.current?.stop();
       progress.removeListener(listenerId);
     };
-  }, [visible, token, progress, reloadKey]);
+  }, [visible, progress, reloadKey, refreshSession]);
 
   const strokeDashoffset = progress.interpolate({
     inputRange: [0, 1],

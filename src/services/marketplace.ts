@@ -22,6 +22,17 @@ export type NavigationCode = {
   expiresAt: string;
 };
 
+// Erro tipado carregando o status HTTP para que o chamador distinga um 401
+// (token expirado -> re-signin) de outras falhas.
+export class NavigationCodeError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'NavigationCodeError';
+    this.status = status;
+  }
+}
+
 export async function createNavigationCode(token: string): Promise<NavigationCode> {
   const url = `${API_BASE_URL}/api/MarketplaceAuth/CreateNavigationCode`;
   const response = await fetch(url, {
@@ -49,7 +60,7 @@ export async function createNavigationCode(token: string): Promise<NavigationCod
       'body:',
       rawBody.slice(0, 300),
     );
-    throw new Error(`CreateNavigationCode failed (${response.status})`);
+    throw new NavigationCodeError(`CreateNavigationCode failed (${response.status})`, response.status);
   }
 
   const raw = await response.json();

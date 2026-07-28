@@ -13,7 +13,13 @@ import {
   SignInCurrency,
   SignInResponse,
 } from '@/src/services/auth';
-import { clearSession, loadSession, saveSession } from '@/src/services/storage';
+import {
+  clearSession,
+  loadCredentials,
+  loadSession,
+  saveCredentials,
+  saveSession,
+} from '@/src/services/storage';
 
 type AuthState = {
   account: SignInAccountDetails | null;
@@ -32,6 +38,7 @@ type AuthContextValue = AuthState & {
   biometricAvailable: boolean;
   faq: FAQState;
   signIn: (login: string, password: string) => Promise<SignInResponse>;
+  refreshSession: () => Promise<string | null>;
   signOut: () => Promise<void>;
   unlock: () => Promise<boolean>;
   lock: () => void;
@@ -134,11 +141,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const account: SignInAccountDetails = { ...response.accountDetails, banners, nextTrips };
         setState({ account, token: response.token });
         await saveSession(response.token, account);
+        // Guarda as credenciais (cifradas) para permitir re-signin silencioso
+        // quando o token expirar - vide refreshSession.
+        await saveCredentials(login, password);
         setIsLocked(false);
       }
       return response;
     } finally {
       setIsSigningIn(false);
+    }
+  }, []);
+
+  // Renova o token via re-signin silencioso com as credenciais guardadas.
+  // Chamado quando um endpoint autenticado pelo token retorna 401 (token do
+  // SignIn dura ~1h). Mantem o account atual em memoria - so troca o token.
+  // Retorna o novo token, ou null se nao ha credenciais / o re-signin falhou.
+  const refreshSession = useCallback(async (): Promise<string | null> => {
+    const creds = await loadCredentials();
+    if (!creds) return null;
+    try {
+      let coords = getCachedLocation();
+      if (!coords) coords = await getCurrentLocation();
+      const geolocation = formatLocationPayload(coords);
+      const response = await apiSignIn(creds.login, creds.password, geolocation);
+      if (response.success && response.token) {
+        const current = stateRef.current;
+        const account = current.account ?? response.accountDetails ?? null;
+        if (!account) return null;
+        setState({ account, token: response.token });
+        await saveSession(response.token, account);
+        return response.token;
+      }
+      return null;
+    } catch (err) {
+      console.warn('[auth] refreshSession failed:', err);
+      return null;
     }
   }, []);
 
@@ -254,6 +291,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         biometricAvailable,
         faq,
         signIn,
+        refreshSession,
         signOut,
         unlock,
         lock,

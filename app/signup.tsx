@@ -45,7 +45,7 @@ import { getDeviceLanguage } from '@/src/services/locale';
 import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/src/services/location';
 import { EditFieldKind, EditReviewFieldModal } from '@/src/components/EditReviewFieldModal';
 import { getPolices, PoliceItem } from '@/src/services/policies';
-import { normalizeEmail, normalizePhone, searchByEmail, searchByPhone } from '@/src/services/search';
+import { normalizeEmail, normalizePhone, searchByEmail, searchByPhone, toE164Phone } from '@/src/services/search';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -330,7 +330,10 @@ export default function SignupScreen() {
       if (!coords) coords = await getCurrentLocation();
       const geolocation = formatLocationPayload(coords);
       const phoneDigits = formData.phone.replace(/\D/g, '');
-      const phoneNumber = normalizePhone(country.dial, phoneDigits);
+      // E.164 com "+" na frente: o backend precisa do "+" para a validacao/
+      // envio de mensagens. normalizePhone monta DDI+numero em digitos; toE164
+      // so prefixa o "+".
+      const phoneNumber = toE164Phone(normalizePhone(country.dial, phoneDigits));
 
       const { accountId: newId } = await createAccount(
         {

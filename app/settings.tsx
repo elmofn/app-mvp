@@ -36,6 +36,7 @@ import {
 import { CurrencyOption, getCurrencies } from '@/src/services/financial';
 import { getUserLanguage, SupportedLang } from '@/src/services/locale';
 import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/src/services/location';
+import { toE164Phone } from '@/src/services/search';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -186,7 +187,8 @@ export default function SettingsScreen() {
             accountId: account.accountDetails.accountId,
             name: nextName,
             email: nextEmail,
-            phoneNumber: phoneDigits,
+            // Envia com "+" (E.164) - determinante para validacao/envio de mensagens.
+            phoneNumber: toE164Phone(phoneDigits),
             currencyId: (currency ?? account.setups.currency).id,
             countryId: LANGUAGE_COUNTRY_IDS[language.value],
             geolocation,

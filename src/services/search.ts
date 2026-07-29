@@ -34,6 +34,17 @@ export function normalizePhone(dial: string, localNumber: string): string {
   return `${ddiDigits}${localDigits}`;
 }
 
+// Telefone no padrao E.164, com o "+" na frente (ex.: +5511999999999). E o
+// formato enviado ao backend nos payloads de criacao/atualizacao de conta: o
+// "+" e determinante para a validacao/envio de mensagens (SMS/WhatsApp). Recebe
+// um numero ja em digitos completos (DDI + numero) e apenas prefixa o "+".
+// (O search de duplicidade continua usando normalizePhone/so-digitos, casando
+// com o formato historico gravado no banco.)
+export function toE164Phone(phoneDigits: string): string {
+  const digits = phoneDigits.replace(/\D/g, '');
+  return digits ? `+${digits}` : '';
+}
+
 export function normalizeLegalId(legalId: string): string {
   return legalId.replace(/\D/g, '');
 }

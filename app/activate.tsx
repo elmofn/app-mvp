@@ -41,7 +41,7 @@ import {
 import { confirmRead } from '@/src/services/alerts';
 import { getDeviceLanguage } from '@/src/services/locale';
 import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/src/services/location';
-import { searchByRawDigits } from '@/src/services/search';
+import { searchByRawDigits, toE164Phone } from '@/src/services/search';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -301,7 +301,8 @@ export default function ActivationScreen() {
         accountId: patched.accountId,
         name: patched.name,
         email: patched.email,
-        phoneNumber: patched.phoneNumber,
+        // Envia com "+" (E.164) - determinante para validacao/envio de mensagens.
+        phoneNumber: toE164Phone(patched.phoneNumber),
         currencyId: patched.currencyId,
         countryId: patched.countryId,
         geolocation,

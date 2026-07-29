@@ -57,7 +57,7 @@ async function parseLocalizedError(
 export type CreateAccountInput = {
   name: string;
   email: string;
-  phoneNumber: string; // formato normalizado, ex.: '5511999999999'
+  phoneNumber: string; // E.164 com "+", ex.: '+5511999999999' (vide toE164Phone)
   language: SupportedLang;
   geolocation: string; // JSON string ou ''
 };
@@ -385,7 +385,7 @@ export type UpdateAccountInput = {
   accountId: string;
   name: string;
   email: string;
-  phoneNumber: string;
+  phoneNumber: string; // E.164 com "+", ex.: '+5511999999999' (vide toE164Phone)
   currencyId: string;
   countryId: string;
   geolocation?: string;

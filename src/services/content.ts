@@ -108,6 +108,7 @@ export async function getNextTripsNearby(
     const name = placeName(nearest);
     const description =
       [placeRegion(nearest), placeCountry(nearest)].filter(Boolean).join(', ') || name;
+    console.log('[content] nearby trip:', name, '—', description);
 
     const trip: SignInNextTrip = {
       id: placeId(nearest),

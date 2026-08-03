@@ -1,3 +1,4 @@
+import { MapPinIcon } from 'phosphor-react-native';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown, FadeInLeft, FadeInRight } from 'react-native-reanimated';
@@ -39,7 +40,15 @@ export function NextTrips({ trips }: Props) {
           >
             <TouchableOpacity style={styles.tripCard} activeOpacity={0.9}>
               <View style={styles.tripImgBox}>
-                <Image source={{ uri: trip.imageUrl }} style={styles.tripImg} resizeMode="cover" />
+                {trip.imageUrl ? (
+                  <Image source={{ uri: trip.imageUrl }} style={styles.tripImg} resizeMode="cover" />
+                ) : (
+                  // Sem foto (ex.: places da TripEdge, que nao trazem imagem):
+                  // placeholder com um pin centralizado em vez de imagem quebrada.
+                  <View style={styles.tripImgPlaceholder}>
+                    <MapPinIcon size={44} color="#8A8A8A" weight="regular" />
+                  </View>
+                )}
                 <View style={styles.tripTag}>
                   <View style={styles.tripTagDot} />
                   <Text style={styles.tripTagText}>{trip.tag}</Text>
@@ -102,6 +111,12 @@ const styles = StyleSheet.create({
   tripImg: {
     width: '100%',
     height: '100%',
+  },
+  tripImgPlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tripTag: {
     position: 'absolute',

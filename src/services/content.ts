@@ -1,10 +1,21 @@
+import { translate } from '@/src/i18n';
+
 import {
   SignInBannerSchema,
   SignInNextTripSchema,
   type SignInBanner,
   type SignInNextTrip,
 } from './auth';
+import type { LocationCoords } from './location';
 import type { SupportedLang } from './locale';
+import {
+  nearestPlace,
+  placeCountry,
+  placeId,
+  placeName,
+  placeRegion,
+  searchPlacesByCoordinate,
+} from './places';
 
 const API_BASE_URL = 'https://travelcash-api-stg.azurewebsites.net';
 
@@ -65,4 +76,49 @@ export async function getNextTrips(lang: SupportedLang): Promise<SignInNextTrip[
     if (parsed.success) valid.push(parsed.data);
   }
   return valid;
+}
+
+// ----------------------------------------------------------------------------
+// getNextTripsNearby: monta o nextTrips a partir da geolocalizacao do device,
+// buscando places na TripEdge (vide src/services/places.ts). PASSO 1: apenas o
+// lugar mais PROXIMO, so texto (sem foto). Os tiers medio (~500-1000km) e
+// internacional virao depois.
+//
+// Resiliente por design - o prototipo nunca deixa a home pior do que hoje:
+//   - sem coords (permissao negada) -> cai no getNextTrips(lang) do backend.
+//   - qualquer erro/vazio na TripEdge -> idem, fallback no backend.
+// ----------------------------------------------------------------------------
+
+export async function getNextTripsNearby(
+  coords: LocationCoords | null,
+  lang: SupportedLang,
+): Promise<SignInNextTrip[]> {
+  if (!coords) return getNextTrips(lang);
+
+  try {
+    const places = await searchPlacesByCoordinate({
+      lat: coords.lat,
+      lng: coords.lng,
+      radiusKm: 50,
+      type: 'city',
+    });
+    const nearest = nearestPlace(coords, places);
+    if (!nearest) return getNextTrips(lang);
+
+    const name = placeName(nearest);
+    const description =
+      [placeRegion(nearest), placeCountry(nearest)].filter(Boolean).join(', ') || name;
+
+    const trip: SignInNextTrip = {
+      id: placeId(nearest),
+      title: name,
+      tag: translate(lang, 'home.tripTagNearby'),
+      description,
+      imageUrl: '', // sem foto neste passo; NextTrips mostra um placeholder
+    };
+    return [trip];
+  } catch (err) {
+    console.warn('[content] getNextTripsNearby failed, using backend nextTrips:', err);
+    return getNextTrips(lang);
+  }
 }

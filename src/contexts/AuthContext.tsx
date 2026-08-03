@@ -3,7 +3,7 @@ import { AppState, AppStateStatus } from 'react-native';
 
 import { getAccount } from '@/src/services/account';
 import { authenticateWithBiometric, getBiometricStatus } from '@/src/services/biometric';
-import { getBanners, getNextTrips } from '@/src/services/content';
+import { getBanners, getNextTripsNearby } from '@/src/services/content';
 import { getFAQ, type FAQItem } from '@/src/services/faq';
 import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/src/services/location';
 import { getUserLanguage, type SupportedLang } from '@/src/services/locale';
@@ -134,7 +134,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const lang = getUserLanguage(response.accountDetails);
         let { banners, nextTrips } = response.accountDetails;
         try {
-          [banners, nextTrips] = await Promise.all([getBanners(lang), getNextTrips(lang)]);
+          // nextTrips agora vem da geolocalizacao (TripEdge), com fallback ao
+          // backend dentro de getNextTripsNearby. coords ja foi resolvido acima.
+          [banners, nextTrips] = await Promise.all([
+            getBanners(lang),
+            getNextTripsNearby(coords, lang),
+          ]);
         } catch (err) {
           console.warn('[auth] content fetch on signIn failed, using payload:', err);
         }
@@ -260,10 +265,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const accountId = current.account.accountDetails.accountId;
     const lang = getUserLanguage(current.account);
 
+    // Coords para o nextTrips por geolocalizacao (TripEdge). Usa o cache e so
+    // busca se ainda nao temos - mesmo padrao do signIn.
+    let coords = getCachedLocation();
+    if (!coords) coords = await getCurrentLocation();
+
     const [snapshot, banners, nextTrips] = await Promise.all([
       getAccount(accountId, lang),
       getBanners(lang),
-      getNextTrips(lang),
+      getNextTripsNearby(coords, lang),
     ]);
 
     // O idioma do app e uma preferencia do usuario (countryId/setups.lang, o

@@ -3,7 +3,7 @@ import { AppState, AppStateStatus } from 'react-native';
 
 import { getAccount } from '@/src/services/account';
 import { authenticateWithBiometric, getBiometricStatus } from '@/src/services/biometric';
-import { getBanners, getNextTripsNearby } from '@/src/services/content';
+import { getBanners, getGeoNextTrips } from '@/src/services/content';
 import { getFAQ, type FAQItem } from '@/src/services/faq';
 import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/src/services/location';
 import { getUserLanguage, type SupportedLang } from '@/src/services/locale';
@@ -138,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // backend dentro de getNextTripsNearby. coords ja foi resolvido acima.
           [banners, nextTrips] = await Promise.all([
             getBanners(lang),
-            getNextTripsNearby(coords, lang),
+            getGeoNextTrips(coords, lang),
           ]);
         } catch (err) {
           console.warn('[auth] content fetch on signIn failed, using payload:', err);
@@ -273,7 +273,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [snapshot, banners, nextTrips] = await Promise.all([
       getAccount(accountId, lang),
       getBanners(lang),
-      getNextTripsNearby(coords, lang),
+      getGeoNextTrips(coords, lang),
     ]);
 
     // O idioma do app e uma preferencia do usuario (countryId/setups.lang, o

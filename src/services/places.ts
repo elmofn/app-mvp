@@ -167,6 +167,31 @@ export function distanceKm(a: LocationCoords, b: LocationCoords): number {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+// Ponto de destino a `dist` km e rumo `bearingDeg` (0=N, 90=L) a partir de
+// `origin` - formula do "destination point" da geodesia esferica. Usado para
+// projetar pontos-sonda longe do device (a API limita o raio de busca a 300km,
+// entao alcancamos tiers distantes buscando em torno destes pontos).
+export function destinationPoint(
+  origin: LocationCoords,
+  dist: number,
+  bearingDeg: number,
+): LocationCoords {
+  const R = 6371;
+  const d = dist / R;
+  const brng = (bearingDeg * Math.PI) / 180;
+  const lat1 = (origin.lat * Math.PI) / 180;
+  const lng1 = (origin.lng * Math.PI) / 180;
+  const sinLat2 = Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(brng);
+  const lat2 = Math.asin(sinLat2);
+  const y = Math.sin(brng) * Math.sin(d) * Math.cos(lat1);
+  const x = Math.cos(d) - Math.sin(lat1) * sinLat2;
+  const lng2 = lng1 + Math.atan2(y, x);
+  return {
+    lat: (lat2 * 180) / Math.PI,
+    lng: (((lng2 * 180) / Math.PI + 540) % 360) - 180, // normaliza para [-180,180]
+  };
+}
+
 // Escolhe o place mais proximo de `origin` (caso a API nao venha ordenada por
 // distancia). Ignora places sem coordenada. Retorna null se nenhum servir.
 export function nearestPlace(origin: LocationCoords, places: Place[]): Place | null {

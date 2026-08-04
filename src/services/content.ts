@@ -111,7 +111,6 @@ const PROBE_BEARINGS = [0, 45, 90, 135, 180, 225, 270, 315]; // 8 rumos (N, NE, 
 const NEARBY_MAX_KM = 100; // acima disso ja nao conta como "perto"
 const MID_MIN_KM = 500;
 const MID_MAX_KM = 1000;
-const MID_TARGET_KM = 750; // centro da faixa media (para escolher o melhor candidato)
 
 type RankedPlace = { place: Place; dist: number };
 
@@ -152,18 +151,10 @@ function placeToTrip(place: Place, tagKey: string, lang: SupportedLang): SignInN
   };
 }
 
-// Candidato mais proximo de uma distancia-alvo (para o tier medio).
-function closestToDistance(list: RankedPlace[], target: number): RankedPlace | null {
-  let best: RankedPlace | null = null;
-  let bestDelta = Infinity;
-  for (const c of list) {
-    const delta = Math.abs(c.dist - target);
-    if (delta < bestDelta) {
-      bestDelta = delta;
-      best = c;
-    }
-  }
-  return best;
+// Sorteia um item da lista (para variar o place mostrado a cada login/refresh).
+function pickRandom<T>(list: T[]): T | null {
+  if (list.length === 0) return null;
+  return list[Math.floor(Math.random() * list.length)];
 }
 
 export async function getGeoNextTrips(
@@ -199,25 +190,30 @@ export async function getGeoNextTrips(
       trips.push(placeToTrip(candidate.place, tagKey, lang));
     };
 
-    // 1. Perto: o mais proximo.
-    const nearest = ranked[0];
-    const deviceCountry = placeCountry(nearest.place).toLowerCase();
-    add(nearest, 'home.tripTagNearby');
+    // O pais do device vem sempre da cidade REALMENTE mais proxima (nao do
+    // sorteio), para o filtro de "internacional" ser confiavel.
+    const deviceCountry = placeCountry(ranked[0].place).toLowerCase();
+    const unused = (r: RankedPlace) => !usedIds.has(placeId(r.place));
 
-    // 2. Medio: preferir a faixa 500-1000 km; senao, o mais proximo de 750 km
-    //    entre os que ja passaram do raio "perto".
-    const midBand = ranked.filter((r) => r.dist >= MID_MIN_KM && r.dist <= MID_MAX_KM);
-    const midFallback = ranked.filter((r) => r.dist > NEARBY_MAX_KM);
-    const mid = closestToDistance(midBand.length ? midBand : midFallback, MID_TARGET_KM);
-    add(mid, 'home.tripTagRegional');
+    // 1. Perto: sorteia entre as cidades dentro do raio "perto"; se nenhuma,
+    //    a mais proxima. Assim cada login mostra um place diferente.
+    const nearbyPool = ranked.filter((r) => r.dist <= NEARBY_MAX_KM);
+    add(pickRandom(nearbyPool.length ? nearbyPool : [ranked[0]]), 'home.tripTagNearby');
 
-    // 3. Internacional: a mais proxima num pais diferente do device.
-    const intl =
-      ranked.find((r) => {
-        const c = placeCountry(r.place).toLowerCase();
-        return c && deviceCountry && c !== deviceCountry;
-      }) ?? null;
-    add(intl, 'home.tripTagInternational');
+    // 2. Medio: sorteia na faixa 500-1000 km; senao, entre os que ja passaram
+    //    do raio "perto".
+    const midBand = ranked.filter(
+      (r) => r.dist >= MID_MIN_KM && r.dist <= MID_MAX_KM && unused(r),
+    );
+    const midFallback = ranked.filter((r) => r.dist > NEARBY_MAX_KM && unused(r));
+    add(pickRandom(midBand.length ? midBand : midFallback), 'home.tripTagRegional');
+
+    // 3. Internacional: sorteia entre as cidades de um pais diferente do device.
+    const intlPool = ranked.filter((r) => {
+      const c = placeCountry(r.place).toLowerCase();
+      return c && deviceCountry && c !== deviceCountry && unused(r);
+    });
+    add(pickRandom(intlPool), 'home.tripTagInternational');
 
     // Log conciso para conferir no teste (e ver se a API rendeu os tiers longes).
     console.log(

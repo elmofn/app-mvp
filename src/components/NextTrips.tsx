@@ -12,7 +12,7 @@ type Props = {
   trips: SignInNextTrip[] | undefined;
 };
 
-// Imagem do card: foto real da cidade (Wikidata P18) quando ha URL e ela carrega;
+// Imagem do card: foto real da cidade (Google imagens) quando ha URL e ela carrega;
 // senao (sem foto, ou a URL falhou no onError) um generico bonito - fundo de
 // cor estavel por cidade + nome + pin. Nunca um quadro cinza quebrado.
 function TripImage({ trip }: { trip: SignInNextTrip }) {

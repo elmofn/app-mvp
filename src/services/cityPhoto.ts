@@ -34,7 +34,11 @@ const WIKI_HEADERS = { 'Api-User-Agent': 'TravelBackApp/1.0 (prototype; nextTrip
 
 // Cache local (AsyncStorage) para nao remartelar a Wikimedia a cada login.
 // Guardamos a URL resolvida por placeId; "" = "buscamos e nao achou foto".
-const CACHE_PREFIX = 'cityphoto.';
+// IMPORTANTE: o sufixo de VERSAO invalida caches de fontes anteriores. A versao
+// Pexels gravava misses ('') e URLs da Pexels sob 'cityphoto.<id>'; sem trocar a
+// chave, getCityPhoto devolveria esse valor velho e nunca chamaria a Wikidata.
+// Ao trocar de fonte/formato de novo, incremente o 'v2'.
+const CACHE_PREFIX = 'cityphoto.v2.';
 const HIT_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias
 const MISS_TTL_MS = 2 * 24 * 60 * 60 * 1000; //  2 dias (tenta de novo mais cedo)
 

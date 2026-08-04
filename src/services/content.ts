@@ -86,7 +86,7 @@ export async function getNextTrips(lang: SupportedLang): Promise<SignInNextTrip[
 // ----------------------------------------------------------------------------
 // getGeoNextTrips: monta o nextTrips a partir da geolocalizacao do device,
 // buscando places na TripEdge (vide src/services/places.ts). Tres "tiers" por
-// distancia; cada card recebe uma foto real da cidade (Pexels, vide
+// distancia; cada card recebe uma foto real da cidade (Wikidata P18, vide
 // src/services/cityPhoto.ts) ou, se nao houver, um generico bonito:
 //   1. Perto      - sorteio entre as cidades proximas.
 //   2. Medio      - uma cidade na faixa ~500-1000 km.
@@ -113,7 +113,7 @@ const PROBE_BEARINGS = [0, 45, 90, 135, 180, 225, 270, 315]; // 8 rumos (N, NE, 
 const NEARBY_MAX_KM = 100; // acima disso ja nao conta como "perto"
 const MID_MIN_KM = 500;
 const MID_MAX_KM = 1000;
-const PHOTO_TIMEOUT_MS = 2500; // teto por busca de foto (nao atrasar o sign-in)
+const PHOTO_TIMEOUT_MS = 4000; // teto por busca de foto (2 chamadas Wikimedia; nao atrasar o sign-in)
 
 type RankedPlace = { place: Place; dist: number };
 
@@ -172,7 +172,7 @@ function placeToTrip(
     title: name,
     tag: translate(lang, tagKey),
     description,
-    imageUrl, // foto real da Pexels; '' => NextTrips mostra o generico bonito
+    imageUrl, // foto real da cidade (Wikidata P18); '' => NextTrips mostra o generico
   };
 }
 
@@ -240,7 +240,7 @@ export async function getGeoNextTrips(
     });
     add(pickRandom(intlPool), 'home.tripTagInternational');
 
-    // Enriquece cada tier com a foto real da cidade (Pexels), em paralelo e com
+    // Enriquece cada tier com a foto real da cidade (Wikidata P18), em paralelo e com
     // timeout curto para nao atrasar o sign-in. Miss/timeout => imageUrl '' =>
     // NextTrips renderiza o generico bonito. A URL persiste junto no nextTrips,
     // entao o boot por biometria ja vem com a foto (instantaneo).

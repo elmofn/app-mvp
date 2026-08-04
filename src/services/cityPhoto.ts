@@ -1,28 +1,38 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { placeCountry, placeId, placeName, placeRegion, type Place } from './places';
+import { placeId, placeLat, placeLng, placeName, type Place } from './places';
 
 // ----------------------------------------------------------------------------
 // Foto da cidade para os cards do NextTrips.
 //
-// A TripEdge nao manda foto, e a Wikipedia costuma vir sem imagem ou com um
-// mapa/brasao. Entao buscamos uma FOTO REAL na Pexels (banco de fotografia,
-// nunca devolve mapa) por "<cidade>, <pais>". Quando nao ha chave, ou a busca
-// vem vazia/da erro, retornamos null e o componente mostra um generico bonito
-// (ver pickGenericColor + NextTrips.tsx).
+// A TripEdge nao manda foto. Bancos de imagem (Pexels/Unsplash/etc.) sao busca
+// "best match" por keyword: SEMPRE devolvem alguma foto, mesmo sem relacao com a
+// cidade - inutil para garantir relevancia.
 //
-// ⚠️ ATENCAO: a chave abaixo vai no bundle do app (igual a sandbox da TripEdge
-// em places.ts). Isso e PROTOTIPO: antes de producao, mover esta chamada para o
-// backend (proxy) que guarda a chave server-side. Mantemos tudo isolado neste
-// arquivo justamente para essa migracao ser trivial.
+// Fonte usada aqui: Wikidata (Wikimedia), amarrada a IDENTIDADE do lugar, nao a
+// uma busca textual. Resolvemos a cidade pelas COORDENADAS do place (geosearch
+// da Wikipedia -> artigo mais proximo -> QID do Wikidata) e lemos a propriedade
+// P18 ("image"), que e a FOTOGRAFIA representativa curada da entidade. P18 e
+// distinta do mapa de localizacao (P242) e do brasao (P94) - por isso nunca cai
+// no mapa/brasao que a "lead image" da Wikipedia costumava trazer.
+//
+// Se a cidade nao tiver P18 (ou algo falhar), retornamos null e o componente
+// mostra o generico bonito (ver pickGenericColor + NextTrips.tsx).
+//
+// Sem chave (Wikimedia e publico): nada de segredo no bundle. As chamadas ficam
+// isoladas neste arquivo para ser trivial mover ao backend depois, se quisermos.
 // ----------------------------------------------------------------------------
 
-const PEXELS_BASE_URL = 'https://api.pexels.com/v1';
-// ⚠️ TEMPORARIO / SANDBOX - nao enviar para producao (vide comentario acima).
-// Vazia => todo card usa o generico (sem nenhuma chamada de rede).
-const PEXELS_API_KEY = 'djhXjTighRzEltWNZI347OaH6qS2MVN3qunuzPzZNM9l0gG4PzBL8lgA';
+const WIKI_LANG = 'en'; // en.wikipedia tem a maior cobertura de geosearch/coords
+const WIKIPEDIA_API = `https://${WIKI_LANG}.wikipedia.org/w/api.php`;
+const WIKIDATA_API = 'https://www.wikidata.org/w/api.php';
+const COMMONS_FILEPATH = 'https://commons.wikimedia.org/wiki/Special:FilePath';
+const GEO_RADIUS_M = 10000; // 10 km ao redor do centro do place
+const IMG_WIDTH = 1200; // largura do thumbnail servido pelo Commons
+// Wikimedia pede um User-Agent descritivo (vide policy da API).
+const WIKI_HEADERS = { 'Api-User-Agent': 'TravelBackApp/1.0 (prototype; nextTrips city photo)' };
 
-// Cache local (AsyncStorage) para nao remartelar a Pexels a cada login/refresh.
+// Cache local (AsyncStorage) para nao remartelar a Wikimedia a cada login.
 // Guardamos a URL resolvida por placeId; "" = "buscamos e nao achou foto".
 const CACHE_PREFIX = 'cityphoto.';
 const HIT_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias
@@ -63,65 +73,95 @@ function normalizeText(s: string): string {
     .trim();
 }
 
-// A Pexels e "best match": SEMPRE devolve alguma foto, mesmo que nao tenha nada a
-// ver com a cidade. Entao so aceitamos uma foto se pudermos CONFIRMAR que ela e
-// daquela cidade: o nome da cidade tem que aparecer, como palavra inteira, na
-// descricao (`alt`) ou no slug da URL da foto (que costuma conter o local).
-// Sem confirmacao => tratamos como "sem foto" e o card usa o generico.
-function photoMatchesCity(photo: unknown, cityNorm: string): boolean {
-  if (!cityNorm) return false;
-  const p = photo as { alt?: unknown; url?: unknown };
-  const alt = typeof p?.alt === 'string' ? p.alt : '';
-  const url = typeof p?.url === 'string' ? p.url : '';
-  const haystack = normalizeText(`${alt} ${url}`);
-  // palavra inteira: evita "nice" casar dentro de "service", etc. (cityNorm ja
-  // vem sanitizado por normalizeText -> so [a-z0-9 ], sem metacaracteres.)
-  const re = new RegExp(`(^| )${cityNorm}( |$)`);
-  return re.test(haystack);
+// geosearch da Wikipedia a partir das coordenadas do place: devolve o QID do
+// Wikidata do artigo mais adequado (namespace 0). Entre os artigos proximos,
+// preferimos aquele cujo titulo casa com o nome da cidade; senao, o mais proximo
+// (geosearch devolve `index` por distancia). Assim evitamos pegar um POI vizinho.
+async function nearestPlaceQid(place: Place): Promise<string | null> {
+  const lat = placeLat(place);
+  const lng = placeLng(place);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+  const url =
+    `${WIKIPEDIA_API}?action=query&format=json&origin=*` +
+    `&generator=geosearch&ggscoord=${lat}|${lng}&ggsradius=${GEO_RADIUS_M}` +
+    `&ggslimit=8&ggsnamespace=0&prop=pageprops&ppprop=wikibase_item`;
+  const res = await fetch(url, { headers: WIKI_HEADERS });
+  if (!res.ok) {
+    console.warn('[cityPhoto] geosearch HTTP', res.status);
+    return null;
+  }
+  const data = await res.json();
+  const pages: Record<string, unknown> = data?.query?.pages ?? {};
+  const list = Object.values(pages) as {
+    title?: string;
+    index?: number;
+    pageprops?: { wikibase_item?: string };
+  }[];
+  if (list.length === 0) return null;
+
+  const cityNorm = normalizeText(placeName(place));
+  const titled = list.filter((p) => p.pageprops?.wikibase_item);
+  if (titled.length === 0) return null;
+
+  // casa titulo com o nome da cidade, tolerando variantes tipo
+  // "New York" -> "New York City".
+  const byName = cityNorm
+    ? titled.find((p) => {
+        const tn = normalizeText(p.title ?? '');
+        return tn === cityNorm || tn.startsWith(`${cityNorm} `) || cityNorm.startsWith(`${tn} `);
+      })
+    : undefined;
+  if (byName?.pageprops?.wikibase_item) return byName.pageprops.wikibase_item;
+
+  // Sem casamento de nome: o mais proximo (menor index do geosearch).
+  const nearest = titled.reduce((a, b) => ((a.index ?? 99) <= (b.index ?? 99) ? a : b));
+  return nearest.pageprops?.wikibase_item ?? null;
 }
 
-// Busca fotos de paisagem da cidade na Pexels e escolhe a PRIMEIRA que
-// comprovadamente e daquela cidade (photoMatchesCity). Retorna a URL ou null.
-// Nunca lanca - qualquer falha (ou nenhuma foto confirmada) vira null e o card
-// cai no generico.
-export async function getCityPhoto(place: Place): Promise<string | null> {
-  if (!PEXELS_API_KEY) return null;
+// Le a propriedade P18 ("image") do item no Wikidata: devolve o nome do arquivo
+// no Commons (ex.: "Paris - Eiffel Tower.jpg") ou null se a entidade nao tem P18.
+async function imageFilenameForQid(qid: string): Promise<string | null> {
+  const url =
+    `${WIKIDATA_API}?action=wbgetclaims&format=json&origin=*` +
+    `&entity=${encodeURIComponent(qid)}&property=P18`;
+  const res = await fetch(url, { headers: WIKI_HEADERS });
+  if (!res.ok) {
+    console.warn('[cityPhoto] wbgetclaims HTTP', res.status);
+    return null;
+  }
+  const data = await res.json();
+  const claim = data?.claims?.P18?.[0];
+  const filename = claim?.mainsnak?.datavalue?.value;
+  return typeof filename === 'string' && filename ? filename : null;
+}
 
+// Monta a URL do arquivo no Commons. Special:FilePath redireciona para o binario
+// real; `?width` serve um thumbnail ja redimensionado, usavel direto no <Image>.
+function commonsFileUrl(filename: string): string {
+  const name = filename.replace(/ /g, '_');
+  return `${COMMONS_FILEPATH}/${encodeURIComponent(name)}?width=${IMG_WIDTH}`;
+}
+
+// Resolve a foto da cidade via Wikidata P18 (coordenadas -> QID -> P18 -> Commons).
+// Retorna a URL ou null. Nunca lanca: qualquer falha, ou cidade sem P18, vira
+// null e o card cai no generico.
+export async function getCityPhoto(place: Place): Promise<string | null> {
   const id = placeId(place);
   const cached = await readCache(id);
   if (cached) return cached.url || null; // "" cacheado => sem foto
 
-  const city = placeName(place);
-  if (!city) return null;
-  const cityNorm = normalizeText(city);
-  // "<cidade> <pais>" (ou regiao como reforco) para enviesar a busca ao local.
-  const query = [city, placeCountry(place) || placeRegion(place)].filter(Boolean).join(' ');
-
   try {
-    const url =
-      `${PEXELS_BASE_URL}/search` +
-      `?query=${encodeURIComponent(query)}` +
-      `&orientation=landscape&per_page=15`;
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: { Authorization: PEXELS_API_KEY },
-    });
-    if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      console.warn('[cityPhoto] Pexels HTTP', response.status, body.slice(0, 200));
-      return null;
+    let photoUrl = '';
+    const qid = await nearestPlaceQid(place);
+    if (qid) {
+      const filename = await imageFilenameForQid(qid);
+      if (filename) photoUrl = commonsFileUrl(filename);
     }
-    const raw = await response.json();
-    const photos: unknown[] = Array.isArray(raw?.photos) ? raw.photos : [];
-    // Primeira foto CONFIRMADA como sendo da cidade; senao "" (=> generico).
-    const match = photos.find((p) => photoMatchesCity(p, cityNorm)) as
-      | { src?: { landscape?: string; large?: string } }
-      | undefined;
-    const photoUrl: string = match?.src?.landscape ?? match?.src?.large ?? '';
     await writeCache(id, photoUrl); // cacheia inclusive o miss ("")
     return photoUrl || null;
   } catch (err) {
-    console.warn('[cityPhoto] Pexels fetch failed:', err);
+    console.warn('[cityPhoto] lookup failed:', err);
     return null;
   }
 }

@@ -52,8 +52,38 @@ async function writeCache(key: string, url: string): Promise<void> {
   }
 }
 
-// Busca 1 foto de paisagem da cidade na Pexels. Retorna a URL ou null.
-// Nunca lanca - qualquer falha vira null (o card cai no generico).
+// Normaliza texto para casar nomes: minusculo, sem acento, so [a-z0-9] e espacos.
+// Ex.: "São Paulo" -> "sao paulo". (Hermes suporta String.prototype.normalize.)
+function normalizeText(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // remove diacriticos
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+// A Pexels e "best match": SEMPRE devolve alguma foto, mesmo que nao tenha nada a
+// ver com a cidade. Entao so aceitamos uma foto se pudermos CONFIRMAR que ela e
+// daquela cidade: o nome da cidade tem que aparecer, como palavra inteira, na
+// descricao (`alt`) ou no slug da URL da foto (que costuma conter o local).
+// Sem confirmacao => tratamos como "sem foto" e o card usa o generico.
+function photoMatchesCity(photo: unknown, cityNorm: string): boolean {
+  if (!cityNorm) return false;
+  const p = photo as { alt?: unknown; url?: unknown };
+  const alt = typeof p?.alt === 'string' ? p.alt : '';
+  const url = typeof p?.url === 'string' ? p.url : '';
+  const haystack = normalizeText(`${alt} ${url}`);
+  // palavra inteira: evita "nice" casar dentro de "service", etc. (cityNorm ja
+  // vem sanitizado por normalizeText -> so [a-z0-9 ], sem metacaracteres.)
+  const re = new RegExp(`(^| )${cityNorm}( |$)`);
+  return re.test(haystack);
+}
+
+// Busca fotos de paisagem da cidade na Pexels e escolhe a PRIMEIRA que
+// comprovadamente e daquela cidade (photoMatchesCity). Retorna a URL ou null.
+// Nunca lanca - qualquer falha (ou nenhuma foto confirmada) vira null e o card
+// cai no generico.
 export async function getCityPhoto(place: Place): Promise<string | null> {
   if (!PEXELS_API_KEY) return null;
 
@@ -63,14 +93,15 @@ export async function getCityPhoto(place: Place): Promise<string | null> {
 
   const city = placeName(place);
   if (!city) return null;
-  // "<cidade>, <pais>" (ou regiao como reforco) melhora o casamento da busca.
-  const query = [city, placeCountry(place) || placeRegion(place)].filter(Boolean).join(', ');
+  const cityNorm = normalizeText(city);
+  // "<cidade> <pais>" (ou regiao como reforco) para enviesar a busca ao local.
+  const query = [city, placeCountry(place) || placeRegion(place)].filter(Boolean).join(' ');
 
   try {
     const url =
       `${PEXELS_BASE_URL}/search` +
       `?query=${encodeURIComponent(query)}` +
-      `&orientation=landscape&per_page=1`;
+      `&orientation=landscape&per_page=15`;
     const response = await fetch(url, {
       method: 'GET',
       headers: { Authorization: PEXELS_API_KEY },
@@ -81,8 +112,12 @@ export async function getCityPhoto(place: Place): Promise<string | null> {
       return null;
     }
     const raw = await response.json();
-    const photo = Array.isArray(raw?.photos) ? raw.photos[0] : null;
-    const photoUrl: string = photo?.src?.landscape ?? photo?.src?.large ?? '';
+    const photos: unknown[] = Array.isArray(raw?.photos) ? raw.photos : [];
+    // Primeira foto CONFIRMADA como sendo da cidade; senao "" (=> generico).
+    const match = photos.find((p) => photoMatchesCity(p, cityNorm)) as
+      | { src?: { landscape?: string; large?: string } }
+      | undefined;
+    const photoUrl: string = match?.src?.landscape ?? match?.src?.large ?? '';
     await writeCache(id, photoUrl); // cacheia inclusive o miss ("")
     return photoUrl || null;
   } catch (err) {

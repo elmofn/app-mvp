@@ -29,8 +29,13 @@ const WIKIDATA_API = 'https://www.wikidata.org/w/api.php';
 const COMMONS_FILEPATH = 'https://commons.wikimedia.org/wiki/Special:FilePath';
 const GEO_RADIUS_M = 10000; // 10 km ao redor do centro do place
 const IMG_WIDTH = 1200; // largura do thumbnail servido pelo Commons
-// Wikimedia pede um User-Agent descritivo (vide policy da API).
-const WIKI_HEADERS = { 'Api-User-Agent': 'TravelBackApp/1.0 (prototype; nextTrips city photo)' };
+// A Wikimedia devolve 403 para User-Agent generico/vazio (o padrao do RN cai
+// nisso) -> a policy dela exige um UA descritivo e identificavel. No RN da para
+// sobrescrever o header 'User-Agent' (ao contrario do navegador); mandamos os
+// dois (o 'Api-User-Agent' e lido quando o UA nao pode ser trocado).
+// https://meta.wikimedia.org/wiki/User-Agent_policy
+const WIKI_UA = 'TravelBackApp/1.0 (https://travelback.app; nextTrips city photo) react-native';
+const WIKI_HEADERS = { 'User-Agent': WIKI_UA, 'Api-User-Agent': WIKI_UA };
 
 // Cache local (AsyncStorage) para nao remartelar a Wikimedia a cada login.
 // Guardamos a URL resolvida por placeId; "" = "buscamos e nao achou foto".
@@ -87,12 +92,13 @@ async function nearestPlaceQid(place: Place): Promise<string | null> {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
 
   const url =
-    `${WIKIPEDIA_API}?action=query&format=json&origin=*` +
+    `${WIKIPEDIA_API}?action=query&format=json` +
     `&generator=geosearch&ggscoord=${lat}|${lng}&ggsradius=${GEO_RADIUS_M}` +
     `&ggslimit=8&ggsnamespace=0&prop=pageprops&ppprop=wikibase_item`;
   const res = await fetch(url, { headers: WIKI_HEADERS });
   if (!res.ok) {
-    console.warn('[cityPhoto] geosearch HTTP', res.status);
+    const body = await res.text().catch(() => '');
+    console.warn('[cityPhoto] geosearch HTTP', res.status, body.slice(0, 200));
     return null;
   }
   const data = await res.json();
@@ -127,11 +133,12 @@ async function nearestPlaceQid(place: Place): Promise<string | null> {
 // no Commons (ex.: "Paris - Eiffel Tower.jpg") ou null se a entidade nao tem P18.
 async function imageFilenameForQid(qid: string): Promise<string | null> {
   const url =
-    `${WIKIDATA_API}?action=wbgetclaims&format=json&origin=*` +
+    `${WIKIDATA_API}?action=wbgetclaims&format=json` +
     `&entity=${encodeURIComponent(qid)}&property=P18`;
   const res = await fetch(url, { headers: WIKI_HEADERS });
   if (!res.ok) {
-    console.warn('[cityPhoto] wbgetclaims HTTP', res.status);
+    const body = await res.text().catch(() => '');
+    console.warn('[cityPhoto] wbgetclaims HTTP', res.status, body.slice(0, 200));
     return null;
   }
   const data = await res.json();

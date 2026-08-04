@@ -4,12 +4,40 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown, FadeInLeft, FadeInRight } from 'react-native-reanimated';
 
 import type { SignInNextTrip } from '@/src/services/auth';
+import { pickGenericColor } from '@/src/services/cityPhoto';
 import { useT } from '@/src/i18n';
 import { fonts } from '@/src/theme/typography';
 
 type Props = {
   trips: SignInNextTrip[] | undefined;
 };
+
+// Imagem do card: foto real da cidade (Pexels) quando ha URL e ela carrega;
+// senao (sem foto, ou a URL falhou no onError) um generico bonito - fundo de
+// cor estavel por cidade + nome + pin. Nunca um quadro cinza quebrado.
+function TripImage({ trip }: { trip: SignInNextTrip }) {
+  const [failed, setFailed] = React.useState(false);
+
+  if (trip.imageUrl && !failed) {
+    return (
+      <Image
+        source={{ uri: trip.imageUrl }}
+        style={styles.tripImg}
+        resizeMode="cover"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <View style={[styles.tripGeneric, { backgroundColor: pickGenericColor(trip.id) }]}>
+      <MapPinIcon size={40} color="rgba(255,255,255,0.9)" weight="fill" />
+      <Text style={styles.tripGenericText} numberOfLines={2}>
+        {trip.title}
+      </Text>
+    </View>
+  );
+}
 
 // Secao "Next Trip Ideas" da home. Renderiza um card por viagem do
 // payload; quando o array vem vazio (conta nova / backend sem conteudo)
@@ -40,15 +68,7 @@ export function NextTrips({ trips }: Props) {
           >
             <TouchableOpacity style={styles.tripCard} activeOpacity={0.9}>
               <View style={styles.tripImgBox}>
-                {trip.imageUrl ? (
-                  <Image source={{ uri: trip.imageUrl }} style={styles.tripImg} resizeMode="cover" />
-                ) : (
-                  // Sem foto (ex.: places da TripEdge, que nao trazem imagem):
-                  // placeholder com um pin centralizado em vez de imagem quebrada.
-                  <View style={styles.tripImgPlaceholder}>
-                    <MapPinIcon size={44} color="#8A8A8A" weight="regular" />
-                  </View>
-                )}
+                <TripImage trip={trip} />
                 <View style={styles.tripTag}>
                   <View style={styles.tripTagDot} />
                   <Text style={styles.tripTagText}>{trip.tag}</Text>
@@ -112,11 +132,20 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  tripImgPlaceholder: {
+  tripGeneric: {
     width: '100%',
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
+    paddingHorizontal: 24,
+  },
+  tripGenericText: {
+    color: '#FFF',
+    fontSize: 22,
+    fontFamily: fonts.bold,
+    textAlign: 'center',
+    letterSpacing: -0.4,
   },
   tripTag: {
     position: 'absolute',

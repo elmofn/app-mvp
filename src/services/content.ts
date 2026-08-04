@@ -6,6 +6,7 @@ import {
   type SignInBanner,
   type SignInNextTrip,
 } from './auth';
+import { getCityPhoto } from './cityPhoto';
 import type { LocationCoords } from './location';
 import type { SupportedLang } from './locale';
 import {
@@ -85,8 +86,9 @@ export async function getNextTrips(lang: SupportedLang): Promise<SignInNextTrip[
 // ----------------------------------------------------------------------------
 // getGeoNextTrips: monta o nextTrips a partir da geolocalizacao do device,
 // buscando places na TripEdge (vide src/services/places.ts). Tres "tiers" por
-// distancia, so texto (sem foto):
-//   1. Perto      - a cidade mais proxima.
+// distancia; cada card recebe uma foto real da cidade (Pexels, vide
+// src/services/cityPhoto.ts) ou, se nao houver, um generico bonito:
+//   1. Perto      - sorteio entre as cidades proximas.
 //   2. Medio      - uma cidade na faixa ~500-1000 km.
 //   3. Internacional - a cidade mais proxima num pais diferente do device.
 //
@@ -111,8 +113,26 @@ const PROBE_BEARINGS = [0, 45, 90, 135, 180, 225, 270, 315]; // 8 rumos (N, NE, 
 const NEARBY_MAX_KM = 100; // acima disso ja nao conta como "perto"
 const MID_MIN_KM = 500;
 const MID_MAX_KM = 1000;
+const PHOTO_TIMEOUT_MS = 2500; // teto por busca de foto (nao atrasar o sign-in)
 
 type RankedPlace = { place: Place; dist: number };
+
+// Resolve a promise ou, se estourar `ms`, resolve com `fallback` (nunca rejeita).
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms);
+    p.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(fallback);
+      },
+    );
+  });
+}
 
 // Busca no device + no leque de sondas, em paralelo, e devolve as cidades unicas
 // (dedup por place_id). Cada busca tolera a propria falha (rumo no mar, etc.).
@@ -138,7 +158,12 @@ async function collectPlaces(coords: LocationCoords): Promise<Place[]> {
   return [...unique.values()];
 }
 
-function placeToTrip(place: Place, tagKey: string, lang: SupportedLang): SignInNextTrip {
+function placeToTrip(
+  place: Place,
+  tagKey: string,
+  lang: SupportedLang,
+  imageUrl: string,
+): SignInNextTrip {
   const name = placeName(place);
   const description =
     [placeRegion(place), placeCountry(place)].filter(Boolean).join(', ') || name;
@@ -147,7 +172,7 @@ function placeToTrip(place: Place, tagKey: string, lang: SupportedLang): SignInN
     title: name,
     tag: translate(lang, tagKey),
     description,
-    imageUrl: '', // sem foto neste passo; NextTrips mostra um placeholder
+    imageUrl, // foto real da Pexels; '' => NextTrips mostra o generico bonito
   };
 }
 
@@ -180,14 +205,14 @@ export async function getGeoNextTrips(
 
     if (ranked.length === 0) return getNextTrips(lang);
 
-    const trips: SignInNextTrip[] = [];
+    const chosen: { place: Place; tagKey: string }[] = [];
     const usedIds = new Set<string>();
     const add = (candidate: RankedPlace | null, tagKey: string) => {
       if (!candidate) return;
       const id = placeId(candidate.place);
       if (usedIds.has(id)) return;
       usedIds.add(id);
-      trips.push(placeToTrip(candidate.place, tagKey, lang));
+      chosen.push({ place: candidate.place, tagKey });
     };
 
     // O pais do device vem sempre da cidade REALMENTE mais proxima (nao do
@@ -214,6 +239,17 @@ export async function getGeoNextTrips(
       return c && deviceCountry && c !== deviceCountry && unused(r);
     });
     add(pickRandom(intlPool), 'home.tripTagInternational');
+
+    // Enriquece cada tier com a foto real da cidade (Pexels), em paralelo e com
+    // timeout curto para nao atrasar o sign-in. Miss/timeout => imageUrl '' =>
+    // NextTrips renderiza o generico bonito. A URL persiste junto no nextTrips,
+    // entao o boot por biometria ja vem com a foto (instantaneo).
+    const trips = await Promise.all(
+      chosen.map(async ({ place, tagKey }) => {
+        const photo = await withTimeout(getCityPhoto(place), PHOTO_TIMEOUT_MS, null);
+        return placeToTrip(place, tagKey, lang, photo ?? '');
+      }),
+    );
 
     // Log conciso para conferir no teste (e ver se a API rendeu os tiers longes).
     console.log(

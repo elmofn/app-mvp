@@ -86,8 +86,8 @@ export async function getNextTrips(lang: SupportedLang): Promise<SignInNextTrip[
 // ----------------------------------------------------------------------------
 // getGeoNextTrips: monta o nextTrips a partir da geolocalizacao do device,
 // buscando places na TripEdge (vide src/services/places.ts). Tres "tiers" por
-// distancia; cada card recebe uma foto real da cidade (Google imagens, vide
-// src/services/cityPhoto.ts) ou, se nao houver, um generico bonito:
+// distancia; cada card recebe uma foto real da cidade (fonte a definir, vide
+// src/services/cityPhoto.ts) ou, por enquanto, um generico bonito:
 //   1. Perto      - sorteio entre as cidades proximas.
 //   2. Medio      - uma cidade na faixa ~500-1000 km.
 //   3. Internacional - a cidade mais proxima num pais diferente do device.
@@ -113,7 +113,7 @@ const PROBE_BEARINGS = [0, 45, 90, 135, 180, 225, 270, 315]; // 8 rumos (N, NE, 
 const NEARBY_MAX_KM = 100; // acima disso ja nao conta como "perto"
 const MID_MIN_KM = 500;
 const MID_MAX_KM = 1000;
-const PHOTO_TIMEOUT_MS = 4000; // teto por busca de foto (Google CSE; nao atrasar o sign-in)
+const PHOTO_TIMEOUT_MS = 4000; // teto por busca de foto (fonte a definir; nao atrasar o sign-in)
 
 type RankedPlace = { place: Place; dist: number };
 
@@ -240,10 +240,10 @@ export async function getGeoNextTrips(
     });
     add(pickRandom(intlPool), 'home.tripTagInternational');
 
-    // Enriquece cada tier com a foto real da cidade (Google imagens), em paralelo e com
-    // timeout curto para nao atrasar o sign-in. Miss/timeout => imageUrl '' =>
-    // NextTrips renderiza o generico bonito. A URL persiste junto no nextTrips,
-    // entao o boot por biometria ja vem com a foto (instantaneo).
+    // Enriquece cada tier com a foto real da cidade (fonte a definir), em paralelo e com
+    // timeout curto para nao atrasar o sign-in. Hoje getCityPhoto retorna null =>
+    // imageUrl '' => NextTrips renderiza o generico bonito. Quando houver fonte, a
+    // URL persiste junto no nextTrips e o boot por biometria ja vem com a foto.
     const trips = await Promise.all(
       chosen.map(async ({ place, tagKey }) => {
         const photo = await withTimeout(getCityPhoto(place), PHOTO_TIMEOUT_MS, null);

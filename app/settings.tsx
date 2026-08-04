@@ -1,7 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { CaretDownIcon, CheckCircleIcon, WarningCircleIcon, XIcon } from 'phosphor-react-native';
+import {
+  CaretDownIcon,
+  ChatCircleDotsIcon,
+  CheckCircleIcon,
+  WarningCircleIcon,
+  XIcon,
+} from 'phosphor-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -143,7 +149,7 @@ export default function SettingsScreen() {
   // deletar conta); pendingAction guarda qual deles esta em curso e
   // modalStage controla qual passo o modal mostra (verificacao -> novo
   // PIN, no caso de senha; verificacao -> RemoveAccount, no de delete).
-  type PendingAction = 'updateProfile' | 'changePassword' | 'deleteAccount';
+  type PendingAction = 'updateProfile' | 'changePassword' | 'deleteAccount' | 'verifyPhone';
   type ModalStage = 'verify' | 'newPin';
   const [pendingAction, setPendingAction] = useState<PendingAction>('updateProfile');
   const [modalStage, setModalStage] = useState<ModalStage>('verify');
@@ -291,6 +297,39 @@ export default function SettingsScreen() {
     }
   };
 
+  // Verificacao do telefone (SMS): dispara o RequestValidationCode no canal
+  // SMS (para o numero JA salvo) e abre o mesmo modal de codigo. No sucesso, o
+  // identifier do ValidateCode e o telefone em digitos (sem "+"). Chamado
+  // apos o alerta de confirmacao (handleVerifyPhone).
+  const startPhoneVerification = async () => {
+    if (!account) return;
+    resetModalState();
+    setPendingAction('verifyPhone');
+    setVerifyVisible(true);
+    try {
+      await requestValidationCode(account.accountDetails.accountId, 'phone', lang);
+      resendTimer.start();
+    } catch (err) {
+      setVerifyVisible(false);
+      const message = err instanceof Error ? err.message : t('settings.sendCodeFailedMessage');
+      showAlert(t('common.verification'), message);
+    }
+  };
+
+  // Botao "Verificar" ao lado do telefone nao verificado: confirma com o
+  // usuario antes de disparar o SMS (evita envio acidental).
+  const handleVerifyPhone = () => {
+    if (!account) return;
+    showAlert(
+      t('settings.verifyPhoneConfirmTitle'),
+      t('settings.verifyPhoneConfirmMessage', { phone }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('settings.verifyPhoneConfirmCta'), onPress: () => startPhoneVerification() },
+      ],
+    );
+  };
+
   // Inicia o fluxo de remocao: registra a escolha de blockAccount feita
   // no alerta, abre o modal de verificacao e dispara o codigo por email.
   const startDeleteFlow = async (blockAccount: boolean) => {
@@ -332,9 +371,12 @@ export default function SettingsScreen() {
     setIsVerifying(true);
     setVerifyError(null);
     try {
-      // O codigo foi enviado para o email atual (cadastrado) - eh ele que
-      // serve como identifier no ValidateCode, nao o email novo.
-      await validateCode(original.email, verifyCode, lang);
+      // Identifier do ValidateCode: para o telefone eh o numero em digitos
+      // (sem "+"); nos demais fluxos eh o email atual (cadastrado) - que eh
+      // quem recebeu o codigo, nao o email novo.
+      const identifier =
+        pendingAction === 'verifyPhone' ? original.phoneDigits : original.email;
+      await validateCode(identifier, verifyCode, lang);
       if (pendingAction === 'updateProfile') {
         setVerifyVisible(false);
         resetModalState();
@@ -344,6 +386,13 @@ export default function SettingsScreen() {
         // botao de verify segue indicando progresso. Em sucesso, o
         // signOut + replace('/') desmonta a tela inteira.
         await performDelete();
+      } else if (pendingAction === 'verifyPhone') {
+        // Codigo do SMS confirmado: marca o telefone como verificado no
+        // AuthContext (badge vira "Verificado") e fecha o modal.
+        setVerifyVisible(false);
+        resetModalState();
+        await updateAccountDetails({ validPhoneNumber: true });
+        showAlert(t('settings.phoneVerifiedTitle'), t('settings.phoneVerifiedMessage'));
       } else {
         // changePassword: codigo valido, abre o estagio 'newPin' no mesmo
         // modal. Nao fechamos - o usuario continua o fluxo na sequencia.
@@ -385,7 +434,10 @@ export default function SettingsScreen() {
     setVerifyError(null);
     setVerifyCode('');
     try {
-      await requestValidationCode(account.accountDetails.accountId, 'email', lang);
+      // Reenvia pelo mesmo canal do fluxo atual: SMS na verificacao de
+      // telefone, email nos demais.
+      const target = pendingAction === 'verifyPhone' ? 'phone' : 'email';
+      await requestValidationCode(account.accountDetails.accountId, target, lang);
       resendTimer.start();
     } catch (err) {
       const message = err instanceof Error ? err.message : t('settings.sendCodeFailedMessage');
@@ -527,7 +579,29 @@ export default function SettingsScreen() {
             <View style={styles.formGroup}>
               <View style={styles.labelRow}>
                 <Text style={styles.inputLabel}>{t('settings.phoneLabel')}</Text>
-                <VerificationBadge verified={!!account?.accountDetails.validPhoneNumber} />
+                {account?.accountDetails.validPhoneNumber ? (
+                  <VerificationBadge verified={true} />
+                ) : (
+                  <View style={styles.phoneBadgeRow}>
+                    <VerificationBadge verified={false} />
+                    {/* Verificar so faz sentido para o numero JA salvo: se o
+                        campo esta editado (phoneDirty) o usuario deve salvar
+                        primeiro (fluxo de verificacao por email). */}
+                    {!phoneDirty && phoneDigits.length > 0 ? (
+                      <TouchableOpacity
+                        style={styles.verifyPhoneLink}
+                        onPress={handleVerifyPhone}
+                        activeOpacity={0.7}
+                        hitSlop={8}
+                      >
+                        <ChatCircleDotsIcon size={13} color={colors.brand.primary} weight="fill" />
+                        <Text style={styles.verifyPhoneLinkText}>
+                          {t('settings.verifyPhoneButton')}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                )}
               </View>
               <TextInput
                 style={[styles.inputField, focusedField === 'phone' && styles.inputFieldFocused]}
@@ -769,6 +843,8 @@ export default function SettingsScreen() {
                     ? t('settings.eyebrowChangePassword')
                     : pendingAction === 'deleteAccount'
                     ? t('settings.eyebrowDeleteAccount')
+                    : pendingAction === 'verifyPhone'
+                    ? t('settings.eyebrowVerifyPhone')
                     : t('settings.eyebrowVerifyIdentity')}
                 </Text>
                 <Text style={styles.verifyTitle}>
@@ -780,6 +856,10 @@ export default function SettingsScreen() {
                     <>
                       {t('settings.deleteTitleBase')} <Text style={styles.verifyTitleAccent}>{t('settings.deleteTitleAccent')}</Text>
                     </>
+                  ) : pendingAction === 'verifyPhone' ? (
+                    <>
+                      {t('settings.verifyPhoneTitleBase')} <Text style={styles.verifyTitleAccent}>{t('settings.verifyPhoneTitleAccent')}</Text>
+                    </>
                   ) : (
                     <>
                       {t('settings.confirmTitleBase')} <Text style={styles.verifyTitleAccent}>{t('settings.confirmTitleAccent')}</Text>
@@ -787,7 +867,9 @@ export default function SettingsScreen() {
                   )}
                 </Text>
                 <Text style={styles.verifyDescription}>
-                  {t('settings.verifyDescription', { email: original.email })}
+                  {pendingAction === 'verifyPhone'
+                    ? t('settings.verifyPhoneDescription', { phone })
+                    : t('settings.verifyDescription', { email: original.email })}
                 </Text>
 
                 <TextInput
@@ -847,7 +929,7 @@ export default function SettingsScreen() {
                     <ActivityIndicator color={colors.text.light} />
                   ) : (
                     <Text style={styles.buttonPrimaryText}>
-                      {pendingAction === 'changePassword'
+                      {pendingAction === 'changePassword' || pendingAction === 'verifyPhone'
                         ? t('settings.verify')
                         : pendingAction === 'deleteAccount'
                         ? t('settings.verifyAndDelete')
@@ -962,6 +1044,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     marginBottom: 6,
+  },
+  phoneBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  verifyPhoneLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 6,
+  },
+  verifyPhoneLinkText: {
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.2,
+    color: colors.brand.primary,
+    textDecorationLine: 'underline',
   },
   badgeText: {
     fontSize: 11,

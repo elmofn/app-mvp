@@ -124,7 +124,9 @@ export async function createAccount(
 
 // ----------------------------------------------------------------------------
 // RequestValidationCode: POST /api/Account/RequestValidationCode?accountId=...
-// O body eh o numero 0 (email) ou 1 (telefone) serializado como JSON.
+// O body eh o "channel" do codigo serializado como JSON: 0 = email, 2 = SMS
+// (telefone). Email eh o canal padrao (criacao de conta); o SMS eh disparado
+// a partir do settings quando o usuario quer verificar o telefone.
 // ----------------------------------------------------------------------------
 
 export type ValidationTarget = 'email' | 'phone';
@@ -136,7 +138,8 @@ export async function requestValidationCode(
 ): Promise<void> {
   const url =
     `${API_BASE_URL}/api/Account/RequestValidationCode?accountId=${encodeURIComponent(accountId)}`;
-  const bodyValue = target === 'email' ? 0 : 1;
+  // 0 = email, 2 = SMS. (O canal 1 nao eh usado pelo app.)
+  const bodyValue = target === 'email' ? 0 : 2;
 
   const response = await fetch(url, {
     method: 'POST',

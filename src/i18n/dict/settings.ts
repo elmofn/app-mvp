@@ -62,6 +62,19 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     verifyDescription: 'We sent a verification code to {email}. Enter it below to continue.',
     codePlaceholder: '0 0 0 0 0 0',
 
+    // Phone verification (SMS) — triggered from the phone field in settings
+    verifyPhoneButton: 'Verify',
+    verifyPhoneConfirmTitle: 'Verify phone number',
+    verifyPhoneConfirmMessage:
+      'We will send a verification code via SMS to {phone}. Do you want to continue?',
+    verifyPhoneConfirmCta: 'Send code',
+    eyebrowVerifyPhone: 'VERIFY YOUR PHONE',
+    verifyPhoneTitleBase: 'Verify',
+    verifyPhoneTitleAccent: 'phone',
+    verifyPhoneDescription: 'We sent a code via SMS to {phone}. Enter it below to continue.',
+    phoneVerifiedTitle: 'Phone verified',
+    phoneVerifiedMessage: 'Your phone number has been verified.',
+
     // Resend
     resendSending: 'Sending code…',
     resendIn: 'Resend in {time}',
@@ -172,6 +185,19 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     verifyDescription: 'Enviamos um código de verificação para {email}. Digite-o abaixo para continuar.',
     codePlaceholder: '0 0 0 0 0 0',
 
+    // Phone verification (SMS) — disparada pelo campo de telefone no settings
+    verifyPhoneButton: 'Verificar',
+    verifyPhoneConfirmTitle: 'Verificar telefone',
+    verifyPhoneConfirmMessage:
+      'Vamos enviar um código de verificação por SMS para {phone}. Deseja continuar?',
+    verifyPhoneConfirmCta: 'Enviar código',
+    eyebrowVerifyPhone: 'VERIFIQUE SEU TELEFONE',
+    verifyPhoneTitleBase: 'Verificar',
+    verifyPhoneTitleAccent: 'telefone',
+    verifyPhoneDescription: 'Enviamos um código por SMS para {phone}. Digite-o abaixo para continuar.',
+    phoneVerifiedTitle: 'Telefone verificado',
+    phoneVerifiedMessage: 'Seu número de telefone foi verificado.',
+
     // Resend
     resendSending: 'Enviando código…',
     resendIn: 'Reenviar em {time}',
@@ -281,6 +307,19 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     confirmTitleAccent: 'cambios',
     verifyDescription: 'Enviamos un código de verificación a {email}. Ingrésalo abajo para continuar.',
     codePlaceholder: '0 0 0 0 0 0',
+
+    // Phone verification (SMS) — activada desde el campo de teléfono en ajustes
+    verifyPhoneButton: 'Verificar',
+    verifyPhoneConfirmTitle: 'Verificar teléfono',
+    verifyPhoneConfirmMessage:
+      'Enviaremos un código de verificación por SMS a {phone}. ¿Deseas continuar?',
+    verifyPhoneConfirmCta: 'Enviar código',
+    eyebrowVerifyPhone: 'VERIFICA TU TELÉFONO',
+    verifyPhoneTitleBase: 'Verificar',
+    verifyPhoneTitleAccent: 'teléfono',
+    verifyPhoneDescription: 'Enviamos un código por SMS a {phone}. Ingrésalo abajo para continuar.',
+    phoneVerifiedTitle: 'Teléfono verificado',
+    phoneVerifiedMessage: 'Tu número de teléfono ha sido verificado.',
 
     // Resend
     resendSending: 'Enviando código…',

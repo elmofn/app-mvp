@@ -60,6 +60,10 @@ export type AccountPatch = {
   // gravamos junto com defaultCurrencyId para manter os dois campos do
   // setups consistentes entre si.
   currency?: SignInCurrency;
+  // Flags de verificacao de contato - viram true depois que o ValidateCode
+  // confirma o codigo (ex.: verificacao de telefone via SMS no settings).
+  validEmail?: boolean;
+  validPhoneNumber?: boolean;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -222,6 +226,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...(patch.name !== undefined ? { name: patch.name } : {}),
         ...(patch.email !== undefined ? { email: patch.email } : {}),
         ...(patch.phoneNumber !== undefined ? { phoneNumber: patch.phoneNumber } : {}),
+        ...(patch.validEmail !== undefined ? { validEmail: patch.validEmail } : {}),
+        ...(patch.validPhoneNumber !== undefined
+          ? { validPhoneNumber: patch.validPhoneNumber }
+          : {}),
       },
       account: {
         ...current.account.account,

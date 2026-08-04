@@ -22,6 +22,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BannersCarousel } from '@/src/components/BannersCarousel';
+import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useT } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
@@ -184,10 +185,10 @@ const NEARBY: Hotel[] = [
   },
 ];
 
-function HotelCard({ hotel }: { hotel: Hotel }) {
+function HotelCard({ hotel, onPress }: { hotel: Hotel; onPress: () => void }) {
   const { t } = useT();
   return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.9}>
+    <TouchableOpacity style={styles.card} activeOpacity={0.9} onPress={onPress}>
       <Image source={{ uri: hotel.image }} style={styles.cardImage} resizeMode="cover" />
 
       <View style={styles.cardBody}>
@@ -241,7 +242,28 @@ export default function TravelShopScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const router = useRouter();
   const { account } = useAuth();
+  const showAlert = useAlert();
   const { t } = useT();
+
+  // Gate do TravelShop: acessar qualquer coisa aqui (buscar hoteis, campos de
+  // busca, cards) exige telefone verificado. Se nao estiver, pedimos que o
+  // usuario verifique (rota o settings, onde fica o fluxo de SMS) em vez de
+  // executar a acao. Excecao: o card de Balance (placeholder) nao passa por aqui.
+  const phoneVerified = !!account?.accountDetails.validPhoneNumber;
+  const requirePhoneVerified = (action: () => void) => {
+    if (phoneVerified) {
+      action();
+      return;
+    }
+    showAlert(
+      t('travelshop.verifyPhoneRequiredTitle'),
+      t('travelshop.verifyPhoneRequiredMessage'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('travelshop.verifyPhoneRequiredCta'), onPress: () => router.push('/settings') },
+      ],
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
@@ -271,7 +293,11 @@ export default function TravelShopScreen() {
           </View>
 
           <View style={styles.searchCard}>
-            <TouchableOpacity style={styles.searchField} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.searchField}
+              activeOpacity={0.7}
+              onPress={() => requirePhoneVerified(() => {})}
+            >
               <MapPinIcon size={20} color="#0F022D" weight="regular" />
               <View style={styles.searchFieldText}>
                 <Text style={styles.searchFieldLabel}>{t('travelshop.searchDestinationsLabel')}</Text>
@@ -281,7 +307,11 @@ export default function TravelShopScreen() {
 
             <View style={styles.searchDivider} />
 
-            <TouchableOpacity style={styles.searchField} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.searchField}
+              activeOpacity={0.7}
+              onPress={() => requirePhoneVerified(() => {})}
+            >
               <CalendarIcon size={20} color="#0F022D" weight="regular" />
               <View style={styles.searchFieldText}>
                 <Text style={styles.searchFieldLabel}>{t('travelshop.searchDatesLabel')}</Text>
@@ -291,7 +321,11 @@ export default function TravelShopScreen() {
 
             <View style={styles.searchDivider} />
 
-            <TouchableOpacity style={styles.searchField} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.searchField}
+              activeOpacity={0.7}
+              onPress={() => requirePhoneVerified(() => {})}
+            >
               <UsersIcon size={20} color="#0F022D" weight="regular" />
               <View style={styles.searchFieldText}>
                 <Text style={styles.searchFieldLabel}>Hóspedes</Text>
@@ -302,7 +336,7 @@ export default function TravelShopScreen() {
             <TouchableOpacity
               style={styles.searchButton}
               activeOpacity={0.85}
-              onPress={() => router.push('/hotel-search')}
+              onPress={() => requirePhoneVerified(() => router.push('/hotel-search'))}
             >
               <MagnifyingGlassIcon size={18} color={colors.text.light} weight="bold" />
               <Text style={styles.searchButtonText}>{t('travelshop.searchButton')}</Text>
@@ -338,7 +372,7 @@ export default function TravelShopScreen() {
           contentContainerStyle={styles.carousel}
         >
           {RECOMMENDED.map((hotel) => (
-            <HotelCard key={hotel.id} hotel={hotel} />
+            <HotelCard key={hotel.id} hotel={hotel} onPress={() => requirePhoneVerified(() => {})} />
           ))}
         </ScrollView>
 
@@ -353,7 +387,7 @@ export default function TravelShopScreen() {
           contentContainerStyle={styles.carousel}
         >
           {NEARBY.map((hotel) => (
-            <HotelCard key={hotel.id} hotel={hotel} />
+            <HotelCard key={hotel.id} hotel={hotel} onPress={() => requirePhoneVerified(() => {})} />
           ))}
         </ScrollView>
 

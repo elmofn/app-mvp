@@ -22,8 +22,8 @@ import { sha256 } from 'js-sha256';
 // ----------------------------------------------------------------------------
 
 const PARTNER_SSO_BASE_URL = 'https://travelback-dev.tripedge.com';
-// <- cole o segredo de DEV (partner_sso_secret) aqui:
-const PARTNER_SSO_SECRET = '';
+// ⚠️ placeholder de teste — trocar pelo segredo real (partner_sso_secret) depois.
+const PARTNER_SSO_SECRET = 'aaaaa';
 
 // Monta a URL assinada do Partner SSO. Retorna null quando nao da para assinar
 // (sem segredo configurado ou sem accountId) - o chamador cai num estado de erro.

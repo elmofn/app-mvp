@@ -40,7 +40,10 @@ export default function MarketplaceScreen() {
   const { t } = useT();
   const { account } = useAuth();
   const { vertical } = useLocalSearchParams<{ vertical?: string }>();
-  const [loading, setLoading] = useState(true);
+  // Overlay so na 1a carga: nas navegacoes seguintes (abrir um hotel etc.) a
+  // WebView ja mostra o conteudo progressivamente. Cobrir tudo a cada navegacao
+  // arriscava o overlay branco ficar preso ("carregando infinitamente").
+  const [initialLoading, setInitialLoading] = useState(true);
 
   const key: Vertical = vertical === 'flights' ? 'flights' : 'hotels';
   const entry = MARKETPLACE[key];
@@ -75,10 +78,14 @@ export default function MarketplaceScreen() {
             style={styles.webview}
             sharedCookiesEnabled
             thirdPartyCookiesEnabled
-            onLoadStart={() => setLoading(true)}
-            onLoadEnd={() => setLoading(false)}
+            // Deixa o usuario navegar livremente (hotel, checkout, etc.).
+            // setSupportMultipleWindows=false faz links target=_blank / window.open
+            // abrirem na propria WebView em vez de travar numa "nova aba".
+            setSupportMultipleWindows={false}
+            javaScriptCanOpenWindowsAutomatically
+            onLoadEnd={() => setInitialLoading(false)}
           />
-          {loading ? (
+          {initialLoading ? (
             <View style={styles.loadingOverlay} pointerEvents="none">
               <ActivityIndicator size="large" color={colors.brand.primary} />
             </View>

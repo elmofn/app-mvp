@@ -10,7 +10,7 @@ import {
   StarIcon,
   UsersIcon,
 } from 'phosphor-react-native';
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Image,
   ScrollView,
@@ -22,7 +22,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BannersCarousel } from '@/src/components/BannersCarousel';
-import { useAlert } from '@/src/contexts/AlertContext';
+import { PhoneVerifyModal } from '@/src/components/PhoneVerifyModal';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useT } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
@@ -242,27 +242,30 @@ export default function TravelShopScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const router = useRouter();
   const { account } = useAuth();
-  const showAlert = useAlert();
   const { t } = useT();
 
   // Gate do TravelShop: acessar qualquer coisa aqui (buscar hoteis, campos de
-  // busca, cards) exige telefone verificado. Se nao estiver, pedimos que o
-  // usuario verifique (rota o settings, onde fica o fluxo de SMS) em vez de
-  // executar a acao. Excecao: o card de Balance (placeholder) nao passa por aqui.
+  // busca, cards) exige telefone verificado. Se nao estiver, abrimos a
+  // verificacao por SMS no proprio TravelShop (PhoneVerifyModal) em vez de rotear
+  // o usuario ao settings - e, no sucesso, seguimos com a acao que ele tentou.
+  // Excecao: o card de Balance (placeholder) nao passa por aqui.
   const phoneVerified = !!account?.accountDetails.validPhoneNumber;
+  const [phoneModalVisible, setPhoneModalVisible] = useState(false);
+  const pendingActionRef = useRef<(() => void) | null>(null);
+
   const requirePhoneVerified = (action: () => void) => {
     if (phoneVerified) {
       action();
       return;
     }
-    showAlert(
-      t('travelshop.verifyPhoneRequiredTitle'),
-      t('travelshop.verifyPhoneRequiredMessage'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('travelshop.verifyPhoneRequiredCta'), onPress: () => router.push('/settings') },
-      ],
-    );
+    pendingActionRef.current = action;
+    setPhoneModalVisible(true);
+  };
+
+  const handlePhoneVerified = () => {
+    const action = pendingActionRef.current;
+    pendingActionRef.current = null;
+    action?.();
   };
 
   return (
@@ -396,6 +399,13 @@ export default function TravelShopScreen() {
           <BannersCarousel banners={account?.banners} category="Shop" />
         </View>
       </ScrollView>
+
+      <PhoneVerifyModal
+        visible={phoneModalVisible}
+        onClose={() => setPhoneModalVisible(false)}
+        onVerified={handlePhoneVerified}
+        introMessage={t('travelshop.verifyPhoneRequiredMessage')}
+      />
     </SafeAreaView>
   );
 }

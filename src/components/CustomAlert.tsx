@@ -150,6 +150,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fonts.bold,
     letterSpacing: 0.3,
+    textAlign: 'center',
   },
   buttonTextPrimary: {
     color: colors.text.light,

@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ArrowLeftIcon } from 'phosphor-react-native';
 import React, { useState } from 'react';
@@ -10,15 +10,36 @@ import { useT } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
-// Navegador in-app aberto pelo botao "Buscar Hoteis" do TravelShop. Por ora
-// abre o google.com dentro do proprio app (WebView), sem sair para o browser
-// do sistema.
-const INITIAL_URL = 'https://www.google.com';
+// Navegador in-app do marketplace, aberto pelos botoes do TravelShop. A busca
+// (hoteis / passagens) fica toda na web; aqui so renderizamos num WebView. A
+// vertical vem por parametro de rota (?vertical=hotels|flights).
+//
+// ⚠️ TEMPORARIO — URLs placeholder. Trocar pela URL real do marketplace por
+// vertical. Idealmente abrir o usuario JA LOGADO via createNavigationCode
+// (src/services/marketplace.ts) -> carregar o `launchUrl` retornado (hoje
+// buscado mas ignorado), com retry de 401 via refreshSession (padrao do
+// AuthCodeModal.tsx). Este mapa e o unico ponto a trocar.
+const MARKETPLACE = {
+  hotels: {
+    url: 'https://www.google.com/search?q=hoteis',
+    titleKey: 'travelshop.searchButton',
+  },
+  flights: {
+    url: 'https://www.google.com/search?q=passagens+aereas',
+    titleKey: 'travelshop.searchFlightsButton',
+  },
+} as const;
 
-export default function HotelSearchScreen() {
+type Vertical = keyof typeof MARKETPLACE;
+
+export default function MarketplaceScreen() {
   const router = useRouter();
   const { t } = useT();
+  const { vertical } = useLocalSearchParams<{ vertical?: string }>();
   const [loading, setLoading] = useState(true);
+
+  const key: Vertical = vertical === 'flights' ? 'flights' : 'hotels';
+  const entry = MARKETPLACE[key];
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
@@ -34,13 +55,13 @@ export default function HotelSearchScreen() {
           <ArrowLeftIcon size={24} color={colors.text.dark} weight="bold" />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
-          {t('travelshop.searchButton')}
+          {t(entry.titleKey)}
         </Text>
       </View>
 
       <View style={styles.webviewWrapper}>
         <WebView
-          source={{ uri: INITIAL_URL }}
+          source={{ uri: entry.url }}
           style={styles.webview}
           onLoadStart={() => setLoading(true)}
           onLoadEnd={() => setLoading(false)}

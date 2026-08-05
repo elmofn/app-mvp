@@ -3,12 +3,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import {
-  CalendarIcon,
+  AirplaneTiltIcon,
   CoinsIcon,
   MagnifyingGlassIcon,
   MapPinIcon,
   StarIcon,
-  UsersIcon,
 } from 'phosphor-react-native';
 import React, { useRef, useState } from 'react';
 import {
@@ -297,52 +296,21 @@ export default function TravelShopScreen() {
 
           <View style={styles.searchCard}>
             <TouchableOpacity
-              style={styles.searchField}
-              activeOpacity={0.7}
-              onPress={() => requirePhoneVerified(() => {})}
+              style={styles.searchButton}
+              activeOpacity={0.85}
+              onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=hotels'))}
             >
-              <MapPinIcon size={20} color="#0F022D" weight="regular" />
-              <View style={styles.searchFieldText}>
-                <Text style={styles.searchFieldLabel}>{t('travelshop.searchDestinationsLabel')}</Text>
-                <Text style={styles.searchFieldValue}>{t('travelshop.searchDestinationsValue')}</Text>
-              </View>
-            </TouchableOpacity>
-
-            <View style={styles.searchDivider} />
-
-            <TouchableOpacity
-              style={styles.searchField}
-              activeOpacity={0.7}
-              onPress={() => requirePhoneVerified(() => {})}
-            >
-              <CalendarIcon size={20} color="#0F022D" weight="regular" />
-              <View style={styles.searchFieldText}>
-                <Text style={styles.searchFieldLabel}>{t('travelshop.searchDatesLabel')}</Text>
-                <Text style={styles.searchFieldValue}>{t('travelshop.searchDatesValue')}</Text>
-              </View>
-            </TouchableOpacity>
-
-            <View style={styles.searchDivider} />
-
-            <TouchableOpacity
-              style={styles.searchField}
-              activeOpacity={0.7}
-              onPress={() => requirePhoneVerified(() => {})}
-            >
-              <UsersIcon size={20} color="#0F022D" weight="regular" />
-              <View style={styles.searchFieldText}>
-                <Text style={styles.searchFieldLabel}>Hóspedes</Text>
-                <Text style={styles.searchFieldValue}>1 quarto, 2 adultos</Text>
-              </View>
+              <MagnifyingGlassIcon size={18} color={colors.text.light} weight="bold" />
+              <Text style={styles.searchButtonText}>{t('travelshop.searchButton')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.searchButton}
               activeOpacity={0.85}
-              onPress={() => requirePhoneVerified(() => router.push('/hotel-search'))}
+              onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=flights'))}
             >
-              <MagnifyingGlassIcon size={18} color={colors.text.light} weight="bold" />
-              <Text style={styles.searchButtonText}>{t('travelshop.searchButton')}</Text>
+              <AirplaneTiltIcon size={18} color={colors.text.light} weight="bold" />
+              <Text style={styles.searchButtonText}>{t('travelshop.searchFlightsButton')}</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -456,32 +424,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     shadowRadius: 18,
     elevation: 8,
-  },
-  searchField: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 6,
-    gap: 12,
-  },
-  searchFieldText: { flex: 1 },
-  searchFieldLabel: {
-    fontSize: 11,
-    fontFamily: fonts.bold,
-    color: colors.text.muted,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 2,
-  },
-  searchFieldValue: {
-    fontSize: 14,
-    fontFamily: fonts.regular,
-    color: colors.text.dark,
-  },
-  searchDivider: {
-    height: 1,
-    backgroundColor: '#EDEDF2',
-    marginHorizontal: 6,
   },
   searchButton: {
     flexDirection: 'row',

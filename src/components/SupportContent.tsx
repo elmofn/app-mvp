@@ -2,9 +2,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
   FileTextIcon,
   ShieldCheckIcon,
-  SparkleIcon,
   VideoCameraIcon,
-  WhatsappLogoIcon,
+  WhatsappLogoIcon
 } from 'phosphor-react-native';
 import React from 'react';
 import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -106,6 +105,7 @@ export function SupportContent({
             <VideoCameraIcon size={32} color={colors.text.light} weight="regular" />
           </TouchableOpacity>
 
+          {/*
           {showTravelAssistant && (
             <TouchableOpacity style={styles.contactCard} activeOpacity={0.85}>
               <View style={styles.contactCardBody}>
@@ -115,6 +115,7 @@ export function SupportContent({
               <SparkleIcon size={32} color={colors.text.light} weight="regular" />
             </TouchableOpacity>
           )}
+          */}
         </View>
       </LinearGradient>
 

@@ -9,7 +9,6 @@ import {
   EyeSlashIcon,
   InfoIcon,
   ListIcon,
-  SparkleIcon,
   SuitcaseRollingIcon,
   UserIcon
 } from 'phosphor-react-native';
@@ -284,6 +283,7 @@ export default function HomeScreen() {
   </Animated.View>
 
   {/* AI Assistant: entra da esquerda */}
+   {/*
   <Animated.View entering={FadeInLeft.delay(650).duration(500)}>
     <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/assistant')} activeOpacity={0.8}>
       <View style={styles.actionInfo}>
@@ -295,6 +295,7 @@ export default function HomeScreen() {
       </View>
     </TouchableOpacity>
   </Animated.View>
+  */}
 </View>
 
 {/* --- NEXT TRIP IDEAS: via payload do SignIn --- */}

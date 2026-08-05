@@ -20,15 +20,15 @@ import { fonts } from '@/src/theme/typography';
 // carregamos a URL assinada /api/auth/partner, que responde 302 + cookie de
 // sessao e redireciona para o return_to da vertical.
 //
-// ⚠️ Ajustar os return_to por vertical quando o marketplace definir os caminhos
-// (ex.: '/hoteis', '/voos'). Por ora, ambos caem na raiz.
+// return_to por vertical: hoteis caem na raiz do marketplace ('/'), passagens
+// no caminho '/flights'.
 const MARKETPLACE = {
   hotels: {
     returnTo: '/',
     titleKey: 'travelshop.searchButton',
   },
   flights: {
-    returnTo: '/',
+    returnTo: '/flights',
     titleKey: 'travelshop.searchFlightsButton',
   },
 } as const;

@@ -6,7 +6,9 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
+import { useAuth } from '@/src/contexts/AuthContext';
 import { useT } from '@/src/i18n';
+import { buildPartnerSsoUrl } from '@/src/services/partnerSso';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -14,18 +16,19 @@ import { fonts } from '@/src/theme/typography';
 // (hoteis / passagens) fica toda na web; aqui so renderizamos num WebView. A
 // vertical vem por parametro de rota (?vertical=hotels|flights).
 //
-// ⚠️ TEMPORARIO — URLs placeholder. Trocar pela URL real do marketplace por
-// vertical. Idealmente abrir o usuario JA LOGADO via createNavigationCode
-// (src/services/marketplace.ts) -> carregar o `launchUrl` retornado (hoje
-// buscado mas ignorado), com retry de 401 via refreshSession (padrao do
-// AuthCodeModal.tsx). Este mapa e o unico ponto a trocar.
+// O usuario entra JA LOGADO via Partner SSO (src/services/partnerSso.ts):
+// carregamos a URL assinada /api/auth/partner, que responde 302 + cookie de
+// sessao e redireciona para o return_to da vertical.
+//
+// ⚠️ Ajustar os return_to por vertical quando o marketplace definir os caminhos
+// (ex.: '/hoteis', '/voos'). Por ora, ambos caem na raiz.
 const MARKETPLACE = {
   hotels: {
-    url: 'https://www.google.com/search?q=hoteis',
+    returnTo: '/',
     titleKey: 'travelshop.searchButton',
   },
   flights: {
-    url: 'https://www.google.com/search?q=passagens+aereas',
+    returnTo: '/',
     titleKey: 'travelshop.searchFlightsButton',
   },
 } as const;
@@ -35,11 +38,17 @@ type Vertical = keyof typeof MARKETPLACE;
 export default function MarketplaceScreen() {
   const router = useRouter();
   const { t } = useT();
+  const { account } = useAuth();
   const { vertical } = useLocalSearchParams<{ vertical?: string }>();
   const [loading, setLoading] = useState(true);
 
   const key: Vertical = vertical === 'flights' ? 'flights' : 'hotels';
   const entry = MARKETPLACE[key];
+  const accountId = account?.accountDetails.accountId ?? '';
+
+  // Monta a URL SSO uma unica vez por vertical (ts fresco no mount). null =>
+  // sem segredo configurado ou sem accountId; cai no estado de erro abaixo.
+  const [uri] = useState(() => buildPartnerSsoUrl(accountId, entry.returnTo));
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
@@ -59,19 +68,27 @@ export default function MarketplaceScreen() {
         </Text>
       </View>
 
-      <View style={styles.webviewWrapper}>
-        <WebView
-          source={{ uri: entry.url }}
-          style={styles.webview}
-          onLoadStart={() => setLoading(true)}
-          onLoadEnd={() => setLoading(false)}
-        />
-        {loading ? (
-          <View style={styles.loadingOverlay} pointerEvents="none">
-            <ActivityIndicator size="large" color={colors.brand.primary} />
-          </View>
-        ) : null}
-      </View>
+      {uri ? (
+        <View style={styles.webviewWrapper}>
+          <WebView
+            source={{ uri }}
+            style={styles.webview}
+            sharedCookiesEnabled
+            thirdPartyCookiesEnabled
+            onLoadStart={() => setLoading(true)}
+            onLoadEnd={() => setLoading(false)}
+          />
+          {loading ? (
+            <View style={styles.loadingOverlay} pointerEvents="none">
+              <ActivityIndicator size="large" color={colors.brand.primary} />
+            </View>
+          ) : null}
+        </View>
+      ) : (
+        <View style={styles.errorWrapper}>
+          <Text style={styles.errorText}>{t('travelshop.marketplaceUnavailable')}</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -111,5 +128,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
+  },
+  errorWrapper: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  errorText: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: colors.text.muted,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

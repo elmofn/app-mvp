@@ -1,15 +1,20 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import React from 'react';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInRight } from 'react-native-reanimated';
 
 import type { BannerCategory, SignInBanner } from '@/src/services/auth';
 import { fonts } from '@/src/theme/typography';
 
+import { BannerRichTextModal } from './BannerRichTextModal';
+
 type Props = {
   banners: SignInBanner[] | undefined;
   category: BannerCategory;
 };
+
+// richtext do banner, tolerando as duas grafias que a API pode mandar.
+const bannerHtml = (b: SignInBanner): string => b.richtext ?? b.richText ?? '';
 
 // Carousel de banners promocionais. Template unico (foto + gradient
 // overlay) usado tanto na home quanto na travelshop. Os banners chegam
@@ -17,6 +22,8 @@ type Props = {
 // `category`; o componente filtra a categoria pedida. Quando title vem
 // vazio (ver exemplo da API), so renderiza a description.
 export function BannersCarousel({ banners, category }: Props) {
+  const [selected, setSelected] = useState<SignInBanner | null>(null);
+
   const items = (banners ?? []).filter(
     (b) => b.category.toLowerCase() === category.toLowerCase(),
   );
@@ -26,7 +33,15 @@ export function BannersCarousel({ banners, category }: Props) {
     <Animated.View entering={FadeInRight.delay(1100).duration(600)}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bannersSection}>
         {items.map((banner) => (
-          <View key={banner.id} style={styles.bannerCard}>
+          // Tocar no banner abre o modal com o richtext. Sem richtext, o card
+          // fica nao-interativo (disabled) para nao dar feedback de toque a toa.
+          <TouchableOpacity
+            key={banner.id}
+            style={styles.bannerCard}
+            activeOpacity={0.85}
+            disabled={!bannerHtml(banner)}
+            onPress={() => setSelected(banner)}
+          >
             <Image source={{ uri: banner.imageUrl }} style={styles.bannerImg} resizeMode="cover" />
             <LinearGradient
               colors={['transparent', 'rgba(0,0,0,0.85)']}
@@ -39,10 +54,17 @@ export function BannersCarousel({ banners, category }: Props) {
                 <Text style={styles.bannerTitle}>{banner.title.toUpperCase()}</Text>
               ) : null}
             </LinearGradient>
-          </View>
+          </TouchableOpacity>
         ))}
         <View style={{ width: 20 }} />
       </ScrollView>
+
+      <BannerRichTextModal
+        visible={!!selected}
+        title={selected?.title ?? ''}
+        html={selected ? bannerHtml(selected) : ''}
+        onClose={() => setSelected(null)}
+      />
     </Animated.View>
   );
 }

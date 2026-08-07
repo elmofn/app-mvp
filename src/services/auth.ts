@@ -95,6 +95,11 @@ export const SignInBannerSchema = z.object({
   description: z.string(),
   imageUrl: z.string(),
   category: z.string(),
+  // richtext exibido num modal ao tocar no banner. Opcional para nao descartar
+  // banners sem o campo (getBanners filtra itens que falham no safeParse).
+  // Aceita as duas grafias caso a API mande camelCase.
+  richtext: z.string().optional(),
+  richText: z.string().optional(),
 });
 
 export const SignInNextTripSchema = z.object({

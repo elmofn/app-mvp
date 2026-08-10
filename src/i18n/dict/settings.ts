@@ -7,8 +7,8 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
   'en-US': {
     // Header
     headerTitle: 'User Data',
-    titleLine1: 'Profile of the',
-    titleAccent: 'User',
+    titleLine1: 'User',
+    titleAccent: 'Profile',
     pageDescription: 'Update or set up your information as you prefer.',
 
     // Form labels

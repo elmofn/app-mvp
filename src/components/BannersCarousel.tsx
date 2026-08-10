@@ -26,6 +26,15 @@ export function BannersCarousel({ banners, category }: Props) {
   const items = (banners ?? []).filter(
     (b) => b.category.toLowerCase() === category.toLowerCase(),
   );
+
+  // Diagnostico temporario: quantos banners chegam e quais categorias existem.
+  console.log(
+    '[banners]', category,
+    '| total=', banners?.length ?? 0,
+    '| match=', items.length,
+    '| categorias=', (banners ?? []).map((b) => b.category),
+  );
+
   if (items.length === 0) return null;
 
   return (

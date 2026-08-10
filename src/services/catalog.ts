@@ -99,7 +99,31 @@ async function fetchCatalogPage(page: number): Promise<CatalogHotel[]> {
   }
 
   const raw = await response.json();
-  const list: unknown[] = Array.isArray(raw?.data) ? raw.data : [];
+
+  // O host prod-rv-search costuma aninhar como { data: { results: [...] } }
+  // (vide places.ts), enquanto a doc do api.tripedge.com usa { data: [...] }.
+  // Toleramos os formatos mais provaveis.
+  const list: unknown[] = Array.isArray(raw?.data)
+    ? raw.data
+    : Array.isArray(raw?.data?.results)
+      ? raw.data.results
+      : Array.isArray(raw?.data?.hotels)
+        ? raw.data.hotels
+        : Array.isArray(raw?.results)
+          ? raw.results
+          : Array.isArray(raw?.hotels)
+            ? raw.hotels
+            : [];
+
+  // Diagnostico temporario: revela o shape real da resposta (remover depois).
+  if (page === 1) {
+    console.log(
+      '[catalog] shape: rawKeys=', Object.keys(raw ?? {}),
+      '| listLen=', list.length,
+      '| item0=', JSON.stringify(list[0] ?? null).slice(0, 600),
+    );
+  }
+
   const valid: CatalogHotel[] = [];
   for (const item of list) {
     const parsed = CatalogHotelSchema.safeParse(item);
@@ -131,7 +155,9 @@ export async function getRecommendedHotels(): Promise<Hotel[]> {
     }
 
     console.log(`[catalog] recomendados 5★: ${hotels.length}`);
-    cache = hotels;
+    // So cacheia resultado nao-vazio: se veio vazio (erro/formato), tenta de
+    // novo no proximo mount em vez de "grudar" a lista vazia na sessao.
+    if (hotels.length > 0) cache = hotels;
     return hotels;
   } catch (err) {
     console.warn('[catalog] getRecommendedHotels failed:', err);

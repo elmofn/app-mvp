@@ -3,15 +3,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import {
-  AirplaneTiltIcon,
   CoinsIcon,
-  MagnifyingGlassIcon,
   MapPinIcon,
   StarIcon,
 } from 'phosphor-react-native';
 import React, { useRef, useState } from 'react';
 import {
   Image,
+  ImageBackground,
   ScrollView,
   StyleSheet,
   Text,
@@ -300,8 +299,13 @@ export default function TravelShopScreen() {
               activeOpacity={0.85}
               onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=hotels'))}
             >
-              <MagnifyingGlassIcon size={18} color={colors.text.light} weight="bold" />
-              <Text style={styles.searchButtonText}>{t('travelshop.searchButton')}</Text>
+              <ImageBackground
+                source={require('@/src/assets/images/hotelsearch_btn.png')}
+                style={styles.searchButtonBg}
+                resizeMode="cover"
+              >
+                <Text style={styles.searchButtonText}>{t('travelshop.searchButton')}</Text>
+              </ImageBackground>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -309,8 +313,13 @@ export default function TravelShopScreen() {
               activeOpacity={0.85}
               onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=flights'))}
             >
-              <AirplaneTiltIcon size={18} color={colors.text.light} weight="bold" />
-              <Text style={styles.searchButtonText}>{t('travelshop.searchFlightsButton')}</Text>
+              <ImageBackground
+                source={require('@/src/assets/images/airticketsearch_btn.png')}
+                style={styles.searchButtonBg}
+                resizeMode="cover"
+              >
+                <Text style={styles.searchButtonText}>{t('travelshop.searchFlightsButton')}</Text>
+              </ImageBackground>
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -426,20 +435,25 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   searchButton: {
+    height: 88, // mais alto para acomodar a imagem de fundo (ajustar ao aspecto real)
+    borderRadius: 10,
+    marginTop: 12,
+    overflow: 'hidden', // a imagem de fundo respeita o borderRadius
+  },
+  searchButtonBg: {
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#0F022D',
-    paddingVertical: 14,
-    borderRadius: 10,
-    marginTop: 12,
   },
   searchButtonText: {
     color: colors.text.light,
     fontSize: 14,
     fontFamily: fonts.bold,
     letterSpacing: 0.4,
+    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
 
   // --- ACTION CARD (Balance) - identico ao da home ---

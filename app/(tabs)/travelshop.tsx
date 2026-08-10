@@ -3,9 +3,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import {
-  CoinsIcon,
   MapPinIcon,
-  StarIcon,
+  StarIcon
 } from 'phosphor-react-native';
 import React, { useRef, useState } from 'react';
 import {
@@ -324,23 +323,6 @@ export default function TravelShopScreen() {
           </View>
         </LinearGradient>
 
-        {/* --- BALANCE ACTION CARD: mesmo botao que aparece na home --- */}
-        <View style={styles.quickActions}>
-            <TouchableOpacity
-              style={styles.actionCard}
-              onPress={() => router.push('/statement')}
-              activeOpacity={0.8}
-            >
-              <View style={styles.actionInfo}>
-                <Text style={styles.actionTitle}>Balance</Text>
-                <Text style={styles.actionDesc}>Gerencie seus Travel Credits.</Text>
-              </View>
-              <View style={styles.actionIconWrapper}>
-                <CoinsIcon size={32} color="#0F022D" weight="regular" />
-              </View>
-            </TouchableOpacity>
-        </View>
-
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
             Hotéis <Text style={styles.sectionTitleAccent}>Recomendados</Text>
@@ -432,7 +414,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowOffset: { width: 0, height: 8 },
     shadowRadius: 18,
-    elevation: 8,
+    elevation: 0,
   },
   searchButton: {
     height: 88, // mais alto para acomodar a imagem de fundo (ajustar ao aspecto real)

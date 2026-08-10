@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, { FadeInRight } from 'react-native-reanimated';
 
 import type { BannerCategory, SignInBanner } from '@/src/services/auth';
 import { fonts } from '@/src/theme/typography';
@@ -26,22 +27,10 @@ export function BannersCarousel({ banners, category }: Props) {
   const items = (banners ?? []).filter(
     (b) => b.category.toLowerCase() === category.toLowerCase(),
   );
-
-  // Diagnostico temporario: quantos banners chegam e quais categorias existem.
-  console.log(
-    '[banners]', category,
-    '| total=', banners?.length ?? 0,
-    '| match=', items.length,
-    '| categorias=', (banners ?? []).map((b) => b.category),
-  );
-
   if (items.length === 0) return null;
 
   return (
-    // Sem animacao de entrada (reanimated): o carregamento assincrono dos
-    // hoteis recomendados re-faz o layout e a animacao "entering" podia deixar
-    // os banners presos invisiveis. Renderizamos direto para aparecerem sempre.
-    <View>
+    <Animated.View entering={FadeInRight.delay(1100).duration(600)}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bannersSection}>
         {items.map((banner) => (
           // Tocar no banner abre o modal com o richtext. Sem richtext, o card
@@ -76,7 +65,7 @@ export function BannersCarousel({ banners, category }: Props) {
         html={selected ? bannerHtml(selected) : ''}
         onClose={() => setSelected(null)}
       />
-    </View>
+    </Animated.View>
   );
 }
 

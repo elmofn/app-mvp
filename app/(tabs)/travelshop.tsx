@@ -122,6 +122,12 @@ function HotelCard({ hotel, onPress }: { hotel: Hotel; onPress: () => void }) {
           {hotel.name}
         </Text>
 
+        {hotel.description ? (
+          <Text style={styles.cardDescription} numberOfLines={2}>
+            {hotel.description}
+          </Text>
+        ) : null}
+
         <View style={styles.locationRow}>
           <MapPinIcon size={12} color={colors.text.muted} weight="regular" />
           <Text style={styles.locationText} numberOfLines={1}>
@@ -131,12 +137,6 @@ function HotelCard({ hotel, onPress }: { hotel: Hotel; onPress: () => void }) {
 
         {hotel.distance ? (
           <Text style={styles.distanceText}>{hotel.distance}</Text>
-        ) : null}
-
-        {hotel.description ? (
-          <Text style={styles.cardDescription} numberOfLines={2}>
-            {hotel.description}
-          </Text>
         ) : null}
 
         <View style={styles.cardDivider} />
@@ -292,7 +292,15 @@ export default function TravelShopScreen() {
                 contentContainerStyle={styles.carousel}
               >
                 {recommended.map((hotel) => (
-                  <HotelCard key={hotel.id} hotel={hotel} onPress={() => requirePhoneVerified(() => {})} />
+                  <HotelCard
+                    key={hotel.id}
+                    hotel={hotel}
+                    onPress={() =>
+                      requirePhoneVerified(() =>
+                        router.push(`/marketplace?hotelId=${encodeURIComponent(hotel.id)}`),
+                      )
+                    }
+                  />
                 ))}
               </ScrollView>
             )}

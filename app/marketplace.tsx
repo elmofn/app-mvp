@@ -39,7 +39,7 @@ export default function MarketplaceScreen() {
   const router = useRouter();
   const { t } = useT();
   const { account } = useAuth();
-  const { vertical } = useLocalSearchParams<{ vertical?: string }>();
+  const { vertical, hotelId } = useLocalSearchParams<{ vertical?: string; hotelId?: string }>();
   // Overlay so na 1a carga: nas navegacoes seguintes (abrir um hotel etc.) a
   // WebView ja mostra o conteudo progressivamente. Cobrir tudo a cada navegacao
   // arriscava o overlay branco ficar preso ("carregando infinitamente").
@@ -49,9 +49,14 @@ export default function MarketplaceScreen() {
   const entry = MARKETPLACE[key];
   const accountId = account?.accountDetails.accountId ?? '';
 
-  // Monta a URL SSO uma unica vez por vertical (ts fresco no mount). null =>
-  // sem segredo configurado ou sem accountId; cai no estado de erro abaixo.
-  const [uri] = useState(() => buildPartnerSsoUrl(accountId, entry.returnTo));
+  // Com hotelId, o SSO cai direto na pagina do hotel (return_to=/hotel/{id});
+  // o proprio marketplace anexa o session_id apos carregar. Senao, usa o
+  // return_to da vertical.
+  const returnTo = hotelId ? `/hotel/${hotelId}` : entry.returnTo;
+
+  // Monta a URL SSO uma unica vez no mount (ts fresco). null => sem segredo
+  // configurado ou sem accountId; cai no estado de erro abaixo.
+  const [uri] = useState(() => buildPartnerSsoUrl(accountId, returnTo));
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>

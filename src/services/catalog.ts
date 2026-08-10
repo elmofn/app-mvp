@@ -76,10 +76,12 @@ function toHotel(h: CatalogHotel): Hotel | null {
   const name = h.name?.trim();
   if (!rawImage || !name) return null; // sem imagem/nome o card fica ruim - descarta
 
-  const location =
-    [h.address?.city, h.address?.region].filter(Boolean).join(', ') ||
-    h.address?.country ||
-    '';
+  // Endereco "completo": cidade, estado/regiao, pais - cada parte so entra se
+  // vier no payload (region costuma vir vazio; country e um codigo, ex.: "EG").
+  const location = [h.address?.city, h.address?.region, h.address?.country]
+    .map((s) => s?.trim())
+    .filter(Boolean)
+    .join(', ');
 
   return {
     id: String(h.id ?? name),

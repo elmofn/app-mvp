@@ -2,7 +2,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
   FileTextIcon,
   ShieldCheckIcon,
-  VideoCameraIcon,
   WhatsappLogoIcon
 } from 'phosphor-react-native';
 import React from 'react';
@@ -93,6 +92,7 @@ export function SupportContent({
             <WhatsappLogoIcon size={32} color="#85EDD3" weight="regular" />
           </TouchableOpacity>
 
+          {/*
           <TouchableOpacity
             style={styles.contactCard}
             activeOpacity={0.85}

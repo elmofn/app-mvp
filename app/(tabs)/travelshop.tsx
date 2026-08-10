@@ -300,7 +300,7 @@ export default function TravelShopScreen() {
                 onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=hotels'))}
               >
                 <ImageBackground
-                  source={require('@/src/assets/images/hotelsearch_btn.png')}
+                  source={require('@/src/assets/images/hotelsearch2_btn.png')}
                   style={styles.searchButtonBg}
                   resizeMode="cover"
                 >
@@ -316,7 +316,7 @@ export default function TravelShopScreen() {
                 onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=flights'))}
               >
                 <ImageBackground
-                  source={require('@/src/assets/images/airticketsearch_btn.png')}
+                  source={require('@/src/assets/images/airticketsearch2_btn.png')}
                   style={styles.searchButtonBg}
                   resizeMode="cover"
                 >
@@ -411,13 +411,14 @@ const styles = StyleSheet.create({
 
   searchCard: {
     marginHorizontal: 20,
+    padding: 4,
     gap: 12, // espaco entre os dois cards de botao (sem fundo branco entre eles)
   },
   // Fundo branco por botao (antes era um card unico cobrindo os dois).
   searchButtonCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#5f6fbe8f',
     borderRadius: 16,
-    padding: 8,
+    padding: 2,
     shadowColor: '#000',
     shadowOpacity: 0.18,
     shadowOffset: { width: 0, height: 8 },
@@ -426,7 +427,7 @@ const styles = StyleSheet.create({
   },
   searchButton: {
     height: 88, // mais alto para acomodar a imagem de fundo (ajustar ao aspecto real)
-    borderRadius: 10,
+    borderRadius: 14,
     overflow: 'hidden', // a imagem de fundo respeita o borderRadius
   },
   searchButtonBg: {
@@ -441,7 +442,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fonts.bold,
     letterSpacing: 0.4,
-    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowColor: 'rgb(0, 0, 0)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },

@@ -6,8 +6,9 @@ import {
   MapPinIcon,
   StarIcon
 } from 'phosphor-react-native';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   ImageBackground,
   ScrollView,
@@ -22,90 +23,12 @@ import { BannersCarousel } from '@/src/components/BannersCarousel';
 import { PhoneVerifyModal } from '@/src/components/PhoneVerifyModal';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useT } from '@/src/i18n';
+import { getRecommendedHotels, type Hotel } from '@/src/services/catalog';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
-type Hotel = {
-  id: string;
-  image: string;
-  name: string;
-  location: string;
-  rating: number; // 1..5 estrelas para o topo do card
-  score: number; // 9.4
-  scoreLabel: string; // "Maravilhoso"
-  reviewCount: number;
-  pricePerNight: string; // ja formatado "US$419"
-  distance?: string; // somente para hoteis proximos
-};
-
-const RECOMMENDED: Hotel[] = [
-  {
-    id: 'rec-1',
-    image: 'https://static.cupid.travel/hotels/ex_e704ab59_z.jpg',
-    name: "Magna Pars- L'Hotel à Parfum Small Luxury Hotels of the World",
-    location: 'Milan, Via Forcella 6',
-    rating: 5,
-    score: 9.4,
-    scoreLabel: 'Maravilhoso',
-    reviewCount: 157,
-    pricePerNight: 'US$419',
-  },
-  {
-    id: 'rec-2',
-    image: 'https://static.cupid.travel/hotels/468587792.jpg',
-    name: 'UNA Hotels Galles Milano',
-    location: 'Milan, Piazza Lima 2',
-    rating: 4,
-    score: 8.4,
-    scoreLabel: 'Muito bom',
-    reviewCount: 8644,
-    pricePerNight: 'US$141',
-  },
-  {
-    id: 'rec-3',
-    image: 'https://static.cupid.travel/hotels/ex_74a7f292_z.jpg',
-    name: 'Hassler Roma',
-    location: 'Rome, Piazza Trinita Dei Monti 6',
-    rating: 5,
-    score: 9.4,
-    scoreLabel: 'Maravilhoso',
-    reviewCount: 56,
-    pricePerNight: 'US$1.177',
-  },
-  {
-    id: 'rec-4',
-    image: 'https://static.cupid.travel/hotels/40691107.jpg',
-    name: 'Shangri-La The Shard, London',
-    location: 'London, 31 St Thomas Street',
-    rating: 5,
-    score: 10,
-    scoreLabel: 'Excelente',
-    reviewCount: 2625,
-    pricePerNight: 'US$597',
-  },
-  {
-    id: 'rec-5',
-    image: 'https://static.cupid.travel/hotels/53482587.jpg',
-    name: 'Hotel Splendide Royal - The Leading Hotels of the World',
-    location: 'Rome, Via Di Porta Pinciana 14',
-    rating: 5,
-    score: 9.1,
-    scoreLabel: 'Maravilhoso',
-    reviewCount: 533,
-    pricePerNight: 'US$407',
-  },
-  {
-    id: 'rec-6',
-    image: 'https://static.cupid.travel/hotels/ex_e7402a4a_z.jpg',
-    name: 'Address Sky View, Downtown Dubai',
-    location: 'Dubai, Sheikh Mohammed Bin Rashed Boulevard',
-    rating: 5,
-    score: 9.2,
-    scoreLabel: 'Maravilhoso',
-    reviewCount: 133,
-    pricePerNight: 'US$455',
-  },
-];
+// Hoteis "Recomendados" agora vem do catalog da TripEdge (5★) - vide
+// src/services/catalog.ts. Os "Proximos" (NEARBY) seguem hardcoded por ora.
 
 const NEARBY: Hotel[] = [
   {
@@ -212,22 +135,30 @@ function HotelCard({ hotel, onPress }: { hotel: Hotel; onPress: () => void }) {
 
         <View style={styles.cardDivider} />
 
+        {/* Recomendados (catalog) nao trazem nota nem preco: renderizamos esses
+            blocos so quando presentes; reviews aparecem sempre. */}
         <View style={styles.cardFooter}>
           <View style={styles.scoreBlock}>
-            <View style={styles.scoreBadge}>
-              <Text style={styles.scoreValue}>{hotel.score}</Text>
-            </View>
+            {hotel.score != null ? (
+              <View style={styles.scoreBadge}>
+                <Text style={styles.scoreValue}>{hotel.score}</Text>
+              </View>
+            ) : null}
             <View style={styles.scoreText}>
-              <Text style={styles.scoreLabel}>{hotel.scoreLabel}</Text>
+              {hotel.scoreLabel ? (
+                <Text style={styles.scoreLabel}>{hotel.scoreLabel}</Text>
+              ) : null}
               <Text style={styles.reviewCount}>{t('travelshop.reviewCount', { count: hotel.reviewCount })}</Text>
             </View>
           </View>
-          <View style={styles.priceBlock}>
-            <Text style={styles.priceValue}>{hotel.pricePerNight}</Text>
-            <Text style={styles.priceCaption} numberOfLines={2}>
-              {t('travelshop.priceCaption')}
-            </Text>
-          </View>
+          {hotel.pricePerNight ? (
+            <View style={styles.priceBlock}>
+              <Text style={styles.priceValue}>{hotel.pricePerNight}</Text>
+              <Text style={styles.priceCaption} numberOfLines={2}>
+                {t('travelshop.priceCaption')}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
     </TouchableOpacity>
@@ -249,6 +180,15 @@ export default function TravelShopScreen() {
   const phoneVerified = !!account?.accountDetails.validPhoneNumber;
   const [phoneModalVisible, setPhoneModalVisible] = useState(false);
   const pendingActionRef = useRef<(() => void) | null>(null);
+
+  // Hoteis 5★ do catalog da TripEdge. null = carregando; [] = vazio/erro
+  // (a secao some). Cacheado no servico, entao reabrir a aba nao re-busca.
+  const [recommended, setRecommended] = useState<Hotel[] | null>(null);
+  useEffect(() => {
+    getRecommendedHotels()
+      .then(setRecommended)
+      .catch(() => setRecommended([]));
+  }, []);
 
   const requirePhoneVerified = (action: () => void) => {
     if (phoneVerified) {
@@ -327,20 +267,31 @@ export default function TravelShopScreen() {
           </View>
         </LinearGradient>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Hotéis <Text style={styles.sectionTitleAccent}>Recomendados</Text>
-          </Text>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.carousel}
-        >
-          {RECOMMENDED.map((hotel) => (
-            <HotelCard key={hotel.id} hotel={hotel} onPress={() => requirePhoneVerified(() => {})} />
-          ))}
-        </ScrollView>
+        {/* Recomendados (catalog 5★): carregando -> spinner; vazio/erro -> some. */}
+        {recommended === null || recommended.length > 0 ? (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                Hotéis <Text style={styles.sectionTitleAccent}>Recomendados</Text>
+              </Text>
+            </View>
+            {recommended === null ? (
+              <View style={styles.carouselLoading}>
+                <ActivityIndicator color={colors.brand.primary} />
+              </View>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.carousel}
+              >
+                {recommended.map((hotel) => (
+                  <HotelCard key={hotel.id} hotel={hotel} onPress={() => requirePhoneVerified(() => {})} />
+                ))}
+              </ScrollView>
+            )}
+          </>
+        ) : null}
 
         <View style={[styles.section, { marginTop: 24 }]}>
           <Text style={styles.sectionTitle}>
@@ -502,6 +453,11 @@ const styles = StyleSheet.create({
   carousel: {
     paddingHorizontal: 24,
     gap: 14,
+  },
+  carouselLoading: {
+    height: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   card: {

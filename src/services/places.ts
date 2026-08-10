@@ -15,7 +15,8 @@ import type { LocationCoords } from './location';
 
 const TRIPEDGE_BASE_URL = 'https://prod-rv-search.tripedge.com';
 // ⚠️ TEMPORARIO / SANDBOX - nao enviar para producao (vide comentario acima).
-const TRIPEDGE_PARTNER_KEY = 'SANDBOX_8aac2f66-372f-459c-9e72-b4d3cd4afc0d';
+// Reutilizada pelo catalog (src/services/catalog.ts) - o segredo vive so aqui.
+export const TRIPEDGE_PARTNER_KEY = 'SANDBOX_8aac2f66-372f-459c-9e72-b4d3cd4afc0d';
 
 // Shape real confirmado com uma resposta da TripEdge (envelope data.results):
 //   { place_id, display_name, formatted_address, type,

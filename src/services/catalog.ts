@@ -62,10 +62,19 @@ const CatalogHotelSchema = z
 
 type CatalogHotel = z.infer<typeof CatalogHotelSchema>;
 
+// As URLs de imagem vem com o token {size} (ex.: .../t/{size}/content/...jpeg).
+// Precisa trocar por um tamanho valido. ⚠️ VALOR A CONFIRMAR na doc da TripEdge -
+// se as imagens vierem quebradas, ajustar aqui.
+const IMAGE_SIZE = '640x480';
+
+function resolveImage(url: string): string {
+  return url.replace('{size}', IMAGE_SIZE);
+}
+
 function toHotel(h: CatalogHotel): Hotel | null {
-  const image = h.images?.[0];
+  const rawImage = h.images?.[0];
   const name = h.name?.trim();
-  if (!image || !name) return null; // sem imagem/nome o card fica ruim - descarta
+  if (!rawImage || !name) return null; // sem imagem/nome o card fica ruim - descarta
 
   const location =
     [h.address?.city, h.address?.region].filter(Boolean).join(', ') ||
@@ -74,7 +83,7 @@ function toHotel(h: CatalogHotel): Hotel | null {
 
   return {
     id: String(h.id ?? name),
-    image,
+    image: resolveImage(rawImage),
     name,
     location,
     rating: 5,
@@ -115,20 +124,30 @@ async function fetchCatalogPage(page: number): Promise<CatalogHotel[]> {
             ? raw.hotels
             : [];
 
-  // Diagnostico temporario: revela o shape real da resposta (remover depois).
-  if (page === 1) {
-    console.log(
-      '[catalog] shape: rawKeys=', Object.keys(raw ?? {}),
-      '| listLen=', list.length,
-      '| item0=', JSON.stringify(list[0] ?? null).slice(0, 600),
-    );
-  }
+  // Cada item vem aninhado como { hotel: {...} } (confirmado na resposta real);
+  // toleramos tambem o objeto direto (formato da doc).
+  const unwrap = (item: unknown): unknown =>
+    item && typeof item === 'object' && 'hotel' in item
+      ? (item as { hotel: unknown }).hotel
+      : item;
 
   const valid: CatalogHotel[] = [];
   for (const item of list) {
-    const parsed = CatalogHotelSchema.safeParse(item);
+    const parsed = CatalogHotelSchema.safeParse(unwrap(item));
     if (parsed.success) valid.push(parsed.data);
   }
+
+  // Diagnostico temporario: confirma estrelas e URL final da imagem (remover
+  // depois). Se stars vier undefined, o campo tem outro nome.
+  if (page === 1) {
+    const h0 = valid[0];
+    console.log(
+      '[catalog] parsed=', valid.length,
+      '| stars0=', h0?.stars,
+      '| img0=', h0?.images?.[0] ? resolveImage(h0.images[0]) : null,
+    );
+  }
+
   return valid;
 }
 

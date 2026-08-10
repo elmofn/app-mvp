@@ -293,33 +293,37 @@ export default function TravelShopScreen() {
           </View>
 
           <View style={styles.searchCard}>
-            <TouchableOpacity
-              style={styles.searchButton}
-              activeOpacity={0.85}
-              onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=hotels'))}
-            >
-              <ImageBackground
-                source={require('@/src/assets/images/hotelsearch_btn.png')}
-                style={styles.searchButtonBg}
-                resizeMode="cover"
+            <View style={styles.searchButtonCard}>
+              <TouchableOpacity
+                style={styles.searchButton}
+                activeOpacity={0.85}
+                onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=hotels'))}
               >
-                <Text style={styles.searchButtonText}>{t('travelshop.searchButton')}</Text>
-              </ImageBackground>
-            </TouchableOpacity>
+                <ImageBackground
+                  source={require('@/src/assets/images/hotelsearch_btn.png')}
+                  style={styles.searchButtonBg}
+                  resizeMode="cover"
+                >
+                  <Text style={styles.searchButtonText}>{t('travelshop.searchButton')}</Text>
+                </ImageBackground>
+              </TouchableOpacity>
+            </View>
 
-            <TouchableOpacity
-              style={styles.searchButton}
-              activeOpacity={0.85}
-              onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=flights'))}
-            >
-              <ImageBackground
-                source={require('@/src/assets/images/airticketsearch_btn.png')}
-                style={styles.searchButtonBg}
-                resizeMode="cover"
+            <View style={styles.searchButtonCard}>
+              <TouchableOpacity
+                style={styles.searchButton}
+                activeOpacity={0.85}
+                onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=flights'))}
               >
-                <Text style={styles.searchButtonText}>{t('travelshop.searchFlightsButton')}</Text>
-              </ImageBackground>
-            </TouchableOpacity>
+                <ImageBackground
+                  source={require('@/src/assets/images/airticketsearch_btn.png')}
+                  style={styles.searchButtonBg}
+                  resizeMode="cover"
+                >
+                  <Text style={styles.searchButtonText}>{t('travelshop.searchFlightsButton')}</Text>
+                </ImageBackground>
+              </TouchableOpacity>
+            </View>
           </View>
         </LinearGradient>
 
@@ -407,9 +411,13 @@ const styles = StyleSheet.create({
 
   searchCard: {
     marginHorizontal: 20,
+    gap: 12, // espaco entre os dois cards de botao (sem fundo branco entre eles)
+  },
+  // Fundo branco por botao (antes era um card unico cobrindo os dois).
+  searchButtonCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 14,
+    padding: 8,
     shadowColor: '#000',
     shadowOpacity: 0.18,
     shadowOffset: { width: 0, height: 8 },
@@ -419,14 +427,14 @@ const styles = StyleSheet.create({
   searchButton: {
     height: 88, // mais alto para acomodar a imagem de fundo (ajustar ao aspecto real)
     borderRadius: 10,
-    marginTop: 12,
     overflow: 'hidden', // a imagem de fundo respeita o borderRadius
   },
   searchButtonBg: {
     flex: 1,
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'flex-start', // texto alinhado a esquerda
     alignItems: 'center',
+    paddingHorizontal: 16,
   },
   searchButtonText: {
     color: colors.text.light,

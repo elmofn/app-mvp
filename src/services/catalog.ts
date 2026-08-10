@@ -32,6 +32,7 @@ export type Hotel = {
   location: string;
   rating: number; // 1..5 estrelas
   reviewCount: number;
+  description?: string; // trecho de apresentacao (catalog)
   score?: number; // 9.4
   scoreLabel?: string; // "Maravilhoso"
   pricePerNight?: string; // ja formatado "US$419"
@@ -54,6 +55,7 @@ const CatalogHotelSchema = z
     name: z.string().optional(),
     stars: z.number().optional(),
     review_count: z.number().optional(),
+    description: z.string().nullable().optional(),
     address: CatalogAddressSchema.optional(),
     images: z.array(z.string()).optional(),
     type: z.string().optional(),
@@ -90,6 +92,7 @@ function toHotel(h: CatalogHotel): Hotel | null {
     location,
     rating: 5,
     reviewCount: h.review_count ?? 0,
+    description: h.description?.trim() || undefined,
   };
 }
 

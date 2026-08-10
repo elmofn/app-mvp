@@ -133,6 +133,12 @@ function HotelCard({ hotel, onPress }: { hotel: Hotel; onPress: () => void }) {
           <Text style={styles.distanceText}>{hotel.distance}</Text>
         ) : null}
 
+        {hotel.description ? (
+          <Text style={styles.cardDescription} numberOfLines={2}>
+            {hotel.description}
+          </Text>
+        ) : null}
+
         <View style={styles.cardDivider} />
 
         {/* Recomendados (catalog) nao trazem nota nem preco: renderizamos esses
@@ -508,6 +514,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     marginTop: 6,
     textTransform: 'uppercase',
+  },
+  cardDescription: {
+    fontSize: 12,
+    fontFamily: fonts.regular,
+    color: colors.text.muted,
+    lineHeight: 17,
+    marginTop: 8,
   },
   cardDivider: {
     height: 1,

@@ -3,6 +3,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import {
+  AirplaneTiltIcon,
+  MagnifyingGlassIcon,
   MapPinIcon,
   StarIcon
 } from 'phosphor-react-native';
@@ -239,25 +241,21 @@ export default function TravelShopScreen() {
 
           <View style={styles.searchCard}>
             <TouchableOpacity
-              style={styles.searchButton}
-              activeOpacity={0.7}
+              style={[styles.searchButton, styles.searchButtonHotels]}
+              activeOpacity={0.85}
               onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=hotels'))}
             >
-              <Text style={styles.searchButtonText}>
-                {t('travelshop.searchHotelsBase')}{' '}
-                <Text style={styles.searchAccentHotels}>{t('travelshop.searchHotelsAccent')}</Text>
-              </Text>
+              <MagnifyingGlassIcon size={18} color={colors.text.light} weight="bold" />
+              <Text style={styles.searchButtonText}>{t('travelshop.searchButton')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.searchButton}
-              activeOpacity={0.7}
+              style={[styles.searchButton, styles.searchButtonFlights]}
+              activeOpacity={0.85}
               onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=flights'))}
             >
-              <Text style={styles.searchButtonText}>
-                {t('travelshop.searchFlightsBase')}{' '}
-                <Text style={styles.searchAccentFlights}>{t('travelshop.searchFlightsAccent')}</Text>
-              </Text>
+              <AirplaneTiltIcon size={18} color={colors.text.light} weight="bold" />
+              <Text style={styles.searchButtonText}>{t('travelshop.searchFlightsButton')}</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -363,41 +361,41 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
 
-  // Card branco unico com os dois CTAs (vocabulario do app).
+  // Card branco unico envolvendo os dois CTAs (vocabulario do app).
   searchCard: {
     marginHorizontal: 20,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 12,
+    padding: 16,
     shadowColor: '#000',
     shadowOpacity: 0.18,
     shadowOffset: { width: 0, height: 8 },
     shadowRadius: 18,
     elevation: 8,
   },
-  // CTA texto-so, alinhado a esquerda, com fundo claro (cara de botao).
+  // CTA solido da marca: base (layout) + cor por vertical abaixo.
   searchButton: {
-    backgroundColor: '#EDEDF2',
-    borderRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
     paddingVertical: 16,
-    paddingHorizontal: 16,
-    alignItems: 'flex-start',
-    marginVertical: 6,
+    borderRadius: 10,
+    marginTop: 6,
+    marginBottom: 6,
   },
-  // "Buscar" na cor escura padrao; palavra-chave acentuada (italico) abaixo.
+  // Cor de cada botao (ambas com bom contraste para o icone/texto branco).
+  searchButtonHotels: {
+    backgroundColor: '#0F022D', // navy
+  },
+  searchButtonFlights: {
+    backgroundColor: '#0F022D', // roxo da marca
+  },
   searchButtonText: {
-    fontSize: 22,
+    color: colors.text.light,
+    fontSize: 14,
     fontFamily: fonts.bold,
-    color: colors.text.dark,
-    letterSpacing: -0.6,
-  },
-  searchAccentHotels: {
-    color: '#f07167', // coral (mesmo acento de "Recomendados")
-    fontFamily: fonts.italic,
-  },
-  searchAccentFlights: {
-    color: '#7458E3', // roxo da marca
-    fontFamily: fonts.italic,
+    letterSpacing: 0.4,
   },
 
   // --- ACTION CARD (Balance) - identico ao da home ---

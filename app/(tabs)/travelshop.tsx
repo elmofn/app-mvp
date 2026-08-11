@@ -3,6 +3,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import {
+  AirplaneTiltIcon,
+  MagnifyingGlassIcon,
   MapPinIcon,
   StarIcon
 } from 'phosphor-react-native';
@@ -10,7 +12,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
-  ImageBackground,
   ScrollView,
   StyleSheet,
   Text,
@@ -239,37 +240,23 @@ export default function TravelShopScreen() {
           </View>
 
           <View style={styles.searchCard}>
-            <View style={styles.searchButtonCard}>
-              <TouchableOpacity
-                style={styles.searchButton}
-                activeOpacity={0.85}
-                onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=hotels'))}
-              >
-                <ImageBackground
-                  source={require('@/src/assets/images/hotelsearch2_btn.png')}
-                  style={styles.searchButtonBg}
-                  resizeMode="cover"
-                >
-                  <Text style={styles.searchButtonText}>{t('travelshop.searchButton')}</Text>
-                </ImageBackground>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.searchButton}
+              activeOpacity={0.85}
+              onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=hotels'))}
+            >
+              <MagnifyingGlassIcon size={18} color={colors.text.light} weight="bold" />
+              <Text style={styles.searchButtonText}>{t('travelshop.searchButton')}</Text>
+            </TouchableOpacity>
 
-            <View style={styles.searchButtonCard}>
-              <TouchableOpacity
-                style={styles.searchButton}
-                activeOpacity={0.85}
-                onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=flights'))}
-              >
-                <ImageBackground
-                  source={require('@/src/assets/images/airticketsearch2_btn.png')}
-                  style={styles.searchButtonBg}
-                  resizeMode="cover"
-                >
-                  <Text style={styles.searchButtonText}>{t('travelshop.searchFlightsButton')}</Text>
-                </ImageBackground>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.searchButton}
+              activeOpacity={0.85}
+              onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=flights'))}
+            >
+              <AirplaneTiltIcon size={18} color={colors.text.light} weight="bold" />
+              <Text style={styles.searchButtonText}>{t('travelshop.searchFlightsButton')}</Text>
+            </TouchableOpacity>
           </View>
         </LinearGradient>
 
@@ -374,42 +361,34 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
 
+  // Card branco unico envolvendo os dois CTAs (vocabulario do app).
   searchCard: {
     marginHorizontal: 20,
-    padding: 4,
-    gap: 12, // espaco entre os dois cards de botao (sem fundo branco entre eles)
-  },
-  // Fundo branco por botao (antes era um card unico cobrindo os dois).
-  searchButtonCard: {
-    backgroundColor: '#5f6fbe8f',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 2,
+    padding: 14,
     shadowColor: '#000',
     shadowOpacity: 0.18,
     shadowOffset: { width: 0, height: 8 },
     shadowRadius: 18,
-    elevation: 0,
+    elevation: 8,
   },
+  // CTA solido da marca: navy, icone + texto centralizado.
   searchButton: {
-    height: 88, // mais alto para acomodar a imagem de fundo (ajustar ao aspecto real)
-    borderRadius: 14,
-    overflow: 'hidden', // a imagem de fundo respeita o borderRadius
-  },
-  searchButtonBg: {
-    flex: 1,
     flexDirection: 'row',
-    justifyContent: 'flex-start', // texto alinhado a esquerda
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    gap: 8,
+    backgroundColor: '#0F022D',
+    paddingVertical: 16,
+    borderRadius: 10,
+    marginTop: 12,
   },
   searchButtonText: {
     color: colors.text.light,
     fontSize: 14,
     fontFamily: fonts.bold,
     letterSpacing: 0.4,
-    textShadowColor: 'rgb(0, 0, 0)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
   },
 
   // --- ACTION CARD (Balance) - identico ao da home ---

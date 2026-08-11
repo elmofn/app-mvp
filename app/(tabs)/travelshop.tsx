@@ -249,8 +249,6 @@ export default function TravelShopScreen() {
               </Text>
             </TouchableOpacity>
 
-            <View style={styles.searchDivider} />
-
             <TouchableOpacity
               style={styles.searchButton}
               activeOpacity={0.7}
@@ -365,27 +363,26 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
 
-  // Card branco unico com os dois CTAs como linhas de texto (vocabulario do app).
+  // Card branco unico com os dois CTAs (vocabulario do app).
   searchCard: {
     marginHorizontal: 20,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 6,
+    padding: 12,
     shadowColor: '#000',
     shadowOpacity: 0.18,
     shadowOffset: { width: 0, height: 8 },
     shadowRadius: 18,
     elevation: 8,
   },
-  // CTA texto-so, alinhado a esquerda.
+  // CTA texto-so, alinhado a esquerda, com fundo claro (cara de botao).
   searchButton: {
-    paddingVertical: 16,
-    alignItems: 'flex-start',
-  },
-  searchDivider: {
-    height: 1,
     backgroundColor: '#EDEDF2',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    alignItems: 'flex-start',
+    marginVertical: 6,
   },
   // "Buscar" na cor escura padrao; palavra-chave acentuada (italico) abaixo.
   searchButtonText: {

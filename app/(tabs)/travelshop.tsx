@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 14,
+    padding: 16,
     shadowColor: '#000',
     shadowOpacity: 0.18,
     shadowOffset: { width: 0, height: 8 },
@@ -382,7 +382,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F022D',
     paddingVertical: 16,
     borderRadius: 10,
-    marginTop: 12,
+    marginTop: 6,
+    marginBottom: 6,
   },
   searchButtonText: {
     color: colors.text.light,

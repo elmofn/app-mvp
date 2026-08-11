@@ -241,7 +241,7 @@ export default function TravelShopScreen() {
 
           <View style={styles.searchCard}>
             <TouchableOpacity
-              style={styles.searchButton}
+              style={[styles.searchButton, styles.searchButtonHotels]}
               activeOpacity={0.85}
               onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=hotels'))}
             >
@@ -250,7 +250,7 @@ export default function TravelShopScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.searchButton}
+              style={[styles.searchButton, styles.searchButtonFlights]}
               activeOpacity={0.85}
               onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=flights'))}
             >
@@ -373,17 +373,23 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     elevation: 8,
   },
-  // CTA solido da marca: navy, icone + texto centralizado.
+  // CTA solido da marca: base (layout) + cor por vertical abaixo.
   searchButton: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#0F022D',
     paddingVertical: 16,
     borderRadius: 10,
     marginTop: 6,
     marginBottom: 6,
+  },
+  // Cor de cada botao (ambas com bom contraste para o icone/texto branco).
+  searchButtonHotels: {
+    backgroundColor: '#0F022D', // navy
+  },
+  searchButtonFlights: {
+    backgroundColor: '#7458E3', // roxo da marca
   },
   searchButtonText: {
     color: colors.text.light,

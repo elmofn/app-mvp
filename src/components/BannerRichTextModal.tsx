@@ -1,3 +1,4 @@
+import { XIcon } from 'phosphor-react-native';
 import React from 'react';
 import {
   Modal,
@@ -56,7 +57,28 @@ export function BannerRichTextModal({ visible, title, html, onClose }: Props) {
     >
       <View style={styles.overlay}>
         <View style={styles.card}>
-          {title ? <Text style={styles.title}>{title}</Text> : null}
+          {/* Cabecalho so com o "X": fechar o modal fica so aqui, liberando o
+              richtext para ocupar todo o corpo (inclusive com botoes de acao
+              proprios, links pra fora do app, etc.). */}
+          <View style={styles.header}>
+            {title ? (
+              <Text style={styles.title} numberOfLines={2}>
+                {title}
+              </Text>
+            ) : (
+              <View style={styles.titleSpacer} />
+            )}
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={onClose}
+              activeOpacity={0.7}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Fechar"
+            >
+              <XIcon size={22} color={colors.text.dark} weight="bold" />
+            </TouchableOpacity>
+          </View>
 
           <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
             <RenderHTML
@@ -67,14 +89,6 @@ export function BannerRichTextModal({ visible, title, html, onClose }: Props) {
               enableExperimentalMarginCollapsing
             />
           </ScrollView>
-
-          <TouchableOpacity
-            style={styles.button}
-            onPress={onClose}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.buttonText}>OK</Text>
-          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -96,34 +110,33 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 24,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 12,
+  },
   title: {
+    flex: 1,
     fontSize: 20,
     fontFamily: fonts.bold,
     color: colors.text.dark,
-    textAlign: 'center',
     letterSpacing: -0.4,
-    marginBottom: 12,
+  },
+  // Sem titulo, empurra o "X" para a direita mantendo o cabecalho.
+  titleSpacer: {
+    flex: 1,
+  },
+  closeButton: {
+    padding: 2,
+    marginTop: -2,
+    marginRight: -2,
   },
   body: {
     // Teto para nao estourar a tela em richtext longo; o ScrollView cuida do resto.
-    maxHeight: 360,
+    maxHeight: 420,
   },
   bodyContent: {
     paddingBottom: 4,
-  },
-  button: {
-    marginTop: 22,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0F022D',
-  },
-  buttonText: {
-    fontSize: 14,
-    fontFamily: fonts.bold,
-    letterSpacing: 0.3,
-    textAlign: 'center',
-    color: colors.text.light,
   },
 });

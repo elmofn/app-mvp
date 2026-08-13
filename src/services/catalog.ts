@@ -1,8 +1,11 @@
 import { z } from 'zod';
 
+import { searchHotelsByPlaceId, type SearchHotel } from './hotelsSearch';
 import type { LocationCoords } from './location';
 import {
+  distanceKm,
   nearestPlace,
+  placeId,
   placeName,
   searchPlacesByCoordinate,
   TRIPEDGE_PARTNER_KEY,
@@ -32,8 +35,9 @@ const NEARBY_TARGET = 12; // quantos hoteis da cidade do device mostramos
 const NEARBY_RADIUS_KM = 100; // raio da busca de cidade (/places/search) a partir do device
 
 // Modelo do card usado pelo TravelShop. score/scoreLabel/pricePerNight/distance
-// sao opcionais: o catalog nao os fornece (recomendados mostram so estrelas +
-// reviews); os hoteis "proximos" hardcoded ainda preenchem tudo.
+// sao opcionais: os Recomendados (catalog) trazem so estrelas + reviews; os
+// Proximos (/api/hotels/search, vide hotelsSearch.ts) preenchem tudo (nota,
+// preco/noite e distancia).
 export type Hotel = {
   id: string;
   image: string;
@@ -246,30 +250,86 @@ export async function getRecommendedHotels(): Promise<Hotel[]> {
   }
 }
 
-// Normaliza nome de cidade para casar entre o /places/search e o catalog:
-// minusculo, sem espacos nas pontas e sem acentos ("São Paulo" == "Sao Paulo").
-function normCity(s: string): string {
-  return s
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase();
+// nota 0..100 (review score da TripEdge) -> score 0..10 do card (uma casa).
+function ratingToScore(rating: number | undefined): number | undefined {
+  if (rating == null || !Number.isFinite(rating)) return undefined;
+  return Math.round(rating) / 10; // 78 -> 7.8
 }
 
-// Cache dos "Proximos" por cidade: device parado nao re-busca. Se a cidade muda
-// (ex.: usuario viajou), a chave muda e refazemos a query.
-let nearbyCache: { city: string; hotels: Hotel[] } | null = null;
+// Label do score, em pt (o card mostra ao lado da nota). Faixas alinhadas ao
+// padrao de agregadores de hotel.
+function scoreLabel(score: number | undefined): string | undefined {
+  if (score == null) return undefined;
+  if (score >= 9) return 'Excepcional';
+  if (score >= 8) return 'Maravilhoso';
+  if (score >= 7) return 'Muito bom';
+  if (score >= 6) return 'Bom';
+  return 'Agradável';
+}
 
-// Hoteis "Proximos": aproximacao por CIDADE (a TripEdge nao tem endpoint de
-// hoteis por lat/lng, e o catalog nao traz coordenadas). Acha a cidade do device
-// via /places/search (nearestPlace) e filtra o catalog por address.city. Sem
-// coords / sem cidade / erro -> [] (a secao some). Reaproveita as paginas ja
-// baixadas pelos Recomendados (getCatalogPage).
+// Preco/noite ja formatado a partir da menor tarifa. USD -> "US$"; outras
+// moedas caem no codigo + espaco ("EUR 120"). Sem tarifa -> undefined (o card
+// simplesmente nao mostra o bloco de preco).
+function formatNightlyPrice(rate: SearchHotel['lowest_rate']): string | undefined {
+  const avg = rate?.price_per_night_avg;
+  if (avg == null || !Number.isFinite(avg)) return undefined;
+  const value = Math.round(avg);
+  const currency = rate?.price_currency ?? 'USD';
+  return currency === 'USD' ? `US$${value}` : `${currency} ${value}`;
+}
+
+// SearchHotel (resposta /api/hotels/search) -> card Hotel. Diferente do catalog,
+// aqui temos nota, preco e coordenadas, entao preenchemos o card completo
+// (estrelas + score + preco/noite + distancia). Sem foto/nome -> null (descarta).
+function searchHotelToCard(h: SearchHotel, origin: LocationCoords): Hotel | null {
+  const rawImage = h.images?.[0];
+  const name = h.name?.trim();
+  if (!rawImage || !name) return null;
+
+  const location = [h.address?.city, h.address?.region, h.address?.country]
+    .map((s) => s?.trim())
+    .filter(Boolean)
+    .join(', ');
+
+  const score = ratingToScore(h.rating);
+
+  // Distancia real device -> hotel (a resposta traz coordinates.{lat,long}).
+  let distance: string | undefined;
+  const lat = h.coordinates?.lat;
+  const lng = h.coordinates?.long;
+  if (lat != null && lng != null) {
+    distance = `${Math.round(distanceKm(origin, { lat, lng }))} km`;
+  }
+
+  return {
+    id: String(h.id ?? name),
+    image: rawImage, // URLs ja completas (b-cdn.net), sem token {size}
+    name,
+    location,
+    rating: starsToRating(h.stars),
+    reviewCount: h.review_count ?? 0,
+    score,
+    scoreLabel: scoreLabel(score),
+    pricePerNight: formatNightlyPrice(h.lowest_rate),
+    distance,
+  };
+}
+
+// Cache dos "Proximos" por place_id: device parado nao re-busca. Se a cidade
+// muda (ex.: usuario viajou), o place_id muda e refazemos a query.
+let nearbyCache: { placeId: string; hotels: Hotel[] } | null = null;
+
+// Hoteis "Proximos": acha a cidade do device via /places/search (nearestPlace),
+// pega o place_id dela e busca hoteis reais por esse place_id (mesma chamada da
+// pagina /results do marketplace, vide src/services/hotelsSearch.ts). Se a
+// cidade nao tiver hoteis proprios, a TripEdge ja retorna as vizinhas (ex.:
+// Porto Alegre para Cachoeirinha). Sem coords / sem place_id / erro (incl. 401
+// por falta de sessao) -> [] (a secao some, sem regressao).
 export async function getNearbyHotels(coords: LocationCoords | null): Promise<Hotel[]> {
   if (!coords) return [];
 
   try {
-    // 1) Cidade do device (a cidade mais proxima das coordenadas).
+    // 1) Cidade do device -> place_id.
     const places = await searchPlacesByCoordinate({
       lat: coords.lat,
       lng: coords.lng,
@@ -277,29 +337,23 @@ export async function getNearbyHotels(coords: LocationCoords | null): Promise<Ho
       type: 'city',
     });
     const city = nearestPlace(coords, places);
-    const cityName = city ? placeName(city) : '';
-    if (!cityName) return [];
+    if (!city) return [];
+    const id = placeId(city);
+    if (!id) return [];
 
-    const target = normCity(cityName);
-    if (nearbyCache && nearbyCache.city === target) return nearbyCache.hotels;
+    if (nearbyCache && nearbyCache.placeId === id) return nearbyCache.hotels;
 
-    // 2) Hoteis do catalog naquela cidade.
+    // 2) Hoteis reais daquele place_id.
+    const found = await searchHotelsByPlaceId(id);
     const hotels: Hotel[] = [];
-    for (let page = 1; page <= MAX_PAGES && hotels.length < NEARBY_TARGET; page++) {
-      const items = await getCatalogPage(page);
-      if (items.length === 0) break; // fim do inventario
-
-      for (const item of items) {
-        const itemCity = item.address?.city;
-        if (!itemCity || normCity(itemCity) !== target) continue;
-        const hotel = toHotel(item); // null = sem foto/nome -> pula pro proximo
-        if (hotel) hotels.push(hotel);
-        if (hotels.length >= NEARBY_TARGET) break;
-      }
+    for (const item of found) {
+      const hotel = searchHotelToCard(item, coords); // null = sem foto/nome -> pula
+      if (hotel) hotels.push(hotel);
+      if (hotels.length >= NEARBY_TARGET) break;
     }
 
-    console.log(`[catalog] proximos em "${cityName}": ${hotels.length}`);
-    if (hotels.length > 0) nearbyCache = { city: target, hotels };
+    console.log(`[catalog] proximos em "${placeName(city)}" (place_id=${id}): ${hotels.length}`);
+    if (hotels.length > 0) nearbyCache = { placeId: id, hotels };
     return hotels;
   } catch (err) {
     console.warn('[catalog] getNearbyHotels failed:', err);

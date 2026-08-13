@@ -36,8 +36,9 @@ const NEARBY_RADIUS_KM = 100; // raio da busca de cidade (/places/search) a part
 
 // Modelo do card usado pelo TravelShop. score/scoreLabel/pricePerNight/distance
 // sao opcionais: os Recomendados (catalog) trazem so estrelas + reviews; os
-// Proximos (/api/hotels/search, vide hotelsSearch.ts) preenchem tudo (nota,
-// preco/noite e distancia).
+// Proximos (/api/hotels/search, vide hotelsSearch.ts) trazem tambem nota (score)
+// e distancia. scoreLabel/pricePerNight ficaram fora de proposito (label era
+// nossa; preco evita a questao de currency) mas seguem no tipo para o card.
 export type Hotel = {
   id: string;
   image: string;
@@ -256,31 +257,10 @@ function ratingToScore(rating: number | undefined): number | undefined {
   return Math.round(rating) / 10; // 78 -> 7.8
 }
 
-// Label do score, em pt (o card mostra ao lado da nota). Faixas alinhadas ao
-// padrao de agregadores de hotel.
-function scoreLabel(score: number | undefined): string | undefined {
-  if (score == null) return undefined;
-  if (score >= 9) return 'Excepcional';
-  if (score >= 8) return 'Maravilhoso';
-  if (score >= 7) return 'Muito bom';
-  if (score >= 6) return 'Bom';
-  return 'Agradável';
-}
-
-// Preco/noite ja formatado a partir da menor tarifa. USD -> "US$"; outras
-// moedas caem no codigo + espaco ("EUR 120"). Sem tarifa -> undefined (o card
-// simplesmente nao mostra o bloco de preco).
-function formatNightlyPrice(rate: SearchHotel['lowest_rate']): string | undefined {
-  const avg = rate?.price_per_night_avg;
-  if (avg == null || !Number.isFinite(avg)) return undefined;
-  const value = Math.round(avg);
-  const currency = rate?.price_currency ?? 'USD';
-  return currency === 'USD' ? `US$${value}` : `${currency} ${value}`;
-}
-
-// SearchHotel (resposta /api/hotels/search) -> card Hotel. Diferente do catalog,
-// aqui temos nota, preco e coordenadas, entao preenchemos o card completo
-// (estrelas + score + preco/noite + distancia). Sem foto/nome -> null (descarta).
+// SearchHotel (resposta /api/hotels/search) -> card Hotel. Preenchemos so o que
+// VEM da TripEdge (estrelas + nota + reviews) mais a distancia (calculada das
+// coordenadas). Sem scoreLabel (texto era nosso) e sem preco (evita a questao de
+// currency do usuario). Sem foto/nome -> null (descarta).
 function searchHotelToCard(h: SearchHotel, origin: LocationCoords): Hotel | null {
   const rawImage = h.images?.[0];
   const name = h.name?.trim();
@@ -290,8 +270,6 @@ function searchHotelToCard(h: SearchHotel, origin: LocationCoords): Hotel | null
     .map((s) => s?.trim())
     .filter(Boolean)
     .join(', ');
-
-  const score = ratingToScore(h.rating);
 
   // Distancia real device -> hotel (a resposta traz coordinates.{lat,long}).
   let distance: string | undefined;
@@ -308,9 +286,7 @@ function searchHotelToCard(h: SearchHotel, origin: LocationCoords): Hotel | null
     location,
     rating: starsToRating(h.stars),
     reviewCount: h.review_count ?? 0,
-    score,
-    scoreLabel: scoreLabel(score),
-    pricePerNight: formatNightlyPrice(h.lowest_rate),
+    score: ratingToScore(h.rating),
     distance,
   };
 }

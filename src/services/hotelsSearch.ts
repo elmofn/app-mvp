@@ -21,6 +21,13 @@ const HOTELS_SEARCH_BASE_URL = 'https://travelback-dev.tripedge.com';
 const CHECK_IN_OFFSET_DAYS = 30; // busca uma estadia ~1 mes a frente (so p/ ter tarifas)
 const STAY_NIGHTS = 7; // 7 noites, igual ao exemplo do /results
 
+// A busca e ASSINCRONA: o 1o POST pode voltar search_completed:false com results
+// vazio (a TripEdge ainda calcula qual place vizinho tem hoteis) + um session_id.
+// Refazemos a chamada reaproveitando o session_id ate completar (ou estourar o
+// teto). ~8 tentativas x 1.5s = ate ~12s, tempo de sobra p/ a secao popular sozinha.
+const POLL_MAX_ATTEMPTS = 8;
+const POLL_INTERVAL_MS = 1500;
+
 // Shape parcial confirmado com uma resposta real (results[].hotel). Tolerante
 // (.passthrough + optional) - so exigimos o minimo para montar o card.
 const RateSchema = z
@@ -74,13 +81,25 @@ function ymdInDays(days: number): string {
 const cache = new Map<string, SearchHotel[]>();
 const inflight = new Map<string, Promise<SearchHotel[]>>();
 
-async function fetchSearch(placeId: string): Promise<SearchHotel[]> {
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+type SearchEnvelope = {
+  completed: boolean; // search_completed
+  hotels: SearchHotel[]; // results ja parseados
+  sessionId: string | null; // p/ continuar a mesma busca no proximo poll
+};
+
+// Uma chamada ao endpoint. Passa o sessionId (quando ja temos) para a TripEdge
+// continuar a MESMA busca em vez de comecar outra do zero.
+async function postSearch(placeId: string, sessionId: string | null): Promise<SearchEnvelope> {
   const checkIn = ymdInDays(CHECK_IN_OFFSET_DAYS);
   const checkOut = ymdInDays(CHECK_IN_OFFSET_DAYS + STAY_NIGHTS);
 
   // Body espelha o que a /results envia (campos nulos inclusos para reduzir o
   // risco de 400 por payload incompleto).
-  const body = {
+  const body: Record<string, unknown> = {
     place_id: placeId,
     check_in: checkIn,
     check_out: checkOut,
@@ -95,6 +114,7 @@ async function fetchSearch(placeId: string): Promise<SearchHotel[]> {
     },
     nationality: null,
   };
+  if (sessionId) body.session_id = sessionId; // continua a busca em andamento
 
   const response = await fetch(`${HOTELS_SEARCH_BASE_URL}/api/hotels/search`, {
     method: 'POST',
@@ -117,17 +137,6 @@ async function fetchSearch(placeId: string): Promise<SearchHotel[]> {
 
   const raw = await response.json();
 
-  // Diagnostico temporario: entender por que results vem vazio no app (busca
-  // assincrona? sem sessao?). Remover depois de resolver.
-  console.log(
-    '[hotelsSearch] envelope:',
-    'completed=', raw?.search_completed,
-    '| total_hotels=', raw?.metadata?.total_hotels,
-    '| total_pages=', raw?.metadata?.total_pages,
-    '| results=', Array.isArray(raw?.results) ? raw.results.length : 'n/a',
-    '| session_id=', raw?.session_id ? 'sim' : 'nao',
-  );
-
   // Envelope { results: [{ hotel, rates }] }; cada item aninha o hotel em .hotel.
   const list: unknown[] = Array.isArray(raw?.results)
     ? raw.results
@@ -140,14 +149,44 @@ async function fetchSearch(placeId: string): Promise<SearchHotel[]> {
       ? (item as { hotel: unknown }).hotel
       : item;
 
-  const valid: SearchHotel[] = [];
+  const hotels: SearchHotel[] = [];
   for (const item of list) {
     const parsed = SearchHotelSchema.safeParse(unwrap(item));
-    if (parsed.success) valid.push(parsed.data);
+    if (parsed.success) hotels.push(parsed.data);
   }
 
-  console.log(`[hotelsSearch] place_id=${placeId} -> ${valid.length} hoteis`);
-  return valid;
+  return {
+    completed: raw?.search_completed === true,
+    hotels,
+    sessionId: (raw?.session_id as string | undefined) ?? sessionId,
+  };
+}
+
+// Polling: repete a chamada (reaproveitando o session_id) ate search_completed.
+// Retorna os hoteis assim que a busca completa; se estourar o teto ainda "em
+// andamento", devolve o que tiver (provavelmente vazio -> a secao some).
+async function fetchSearch(placeId: string): Promise<SearchHotel[]> {
+  let sessionId: string | null = null;
+  let last: SearchEnvelope | null = null;
+
+  for (let attempt = 1; attempt <= POLL_MAX_ATTEMPTS; attempt++) {
+    last = await postSearch(placeId, sessionId);
+    sessionId = last.sessionId;
+
+    console.log(
+      `[hotelsSearch] place_id=${placeId} attempt ${attempt}/${POLL_MAX_ATTEMPTS}:`,
+      `completed=${last.completed} results=${last.hotels.length}`,
+    );
+
+    // Completou (com hoteis, ou vazio de verdade p/ um place sem nada) -> pronto.
+    if (last.completed) return last.hotels;
+
+    // Ainda processando -> espera e tenta de novo (menos na ultima volta).
+    if (attempt < POLL_MAX_ATTEMPTS) await delay(POLL_INTERVAL_MS);
+  }
+
+  console.warn(`[hotelsSearch] place_id=${placeId}: nao completou em ${POLL_MAX_ATTEMPTS} tentativas`);
+  return last?.hotels ?? [];
 }
 
 // Busca hoteis por place_id, com cache + dedupe de requisicoes em voo.

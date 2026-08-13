@@ -117,6 +117,17 @@ async function fetchSearch(placeId: string): Promise<SearchHotel[]> {
 
   const raw = await response.json();
 
+  // Diagnostico temporario: entender por que results vem vazio no app (busca
+  // assincrona? sem sessao?). Remover depois de resolver.
+  console.log(
+    '[hotelsSearch] envelope:',
+    'completed=', raw?.search_completed,
+    '| total_hotels=', raw?.metadata?.total_hotels,
+    '| total_pages=', raw?.metadata?.total_pages,
+    '| results=', Array.isArray(raw?.results) ? raw.results.length : 'n/a',
+    '| session_id=', raw?.session_id ? 'sim' : 'nao',
+  );
+
   // Envelope { results: [{ hotel, rates }] }; cada item aninha o hotel em .hotel.
   const list: unknown[] = Array.isArray(raw?.results)
     ? raw.results

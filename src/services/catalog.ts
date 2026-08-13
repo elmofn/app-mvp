@@ -19,7 +19,8 @@ import { TRIPEDGE_PARTNER_KEY } from './places';
 
 const CATALOG_BASE_URL = 'https://prod-rv-search.tripedge.com';
 
-const TARGET_RECOMMENDED = 10; // quantos hoteis 5★ queremos no carrossel
+const TARGET_RECOMMENDED = 10; // quantos hoteis 5★ mostramos no carrossel
+const POOL_TARGET = 40; // pool maior de 5★ do qual sorteamos os TARGET a exibir
 const MAX_PAGES = 5; // teto de paginas para nao baixar o inventario inteiro
 
 // Modelo do card usado pelo TravelShop. score/scoreLabel/pricePerNight/distance
@@ -92,8 +93,17 @@ function toHotel(h: CatalogHotel): Hotel | null {
     location,
     rating: 5,
     reviewCount: h.review_count ?? 0,
-    description: h.description?.trim() || undefined,
   };
+}
+
+// Embaralha uma copia (Fisher-Yates) para sortear quais recomendados aparecem.
+function shuffle<T>(items: T[]): T[] {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
 async function fetchCatalogPage(page: number): Promise<CatalogHotel[]> {
@@ -156,33 +166,37 @@ async function fetchCatalogPage(page: number): Promise<CatalogHotel[]> {
   return valid;
 }
 
-let cache: Hotel[] | null = null;
+// Pool de 5★ (com foto) baixado do catalog. Cacheado em modulo para nao
+// re-baixar as paginas a cada visita; sorteamos os recomendados a partir dele.
+let pool: Hotel[] | null = null;
 
-// Hoteis 5★ para a secao "Recomendados". Baixa paginas do catalog ate juntar
-// TARGET_RECOMMENDED (ou acabar as paginas / bater MAX_PAGES). Resiliente:
-// qualquer erro -> retorna [] (a secao degrada e some). Cacheia em modulo.
+// Hoteis 5★ para a secao "Recomendados". Baixa paginas do catalog acumulando um
+// pool (POOL_TARGET) de hoteis 5★ COM FOTO — hoteis sem imagem sao descartados
+// por toHotel() e o loop simplesmente segue para o proximo item. Depois sorteia
+// TARGET_RECOMMENDED do pool, para o usuario nao ver sempre os mesmos hoteis.
+// Resiliente: qualquer erro -> retorna [] (a secao degrada e some).
 export async function getRecommendedHotels(): Promise<Hotel[]> {
-  if (cache) return cache;
+  if (pool) return shuffle(pool).slice(0, TARGET_RECOMMENDED);
 
   try {
     const hotels: Hotel[] = [];
-    for (let page = 1; page <= MAX_PAGES && hotels.length < TARGET_RECOMMENDED; page++) {
+    for (let page = 1; page <= MAX_PAGES && hotels.length < POOL_TARGET; page++) {
       const items = await fetchCatalogPage(page);
       if (items.length === 0) break; // fim do inventario
 
       for (const item of items) {
         if (Number(item.stars) !== 5) continue;
-        const hotel = toHotel(item);
+        const hotel = toHotel(item); // null = sem foto/nome -> pula pro proximo
         if (hotel) hotels.push(hotel);
-        if (hotels.length >= TARGET_RECOMMENDED) break;
+        if (hotels.length >= POOL_TARGET) break;
       }
     }
 
-    console.log(`[catalog] recomendados 5★: ${hotels.length}`);
-    // So cacheia resultado nao-vazio: se veio vazio (erro/formato), tenta de
-    // novo no proximo mount em vez de "grudar" a lista vazia na sessao.
-    if (hotels.length > 0) cache = hotels;
-    return hotels;
+    console.log(`[catalog] pool de recomendados 5★: ${hotels.length}`);
+    // So cacheia pool nao-vazio: se veio vazio (erro/formato), tenta de novo no
+    // proximo mount em vez de "grudar" a lista vazia na sessao.
+    if (hotels.length > 0) pool = hotels;
+    return shuffle(hotels).slice(0, TARGET_RECOMMENDED);
   } catch (err) {
     console.warn('[catalog] getRecommendedHotels failed:', err);
     return [];

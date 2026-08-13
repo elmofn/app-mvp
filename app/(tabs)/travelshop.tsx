@@ -123,12 +123,6 @@ function HotelCard({ hotel, onPress }: { hotel: Hotel; onPress: () => void }) {
           {hotel.name}
         </Text>
 
-        {hotel.description ? (
-          <Text style={styles.cardDescription} numberOfLines={2}>
-            {hotel.description}
-          </Text>
-        ) : null}
-
         <View style={styles.locationRow}>
           <MapPinIcon size={12} color={colors.text.muted} weight="regular" />
           <Text style={styles.locationText} numberOfLines={1}>
@@ -508,13 +502,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     marginTop: 6,
     textTransform: 'uppercase',
-  },
-  cardDescription: {
-    fontSize: 12,
-    fontFamily: fonts.regular,
-    color: colors.text.muted,
-    lineHeight: 17,
-    marginTop: 8,
   },
   cardDivider: {
     height: 1,

@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
-import { TRIPEDGE_PARTNER_KEY } from './places';
+import type { LocationCoords } from './location';
+import {
+  nearestPlace,
+  placeName,
+  searchPlacesByCoordinate,
+  TRIPEDGE_PARTNER_KEY,
+} from './places';
 
 // ----------------------------------------------------------------------------
 // Catalog da TripEdge: inventario completo de hoteis, paginado.
@@ -22,6 +28,8 @@ const CATALOG_BASE_URL = 'https://prod-rv-search.tripedge.com';
 const TARGET_RECOMMENDED = 10; // quantos hoteis 5★ mostramos no carrossel
 const POOL_TARGET = 40; // pool maior de 5★ do qual sorteamos os TARGET a exibir
 const MAX_PAGES = 5; // teto de paginas para nao baixar o inventario inteiro
+const NEARBY_TARGET = 12; // quantos hoteis da cidade do device mostramos
+const NEARBY_RADIUS_KM = 100; // raio da busca de cidade (/places/search) a partir do device
 
 // Modelo do card usado pelo TravelShop. score/scoreLabel/pricePerNight/distance
 // sao opcionais: o catalog nao os fornece (recomendados mostram so estrelas +
@@ -74,6 +82,13 @@ function resolveImage(url: string): string {
   return url.replace('{size}', IMAGE_SIZE);
 }
 
+// stars (1..5) -> numero de estrelas do card. Arredonda/clampa; sem valor
+// valido cai em 5 (os Recomendados sao filtrados a 5★ mesmo).
+function starsToRating(stars: number | undefined): number {
+  const n = Math.round(Number(stars));
+  return n >= 1 && n <= 5 ? n : 5;
+}
+
 function toHotel(h: CatalogHotel): Hotel | null {
   const rawImage = h.images?.[0];
   const name = h.name?.trim();
@@ -91,7 +106,7 @@ function toHotel(h: CatalogHotel): Hotel | null {
     image: resolveImage(rawImage),
     name,
     location,
-    rating: 5,
+    rating: starsToRating(h.stars),
     reviewCount: h.review_count ?? 0,
   };
 }
@@ -166,6 +181,34 @@ async function fetchCatalogPage(page: number): Promise<CatalogHotel[]> {
   return valid;
 }
 
+// Cache de pagina cru (CatalogHotel[]) + dedupe de requisicoes em voo. Os dois
+// consumidores (Recomendados e Proximos) baixam as mesmas paginas; o wrapper
+// garante que cada pagina va na rede uma unica vez por sessao.
+const rawPageCache = new Map<number, CatalogHotel[]>();
+const rawPageInflight = new Map<number, Promise<CatalogHotel[]>>();
+
+function getCatalogPage(page: number): Promise<CatalogHotel[]> {
+  const cached = rawPageCache.get(page);
+  if (cached) return Promise.resolve(cached);
+
+  const inflight = rawPageInflight.get(page);
+  if (inflight) return inflight;
+
+  const promise = fetchCatalogPage(page)
+    .then((items) => {
+      rawPageCache.set(page, items);
+      rawPageInflight.delete(page);
+      return items;
+    })
+    .catch((err) => {
+      rawPageInflight.delete(page);
+      throw err;
+    });
+
+  rawPageInflight.set(page, promise);
+  return promise;
+}
+
 // Pool de 5★ (com foto) baixado do catalog. Cacheado em modulo para nao
 // re-baixar as paginas a cada visita; sorteamos os recomendados a partir dele.
 let pool: Hotel[] | null = null;
@@ -181,7 +224,7 @@ export async function getRecommendedHotels(): Promise<Hotel[]> {
   try {
     const hotels: Hotel[] = [];
     for (let page = 1; page <= MAX_PAGES && hotels.length < POOL_TARGET; page++) {
-      const items = await fetchCatalogPage(page);
+      const items = await getCatalogPage(page);
       if (items.length === 0) break; // fim do inventario
 
       for (const item of items) {
@@ -199,6 +242,67 @@ export async function getRecommendedHotels(): Promise<Hotel[]> {
     return shuffle(hotels).slice(0, TARGET_RECOMMENDED);
   } catch (err) {
     console.warn('[catalog] getRecommendedHotels failed:', err);
+    return [];
+  }
+}
+
+// Normaliza nome de cidade para casar entre o /places/search e o catalog:
+// minusculo, sem espacos nas pontas e sem acentos ("São Paulo" == "Sao Paulo").
+function normCity(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+// Cache dos "Proximos" por cidade: device parado nao re-busca. Se a cidade muda
+// (ex.: usuario viajou), a chave muda e refazemos a query.
+let nearbyCache: { city: string; hotels: Hotel[] } | null = null;
+
+// Hoteis "Proximos": aproximacao por CIDADE (a TripEdge nao tem endpoint de
+// hoteis por lat/lng, e o catalog nao traz coordenadas). Acha a cidade do device
+// via /places/search (nearestPlace) e filtra o catalog por address.city. Sem
+// coords / sem cidade / erro -> [] (a secao some). Reaproveita as paginas ja
+// baixadas pelos Recomendados (getCatalogPage).
+export async function getNearbyHotels(coords: LocationCoords | null): Promise<Hotel[]> {
+  if (!coords) return [];
+
+  try {
+    // 1) Cidade do device (a cidade mais proxima das coordenadas).
+    const places = await searchPlacesByCoordinate({
+      lat: coords.lat,
+      lng: coords.lng,
+      radiusKm: NEARBY_RADIUS_KM,
+      type: 'city',
+    });
+    const city = nearestPlace(coords, places);
+    const cityName = city ? placeName(city) : '';
+    if (!cityName) return [];
+
+    const target = normCity(cityName);
+    if (nearbyCache && nearbyCache.city === target) return nearbyCache.hotels;
+
+    // 2) Hoteis do catalog naquela cidade.
+    const hotels: Hotel[] = [];
+    for (let page = 1; page <= MAX_PAGES && hotels.length < NEARBY_TARGET; page++) {
+      const items = await getCatalogPage(page);
+      if (items.length === 0) break; // fim do inventario
+
+      for (const item of items) {
+        const itemCity = item.address?.city;
+        if (!itemCity || normCity(itemCity) !== target) continue;
+        const hotel = toHotel(item); // null = sem foto/nome -> pula pro proximo
+        if (hotel) hotels.push(hotel);
+        if (hotels.length >= NEARBY_TARGET) break;
+      }
+    }
+
+    console.log(`[catalog] proximos em "${cityName}": ${hotels.length}`);
+    if (hotels.length > 0) nearbyCache = { city: target, hotels };
+    return hotels;
+  } catch (err) {
+    console.warn('[catalog] getNearbyHotels failed:', err);
     return [];
   }
 }

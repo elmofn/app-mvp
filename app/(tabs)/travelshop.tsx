@@ -24,87 +24,13 @@ import { BannersCarousel } from '@/src/components/BannersCarousel';
 import { PhoneVerifyModal } from '@/src/components/PhoneVerifyModal';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useT } from '@/src/i18n';
-import { getRecommendedHotels, type Hotel } from '@/src/services/catalog';
+import { getNearbyHotels, getRecommendedHotels, type Hotel } from '@/src/services/catalog';
+import { getCurrentLocation } from '@/src/services/location';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
-// Hoteis "Recomendados" agora vem do catalog da TripEdge (5★) - vide
-// src/services/catalog.ts. Os "Proximos" (NEARBY) seguem hardcoded por ora.
-
-const NEARBY: Hotel[] = [
-  {
-    id: 'near-1',
-    image: 'https://nuitee-hotels.b-cdn.net/hotels/212136997.jpg?height=480&quality=80&sharpen=true',
-    name: 'Novotel Porto Alegre Tres Figueiras',
-    location: 'Porto Alegre, Avenida Soledade, 575',
-    rating: 4,
-    score: 8.0,
-    scoreLabel: 'Muito bom',
-    reviewCount: 1405,
-    pricePerNight: 'US$45',
-    distance: '10 km de center',
-  },
-  {
-    id: 'near-2',
-    image: 'https://nuitee-hotels.b-cdn.net/hotels/73456519.jpg?height=480&quality=80&sharpen=true',
-    name: 'Slaviero Hotel Porto Alegre Moinhos',
-    location: 'Porto Alegre, Rua Comendador Caminha, 42',
-    rating: 4,
-    score: 7.8,
-    scoreLabel: 'Bom',
-    reviewCount: 1719,
-    pricePerNight: 'US$95',
-    distance: '11 km de center',
-  },
-  {
-    id: 'near-3',
-    image: 'https://nuitee-hotels.b-cdn.net/hotels/552426673.jpg?height=480&quality=80&sharpen=true',
-    name: 'Manhattan Porto Alegre by Mercure - 5 minutos do Hospital Moinhos de Vento',
-    location: 'Porto Alegre, Rua Miguel Tostes, 30',
-    rating: 4,
-    score: 7.7,
-    scoreLabel: 'Bom',
-    reviewCount: 1794,
-    pricePerNight: 'US$118',
-    distance: '11 km de center',
-  },
-  {
-    id: 'near-4',
-    image: 'https://nuitee-hotels.b-cdn.net/hotels/346465046.jpg?height=480&quality=80&sharpen=true',
-    name: 'ibis Styles Porto Alegre Moinhos de Vento',
-    location: 'Porto Alegre, Rua 24 de Outubro 1513 Auxiliadora',
-    rating: 4,
-    score: 8.4,
-    scoreLabel: 'Muito bom',
-    reviewCount: 2643,
-    pricePerNight: 'US$85',
-    distance: '11 km de center',
-  },
-  {
-    id: 'near-5',
-    image: 'https://nuitee-hotels.b-cdn.net/hotels/548461866.jpg?height=480&quality=80&sharpen=true',
-    name: 'ibis Porto Alegre Moinhos de Vento',
-    location: 'Porto Alegre, Rua Marquês do Herval 540',
-    rating: 4,
-    score: 8.4,
-    scoreLabel: 'Muito bom',
-    reviewCount: 2440,
-    pricePerNight: 'US$70',
-    distance: '11 km de center',
-  },
-  {
-    id: 'near-6',
-    image: 'https://nuitee-hotels.b-cdn.net/hotels/49231839.jpg?height=480&quality=80&sharpen=true',
-    name: 'Ibis Styles Porto Alegre Centro - proximo rodoviaria, Araujo Vianna e hospitais',
-    location: 'Porto Alegre, Rua Garibaldi, 633',
-    rating: 4,
-    score: 8.2,
-    scoreLabel: 'Muito bom',
-    reviewCount: 2537,
-    pricePerNight: 'US$80',
-    distance: '12 km de center',
-  },
-];
+// Hoteis "Recomendados" (5★) e "Proximos" (por cidade do device) agora vem do
+// catalog da TripEdge - vide src/services/catalog.ts.
 
 function HotelCard({ hotel, onPress }: { hotel: Hotel; onPress: () => void }) {
   const { t } = useT();
@@ -189,6 +115,17 @@ export default function TravelShopScreen() {
     getRecommendedHotels()
       .then(setRecommended)
       .catch(() => setRecommended([]));
+  }, []);
+
+  // Hoteis "Proximos": pega a geolocation do device e busca hoteis do catalog na
+  // cidade correspondente. null = carregando; [] = sem permissao/sem match/erro
+  // (a secao some). getCurrentLocation ja cacheia as coords (pega no login).
+  const [nearby, setNearby] = useState<Hotel[] | null>(null);
+  useEffect(() => {
+    getCurrentLocation()
+      .then((coords) => getNearbyHotels(coords))
+      .then(setNearby)
+      .catch(() => setNearby([]));
   }, []);
 
   const requirePhoneVerified = (action: () => void) => {
@@ -288,20 +225,40 @@ export default function TravelShopScreen() {
           </>
         ) : null}
 
-        <View style={[styles.section, { marginTop: 24 }]}>
-          <Text style={styles.sectionTitle}>
-            Hotéis <Text style={styles.sectionTitleAccent}>Próximos</Text>
-          </Text>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.carousel}
-        >
-          {NEARBY.map((hotel) => (
-            <HotelCard key={hotel.id} hotel={hotel} onPress={() => requirePhoneVerified(() => {})} />
-          ))}
-        </ScrollView>
+        {/* Proximos (catalog, cidade do device): carregando -> spinner;
+            sem match/permissao/erro -> some. */}
+        {nearby === null || nearby.length > 0 ? (
+          <>
+            <View style={[styles.section, { marginTop: 24 }]}>
+              <Text style={styles.sectionTitle}>
+                Hotéis <Text style={styles.sectionTitleAccent}>Próximos</Text>
+              </Text>
+            </View>
+            {nearby === null ? (
+              <View style={styles.carouselLoading}>
+                <ActivityIndicator color={colors.brand.primary} />
+              </View>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.carousel}
+              >
+                {nearby.map((hotel) => (
+                  <HotelCard
+                    key={hotel.id}
+                    hotel={hotel}
+                    onPress={() =>
+                      requirePhoneVerified(() =>
+                        router.push(`/marketplace?hotelId=${encodeURIComponent(hotel.id)}`),
+                      )
+                    }
+                  />
+                ))}
+              </ScrollView>
+            )}
+          </>
+        ) : null}
 
         {/* --- SHOP BANNERS: via payload do SignIn (category=Shop) --- */}
         <View style={{ marginTop: 24 }}>

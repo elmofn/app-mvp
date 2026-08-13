@@ -24,8 +24,9 @@ const STAY_NIGHTS = 7; // 7 noites, igual ao exemplo do /results
 // A busca e ASSINCRONA: o 1o POST pode voltar search_completed:false com results
 // vazio (a TripEdge ainda calcula qual place vizinho tem hoteis) + um session_id.
 // Refazemos a chamada reaproveitando o session_id ate completar (ou estourar o
-// teto). ~8 tentativas x 1.5s = ate ~12s, tempo de sobra p/ a secao popular sozinha.
-const POLL_MAX_ATTEMPTS = 8;
+// teto). Na pratica costuma completar ja na 1a tentativa; 3 x 1.5s = ate ~4.5s
+// cobre a folga sem segurar a secao demais.
+const POLL_MAX_ATTEMPTS = 3;
 const POLL_INTERVAL_MS = 1500;
 
 // Shape parcial confirmado com uma resposta real (results[].hotel). Tolerante

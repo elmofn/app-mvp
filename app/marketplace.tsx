@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ArrowLeftIcon } from 'phosphor-react-native';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -56,10 +56,6 @@ export default function MarketplaceScreen() {
   // return_to da vertical.
   const returnTo = hotelId ? `/hotel/${hotelId}` : entry.returnTo;
 
-  // Monta a URL SSO uma unica vez no mount (ts fresco). null => sem segredo
-  // configurado ou sem accountId; cai no estado de erro abaixo.
-  const [uri] = useState(() => buildPartnerSsoUrl(accountId, returnTo));
-
   // Gate de acesso ao marketplace: exige telefone E email verificados (mesma
   // logica do gate de telefone da aba TravelShop, agora tambem no destino para
   // cobrir todas as entradas — botoes, cards e deep-links app://hotels|flights
@@ -68,6 +64,20 @@ export default function MarketplaceScreen() {
   const phoneOk = !!account?.accountDetails.validPhoneNumber;
   const emailOk = !!account?.accountDetails.validEmail;
   const gated = !phoneOk || !emailOk;
+
+  // URL SSO: montada SO quando o gate libera (nao no mount). A assinatura do
+  // Partner SSO inclui um timestamp com janela curta de validade; se montassemos
+  // no mount, a espera da verificacao (SMS/email) poderia deixar o ts vencido
+  // antes da WebView carregar. Montamos uma unica vez, quando os dois contatos
+  // ja estao verificados, para o ts estar fresco no momento do load.
+  // ssoTried distingue "ainda nao montou" (gated) de "montou e deu null" (erro).
+  const [uri, setUri] = useState<string | null>(null);
+  const [ssoTried, setSsoTried] = useState(false);
+  useEffect(() => {
+    if (gated || ssoTried) return;
+    setUri(buildPartnerSsoUrl(accountId, returnTo));
+    setSsoTried(true);
+  }, [gated, ssoTried, accountId, returnTo]);
 
   // Dispensar um modal de verificacao (X) => sai do marketplace (nao pode usar).
   // Como o proprio modal chama onClose TAMBEM no sucesso (antes do onVerified),
@@ -101,8 +111,9 @@ export default function MarketplaceScreen() {
         </Text>
       </View>
 
-      {gated ? (
-        // Corpo vazio atras dos modais de verificacao (nao carrega o SSO ainda).
+      {gated || !ssoTried ? (
+        // Corpo vazio: atras dos modais de verificacao (gated) ou no frame em
+        // que a URL SSO ainda esta sendo montada (logo apos liberar o gate).
         <View style={styles.webviewWrapper} />
       ) : uri ? (
         <View style={styles.webviewWrapper}>

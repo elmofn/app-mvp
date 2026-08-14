@@ -1,3 +1,4 @@
+import { useRouter, type Href } from 'expo-router';
 import React from 'react';
 import { Linking, Modal, Platform, StyleSheet, View } from 'react-native';
 import { WebView, type WebViewNavigation } from 'react-native-webview';
@@ -7,6 +8,24 @@ type Props = {
   title: string; // mantido por compat com o caller; o HTML traz o proprio titulo
   html: string;
   onClose: () => void;
+};
+
+// Links internos do CTA: href="app://<apelido>" navega DENTRO do app (rota do
+// expo-router) em vez de abrir o navegador. Mapa fixo (apelido -> rota) para o
+// marketing usar nomes amigaveis e nao expor rotas arbitrarias ao HTML remoto.
+// ⚠️ hotels/flights vao direto ao marketplace e NAO passam pelo gate de telefone
+// verificado (que existe na aba TravelShop). Se precisar gatear, avisar.
+const INTERNAL_ROUTES: Record<string, Href> = {
+  shop: '/travelshop',
+  hotels: '/marketplace?vertical=hotels',
+  flights: '/marketplace?vertical=flights',
+  statement: '/statement',
+  assistant: '/assistant',
+  settings: '/settings',
+  alerts: '/notifications', // a tela de "alertas" e a de notifications
+  promotional1: '/promotional/1',
+  promotional2: '/promotional/2',
+  promotional3: '/promotional/3',
 };
 
 // Injeta um "X" de fechar NO CANTO do card (o app nao sabe onde o card esta -
@@ -55,11 +74,25 @@ true;
 // so para injetar o botao de fechar (CLOSE_BUTTON_JS); nao executamos JS remoto
 // arbitrario alem do que o HTML do proprio backend traz.
 export function BannerRichTextModal({ visible, html, onClose }: Props) {
-  // Deixa o conteudo do proprio HTML carregar (about:blank / data:), mas
-  // intercepta qualquer navegacao http(s) — o CTA — abrindo no navegador do
-  // sistema em vez de dentro do WebView.
+  const router = useRouter();
+
+  // Intercepta o toque no CTA:
+  //  - app://<apelido>  -> fecha o modal e navega DENTRO do app (rota mapeada).
+  //  - http(s)://...    -> abre no navegador do sistema.
+  //  - resto (about:blank / data:) -> deixa o proprio HTML carregar.
   const onNavRequest = (req: WebViewNavigation): boolean => {
     const url = req.url ?? '';
+
+    const internal = url.match(/^app:\/\/([a-z0-9_]+)/i);
+    if (internal) {
+      const route = INTERNAL_ROUTES[internal[1].toLowerCase()];
+      if (route) {
+        onClose();
+        router.push(route);
+      }
+      return false; // apelido desconhecido tambem nao navega no WebView
+    }
+
     if (/^https?:\/\//i.test(url)) {
       Linking.openURL(url).catch(() => {});
       return false;

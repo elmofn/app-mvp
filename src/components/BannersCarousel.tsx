@@ -7,8 +7,6 @@ import type { BannerCategory, SignInBanner } from '@/src/services/auth';
 import { fonts } from '@/src/theme/typography';
 
 import { BannerRichTextModal } from './BannerRichTextModal';
-// ⚠️ TESTE TEMPORÁRIO — remover junto com testBannerHtml.ts
-import { TEST_BANNER_HTML } from './testBannerHtml';
 
 type Props = {
   banners: SignInBanner[] | undefined;
@@ -41,8 +39,7 @@ export function BannersCarousel({ banners, category }: Props) {
             key={banner.id}
             style={styles.bannerCard}
             activeOpacity={0.85}
-            // ⚠️ TESTE TEMPORÁRIO: todos os banners tocáveis (era !bannerHtml(banner))
-            disabled={false}
+            disabled={!bannerHtml(banner)}
             onPress={() => setSelected(banner)}
           >
             <Image source={{ uri: banner.imageUrl }} style={styles.bannerImg} resizeMode="cover" />
@@ -65,7 +62,7 @@ export function BannersCarousel({ banners, category }: Props) {
       <BannerRichTextModal
         visible={!!selected}
         title={selected?.title ?? ''}
-        html={TEST_BANNER_HTML /* ⚠️ TESTE TEMPORÁRIO — era: selected ? bannerHtml(selected) : '' */}
+        html={selected ? bannerHtml(selected) : ''}
         onClose={() => setSelected(null)}
       />
     </Animated.View>

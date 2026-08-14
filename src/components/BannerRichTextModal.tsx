@@ -1,51 +1,44 @@
 import { XIcon } from 'phosphor-react-native';
 import React from 'react';
-import {
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-} from 'react-native';
-import RenderHTML, { MixedStyleDeclaration } from 'react-native-render-html';
-
-import { colors } from '@/src/theme/colors';
-import { fonts } from '@/src/theme/typography';
-
-// Estilos do HTML iguais aos do FAQSection, para o richtext dos banners ter o
-// mesmo vocabulario visual dos outros conteudos (policies/FAQ).
-const HTML_BASE_STYLE: MixedStyleDeclaration = {
-  color: colors.text.dark,
-  fontFamily: fonts.regular,
-  fontSize: 14,
-  lineHeight: 22,
-};
-
-const HTML_TAG_STYLES: Record<string, MixedStyleDeclaration> = {
-  p: { fontSize: 14, lineHeight: 22, marginBottom: 8 },
-  strong: { fontFamily: fonts.bold },
-  em: { fontFamily: fonts.italic },
-  a: { color: '#0F022D', textDecorationLine: 'underline' },
-  ul: { marginBottom: 8, paddingLeft: 18 },
-  ol: { marginBottom: 8, paddingLeft: 18 },
-  li: { marginBottom: 2 },
-  span: { fontSize: 14, lineHeight: 22 },
-};
+import { Linking, Modal, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { WebView, type WebViewNavigation } from 'react-native-webview';
 
 type Props = {
   visible: boolean;
-  title: string;
+  title: string; // mantido por compat com o caller; o HTML traz o proprio titulo
   html: string;
   onClose: () => void;
 };
 
-// Modal aberto ao tocar num banner: renderiza o richtext (HTML) do banner.
-// Mesmo vocabulario visual do CustomAlert (overlay + card centralizado), mas o
-// corpo usa RenderHTML dentro de um ScrollView (o conteudo pode ser longo).
-export function BannerRichTextModal({ visible, title, html, onClose }: Props) {
-  const { width } = useWindowDimensions();
+// Modal aberto ao tocar num banner: renderiza o richtext do banner num WebView
+// em TELA CHEIA com fundo TRANSPARENTE. O HTML do backend desenha TODA a UI
+// (overlay + card + botoes + animacao), entao o app so prove: o container
+// transparente, um botao de fechar flutuante e a interceptacao de links (o CTA
+// abre no navegador do sistema em vez de navegar dentro do WebView).
+//
+// ⚠️ CONTRATO DE CONTEUDO: o backend precisa mandar um HTML COMPLETO e estilizado
+// (como o mock do card promocional, com seu proprio overlay/card/CSS) — NAO um
+// trecho solto de <p>. Num trecho sem CSS o texto apareceria pequeno e sem estilo
+// sobre o fundo transparente (a tela de tras apareceria atras).
+//
+// Seguranca: o conteudo vem do NOSSO backend (confiavel). javaScript fica
+// DESLIGADO — a animacao do card e CSS puro e nao precisamos de JS injetado — como
+// defesa extra ao renderizar HTML remoto.
+export function BannerRichTextModal({ visible, html, onClose }: Props) {
+  const insets = useSafeAreaInsets();
+
+  // Deixa o conteudo do proprio HTML carregar (about:blank / data:), mas
+  // intercepta qualquer navegacao http(s) — o CTA "Contratar" — abrindo no
+  // navegador do sistema em vez de dentro do WebView.
+  const onNavRequest = (req: WebViewNavigation): boolean => {
+    const url = req.url ?? '';
+    if (/^https?:\/\//i.test(url)) {
+      Linking.openURL(url).catch(() => {});
+      return false;
+    }
+    return true;
+  };
 
   return (
     <Modal
@@ -55,88 +48,54 @@ export function BannerRichTextModal({ visible, title, html, onClose }: Props) {
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.card}>
-          {/* Cabecalho so com o "X": fechar o modal fica so aqui, liberando o
-              richtext para ocupar todo o corpo (inclusive com botoes de acao
-              proprios, links pra fora do app, etc.). */}
-          <View style={styles.header}>
-            {title ? (
-              <Text style={styles.title} numberOfLines={2}>
-                {title}
-              </Text>
-            ) : (
-              <View style={styles.titleSpacer} />
-            )}
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={onClose}
-              activeOpacity={0.7}
-              hitSlop={12}
-              accessibilityRole="button"
-              accessibilityLabel="Fechar"
-            >
-              <XIcon size={22} color={colors.text.dark} weight="bold" />
-            </TouchableOpacity>
-          </View>
+      <View style={styles.root}>
+        <WebView
+          originWhitelist={['*']}
+          source={{ html: html || '<p></p>' }}
+          style={styles.webview}
+          // Fundo transparente para manter a cara de "dentro do app". iOS usa
+          // opaque={false}; no Android a transparencia vem do style. ⚠️ CONFERIR
+          // nas duas plataformas: se aparecer fundo preto/branco atras do card,
+          // ajustar aqui (ex.: androidLayerType="software").
+          opaque={false}
+          androidLayerType={Platform.OS === 'android' ? 'hardware' : undefined}
+          javaScriptEnabled={false}
+          onShouldStartLoadWithRequest={onNavRequest}
+        />
 
-          <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
-            <RenderHTML
-              contentWidth={width - 96}
-              source={{ html: html || '<p></p>' }}
-              baseStyle={HTML_BASE_STYLE}
-              tagsStyles={HTML_TAG_STYLES}
-              enableExperimentalMarginCollapsing
-            />
-          </ScrollView>
-        </View>
+        {/* Botao de fechar flutuante: o mock nao traz um X, entao garantimos a
+            saida sempre (alem do back do Android via onRequestClose). */}
+        <TouchableOpacity
+          style={[styles.closeButton, { top: insets.top + 12 }]}
+          onPress={onClose}
+          activeOpacity={0.7}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Fechar"
+        >
+          <XIcon size={22} color="#FFFFFF" weight="bold" />
+        </TouchableOpacity>
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  root: {
     flex: 1,
-    backgroundColor: 'rgba(15,2,45,0.55)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 28,
   },
-  card: {
-    width: '100%',
-    maxWidth: 340,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 24,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    marginBottom: 12,
-  },
-  title: {
+  webview: {
     flex: 1,
-    fontSize: 20,
-    fontFamily: fonts.bold,
-    color: colors.text.dark,
-    letterSpacing: -0.4,
-  },
-  // Sem titulo, empurra o "X" para a direita mantendo o cabecalho.
-  titleSpacer: {
-    flex: 1,
+    backgroundColor: 'transparent',
   },
   closeButton: {
-    padding: 2,
-    marginTop: -2,
-    marginRight: -2,
-  },
-  body: {
-    // Teto para nao estourar a tela em richtext longo; o ScrollView cuida do resto.
-    maxHeight: 420,
-  },
-  bodyContent: {
-    paddingBottom: 4,
+    position: 'absolute',
+    right: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

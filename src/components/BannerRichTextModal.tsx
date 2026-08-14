@@ -13,8 +13,9 @@ type Props = {
 // Links internos do CTA: href="app://<apelido>" navega DENTRO do app (rota do
 // expo-router) em vez de abrir o navegador. Mapa fixo (apelido -> rota) para o
 // marketing usar nomes amigaveis e nao expor rotas arbitrarias ao HTML remoto.
-// ⚠️ hotels/flights vao direto ao marketplace e NAO passam pelo gate de telefone
-// verificado (que existe na aba TravelShop). Se precisar gatear, avisar.
+// hotels/flights caem no marketplace, que agora exige telefone E email
+// verificados no proprio destino (app/marketplace.tsx) - o gate cobre este
+// deep-link automaticamente.
 const INTERNAL_ROUTES: Record<string, Href> = {
   shop: '/travelshop',
   hotels: '/marketplace?vertical=hotels',

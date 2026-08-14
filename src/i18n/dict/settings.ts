@@ -74,6 +74,14 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     verifyPhoneDescription: 'We sent a code via SMS to {phone}. Enter it below to continue.',
     phoneVerifiedTitle: 'Phone verified',
     phoneVerifiedMessage: 'Your phone number has been verified.',
+    eyebrowVerifyEmail: 'VERIFY YOUR EMAIL',
+    verifyEmailTitleBase: 'Verify',
+    verifyEmailTitleAccent: 'email',
+    verifyEmailConfirmMessage: "We'll send a verification code to {email}.",
+    verifyEmailConfirmCta: 'Send code',
+    verifyEmailDescription: 'We sent a code to {email}. Enter it below to continue.',
+    emailVerifiedTitle: 'Email verified',
+    emailVerifiedMessage: 'Your email has been verified.',
 
     // Resend
     resendSending: 'Sending code…',
@@ -197,6 +205,14 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     verifyPhoneDescription: 'Enviamos um código por SMS para {phone}. Digite-o abaixo para continuar.',
     phoneVerifiedTitle: 'Telefone verificado',
     phoneVerifiedMessage: 'Seu número de telefone foi verificado.',
+    eyebrowVerifyEmail: 'VERIFIQUE SEU E-MAIL',
+    verifyEmailTitleBase: 'Verificar',
+    verifyEmailTitleAccent: 'e-mail',
+    verifyEmailConfirmMessage: 'Vamos enviar um código de verificação para {email}.',
+    verifyEmailConfirmCta: 'Enviar código',
+    verifyEmailDescription: 'Enviamos um código para {email}. Digite-o abaixo para continuar.',
+    emailVerifiedTitle: 'E-mail verificado',
+    emailVerifiedMessage: 'Seu e-mail foi verificado.',
 
     // Resend
     resendSending: 'Enviando código…',
@@ -320,6 +336,14 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     verifyPhoneDescription: 'Enviamos un código por SMS a {phone}. Ingrésalo abajo para continuar.',
     phoneVerifiedTitle: 'Teléfono verificado',
     phoneVerifiedMessage: 'Tu número de teléfono ha sido verificado.',
+    eyebrowVerifyEmail: 'VERIFICA TU CORREO',
+    verifyEmailTitleBase: 'Verificar',
+    verifyEmailTitleAccent: 'correo',
+    verifyEmailConfirmMessage: 'Enviaremos un código de verificación a {email}.',
+    verifyEmailConfirmCta: 'Enviar código',
+    verifyEmailDescription: 'Enviamos un código a {email}. Ingrésalo abajo para continuar.',
+    emailVerifiedTitle: 'Correo verificado',
+    emailVerifiedMessage: 'Tu correo ha sido verificado.',
 
     // Resend
     resendSending: 'Enviando código…',

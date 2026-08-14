@@ -1,11 +1,13 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ArrowLeftIcon } from 'phosphor-react-native';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
+import { EmailVerifyModal } from '@/src/components/EmailVerifyModal';
+import { PhoneVerifyModal } from '@/src/components/PhoneVerifyModal';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useT } from '@/src/i18n';
 import { buildPartnerSsoUrl } from '@/src/services/partnerSso';
@@ -58,6 +60,29 @@ export default function MarketplaceScreen() {
   // configurado ou sem accountId; cai no estado de erro abaixo.
   const [uri] = useState(() => buildPartnerSsoUrl(accountId, returnTo));
 
+  // Gate de acesso ao marketplace: exige telefone E email verificados (mesma
+  // logica do gate de telefone da aba TravelShop, agora tambem no destino para
+  // cobrir todas as entradas — botoes, cards e deep-links app://hotels|flights
+  // dos banners). Mostra o modal de telefone e, depois, o de email; so libera a
+  // WebView quando os dois estiverem verificados.
+  const phoneOk = !!account?.accountDetails.validPhoneNumber;
+  const emailOk = !!account?.accountDetails.validEmail;
+  const gated = !phoneOk || !emailOk;
+
+  // Dispensar um modal de verificacao (X) => sai do marketplace (nao pode usar).
+  // Como o proprio modal chama onClose TAMBEM no sucesso (antes do onVerified),
+  // agendamos o "voltar" e o cancelamos no onVerified.
+  const backTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleBack = () => {
+    backTimer.current = setTimeout(() => router.back(), 0);
+  };
+  const cancelBack = () => {
+    if (backTimer.current) {
+      clearTimeout(backTimer.current);
+      backTimer.current = null;
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <StatusBar style="dark" />
@@ -76,7 +101,10 @@ export default function MarketplaceScreen() {
         </Text>
       </View>
 
-      {uri ? (
+      {gated ? (
+        // Corpo vazio atras dos modais de verificacao (nao carrega o SSO ainda).
+        <View style={styles.webviewWrapper} />
+      ) : uri ? (
         <View style={styles.webviewWrapper}>
           <WebView
             source={{ uri }}
@@ -101,6 +129,14 @@ export default function MarketplaceScreen() {
           <Text style={styles.errorText}>{t('travelshop.marketplaceUnavailable')}</Text>
         </View>
       )}
+
+      {/* Gate: telefone primeiro; depois email. Dispensar (X) volta a tela anterior. */}
+      <PhoneVerifyModal visible={!phoneOk} onClose={scheduleBack} onVerified={cancelBack} />
+      <EmailVerifyModal
+        visible={phoneOk && !emailOk}
+        onClose={scheduleBack}
+        onVerified={cancelBack}
+      />
     </SafeAreaView>
   );
 }

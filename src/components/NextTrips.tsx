@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { MapPinIcon } from 'phosphor-react-native';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -44,8 +45,17 @@ function TripImage({ trip }: { trip: SignInNextTrip }) {
 // nao renderiza nada, mesmo padrao do ActivityHighlights.
 export function NextTrips({ trips }: Props) {
   const { t } = useT();
+  const router = useRouter();
 
   if (!trips || trips.length === 0) return null;
+
+  // Trips gerados por geolocalizacao carregam o place_id da TripEdge: o card
+  // abre o marketplace ja na busca daquela cidade (/results?place_id=...). Trips
+  // do backend nao tem placeId => card permanece nao-clicavel.
+  const openTrip = (trip: SignInNextTrip) => {
+    if (!trip.placeId) return;
+    router.push(`/marketplace?placeId=${encodeURIComponent(trip.placeId)}`);
+  };
 
   return (
     <View style={styles.tripsSection}>
@@ -66,7 +76,12 @@ export function NextTrips({ trips }: Props) {
                 : FadeInRight.delay(850 + index * 100).duration(500)
             }
           >
-            <TouchableOpacity style={styles.tripCard} activeOpacity={0.9}>
+            <TouchableOpacity
+              style={styles.tripCard}
+              activeOpacity={0.9}
+              disabled={!trip.placeId}
+              onPress={() => openTrip(trip)}
+            >
               <View style={styles.tripImgBox}>
                 <TripImage trip={trip} />
                 <View style={styles.tripTag}>

@@ -41,7 +41,11 @@ export default function MarketplaceScreen() {
   const router = useRouter();
   const { t } = useT();
   const { account } = useAuth();
-  const { vertical, hotelId } = useLocalSearchParams<{ vertical?: string; hotelId?: string }>();
+  const { vertical, hotelId, placeId } = useLocalSearchParams<{
+    vertical?: string;
+    hotelId?: string;
+    placeId?: string;
+  }>();
   // Overlay so na 1a carga: nas navegacoes seguintes (abrir um hotel etc.) a
   // WebView ja mostra o conteudo progressivamente. Cobrir tudo a cada navegacao
   // arriscava o overlay branco ficar preso ("carregando infinitamente").
@@ -52,9 +56,14 @@ export default function MarketplaceScreen() {
   const accountId = account?.accountDetails.accountId ?? '';
 
   // Com hotelId, o SSO cai direto na pagina do hotel (return_to=/hotel/{id});
-  // o proprio marketplace anexa o session_id apos carregar. Senao, usa o
-  // return_to da vertical.
-  const returnTo = hotelId ? `/hotel/${hotelId}` : entry.returnTo;
+  // com placeId (deep-link dos cards "Next Trip Ideas"), cai na busca da cidade
+  // (return_to=/results?place_id=...), a mesma pagina/param que a search da
+  // TripEdge usa. Senao, usa o return_to da vertical.
+  const returnTo = hotelId
+    ? `/hotel/${hotelId}`
+    : placeId
+      ? `/results?place_id=${encodeURIComponent(placeId)}`
+      : entry.returnTo;
 
   // Gate de acesso ao marketplace: exige telefone E email verificados (mesma
   // logica do gate de telefone da aba TravelShop, agora tambem no destino para

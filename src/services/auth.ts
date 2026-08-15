@@ -108,6 +108,10 @@ export const SignInNextTripSchema = z.object({
   tag: z.string(),
   description: z.string(),
   imageUrl: z.string(),
+  // place_id da TripEdge, presente so nos trips gerados por geolocalizacao
+  // (getGeoNextTrips). Habilita o deep-link do card para /results?place_id=...
+  // Ausente nos trips do backend (GetNextTrips) => card nao navega.
+  placeId: z.string().optional(),
 });
 
 export const SignInStatementSchema = z.object({

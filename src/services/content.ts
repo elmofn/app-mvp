@@ -7,6 +7,12 @@ import {
   type SignInNextTrip,
 } from './auth';
 import { getCityPhoto } from './cityPhoto';
+import {
+  rankDestinations,
+  type RankCandidate,
+  type RankCategory,
+  type RankTier,
+} from './gemini';
 import type { LocationCoords } from './location';
 import type { SupportedLang } from './locale';
 import {
@@ -163,18 +169,42 @@ function placeToTrip(
   tagKey: string,
   lang: SupportedLang,
   imageUrl: string,
+  descriptionOverride?: string,
 ): SignInNextTrip {
   const name = placeName(place);
   const description =
-    [placeRegion(place), placeCountry(place)].filter(Boolean).join(', ') || name;
+    descriptionOverride?.trim() ||
+    [placeRegion(place), placeCountry(place)].filter(Boolean).join(', ') ||
+    name;
+  const id = placeId(place);
   return {
-    id: placeId(place),
+    id,
+    placeId: id, // usado pelo deep-link do card (busca TripEdge por place_id)
     title: name,
     tag: translate(lang, tagKey),
-    description,
+    description, // descricao curada pelo Gemini, ou regiao/pais como fallback
     imageUrl, // foto real da cidade (Google imagens); '' => NextTrips mostra o generico
   };
 }
+
+// Faixas por distancia usadas tanto na selecao geometrica quanto para rotular as
+// candidatas enviadas ao Gemini.
+const TIER_TAG_KEYS: Record<RankTier, string> = {
+  nearby: 'home.tripTagNearby',
+  regional: 'home.tripTagRegional',
+  international: 'home.tripTagInternational',
+};
+
+// Categoria escolhida pelo Gemini -> tag exibida no card ("Capital", "Litoral",
+// "Turística"). Melhora a apresentacao em relacao a mera faixa de distancia.
+const CATEGORY_TAG_KEYS: Record<RankCategory, string> = {
+  capital: 'home.tripTagCapital',
+  coastal: 'home.tripTagCoastal',
+  touristic: 'home.tripTagTouristic',
+};
+
+const TIER_ORDER: RankTier[] = ['nearby', 'regional', 'international'];
+const MAX_CANDIDATES_PER_TIER = 12; // teto por faixa enviado ao Gemini (economiza tokens)
 
 // Sorteia um item da lista (para variar o place mostrado a cada login/refresh).
 function pickRandom<T>(list: T[]): T | null {
@@ -205,49 +235,106 @@ export async function getGeoNextTrips(
 
     if (ranked.length === 0) return getNextTrips(lang);
 
-    const chosen: { place: Place; tagKey: string }[] = [];
-    const usedIds = new Set<string>();
-    const add = (candidate: RankedPlace | null, tagKey: string) => {
-      if (!candidate) return;
-      const id = placeId(candidate.place);
-      if (usedIds.has(id)) return;
-      usedIds.add(id);
-      chosen.push({ place: candidate.place, tagKey });
-    };
-
-    // O pais do device vem sempre da cidade REALMENTE mais proxima (nao do
-    // sorteio), para o filtro de "internacional" ser confiavel.
+    // O pais / cidade do device vem sempre da cidade REALMENTE mais proxima (nao
+    // do sorteio), para o filtro de "internacional" e o contexto do Gemini serem
+    // confiaveis.
     const deviceCountry = placeCountry(ranked[0].place).toLowerCase();
-    const unused = (r: RankedPlace) => !usedIds.has(placeId(r.place));
+    const deviceCountryLabel = placeCountry(ranked[0].place);
+    const deviceCity = placeName(ranked[0].place);
 
-    // 1. Perto: sorteia entre as cidades dentro do raio "perto"; se nenhuma,
-    //    a mais proxima. Assim cada login mostra um place diferente.
+    // --- Selecao geometrica (FALLBACK, igual ao comportamento anterior) --------
+    // Um pick por faixa, com dedup sequencial na ordem perto -> medio -> intl.
+    // Serve de rede de seguranca para cada tier que o Gemini nao curar.
     const nearbyPool = ranked.filter((r) => r.dist <= NEARBY_MAX_KM);
-    add(pickRandom(nearbyPool.length ? nearbyPool : [ranked[0]]), 'home.tripTagNearby');
-
-    // 2. Medio: sorteia na faixa 500-1000 km; senao, entre os que ja passaram
-    //    do raio "perto".
-    const midBand = ranked.filter(
-      (r) => r.dist >= MID_MIN_KM && r.dist <= MID_MAX_KM && unused(r),
-    );
-    const midFallback = ranked.filter((r) => r.dist > NEARBY_MAX_KM && unused(r));
-    add(pickRandom(midBand.length ? midBand : midFallback), 'home.tripTagRegional');
-
-    // 3. Internacional: sorteia entre as cidades de um pais diferente do device.
+    const midBand = ranked.filter((r) => r.dist >= MID_MIN_KM && r.dist <= MID_MAX_KM);
+    const midFallback = ranked.filter((r) => r.dist > NEARBY_MAX_KM);
     const intlPool = ranked.filter((r) => {
       const c = placeCountry(r.place).toLowerCase();
-      return c && deviceCountry && c !== deviceCountry && unused(r);
+      return c && deviceCountry && c !== deviceCountry;
     });
-    add(pickRandom(intlPool), 'home.tripTagInternational');
+
+    const usedGeo = new Set<string>();
+    const geoByTier: Partial<Record<RankTier, RankedPlace>> = {};
+    const pickGeo = (tier: RankTier, pool: RankedPlace[]) => {
+      const pick = pickRandom(pool.filter((r) => !usedGeo.has(placeId(r.place))));
+      if (pick) {
+        usedGeo.add(placeId(pick.place));
+        geoByTier[tier] = pick;
+      }
+    };
+    pickGeo('nearby', nearbyPool.length ? nearbyPool : [ranked[0]]);
+    pickGeo('regional', midBand.length ? midBand : midFallback);
+    pickGeo('international', intlPool);
+
+    // --- Curadoria pelo Gemini (preferida) -------------------------------------
+    // Monta candidatas reais (com placeId) rotuladas por faixa, com teto por
+    // tier, e pede ao Gemini a cidade mais turistica de cada faixa. Qualquer
+    // falha/timeout retorna null e mantemos so a selecao geometrica acima.
+    const candidates: RankCandidate[] = [];
+    const perTierCount: Record<RankTier, number> = { nearby: 0, regional: 0, international: 0 };
+    for (const r of ranked) {
+      const country = placeCountry(r.place).toLowerCase();
+      const tier: RankTier =
+        country && deviceCountry && country !== deviceCountry
+          ? 'international'
+          : r.dist <= NEARBY_MAX_KM
+            ? 'nearby'
+            : 'regional';
+      if (perTierCount[tier] >= MAX_CANDIDATES_PER_TIER) continue;
+      perTierCount[tier] += 1;
+      candidates.push({
+        placeId: placeId(r.place),
+        name: placeName(r.place),
+        region: placeRegion(r.place),
+        country: placeCountry(r.place),
+        distanceKm: r.dist,
+        tier,
+      });
+    }
+
+    const aiResults = await rankDestinations(
+      candidates,
+      { city: deviceCity, country: deviceCountryLabel },
+      lang,
+    );
+    const aiByTier = new Map<RankTier, { place: Place; description: string; category: RankCategory }>();
+    if (aiResults) {
+      const byId = new Map(ranked.map((r) => [placeId(r.place), r.place] as const));
+      for (const res of aiResults) {
+        const place = byId.get(res.placeId);
+        if (place) aiByTier.set(res.tier, { place, description: res.description, category: res.category });
+      }
+    }
+
+    // --- Montagem final: Gemini por tier, caindo no geometrico onde faltar -----
+    const chosen: { place: Place; tagKey: string; description?: string }[] = [];
+    const usedIds = new Set<string>();
+    for (const tier of TIER_ORDER) {
+      const ai = aiByTier.get(tier);
+      if (ai && !usedIds.has(placeId(ai.place))) {
+        usedIds.add(placeId(ai.place));
+        chosen.push({
+          place: ai.place,
+          tagKey: CATEGORY_TAG_KEYS[ai.category] ?? TIER_TAG_KEYS[tier],
+          description: ai.description,
+        });
+        continue;
+      }
+      const geo = geoByTier[tier];
+      if (geo && !usedIds.has(placeId(geo.place))) {
+        usedIds.add(placeId(geo.place));
+        chosen.push({ place: geo.place, tagKey: TIER_TAG_KEYS[tier] });
+      }
+    }
 
     // Enriquece cada tier com a foto real da cidade (fonte a definir), em paralelo e com
     // timeout curto para nao atrasar o sign-in. Hoje getCityPhoto retorna null =>
     // imageUrl '' => NextTrips renderiza o generico bonito. Quando houver fonte, a
     // URL persiste junto no nextTrips e o boot por biometria ja vem com a foto.
     const trips = await Promise.all(
-      chosen.map(async ({ place, tagKey }) => {
+      chosen.map(async ({ place, tagKey, description }) => {
         const photo = await withTimeout(getCityPhoto(place), PHOTO_TIMEOUT_MS, null);
-        return placeToTrip(place, tagKey, lang, photo ?? '');
+        return placeToTrip(place, tagKey, lang, photo ?? '', description);
       }),
     );
 
@@ -255,7 +342,7 @@ export async function getGeoNextTrips(
     console.log(
       '[content] geo trips:',
       trips.map((t) => `${t.tag}=${t.title}`).join(' | '),
-      `| ${ranked.length} places, deviceCountry=${deviceCountry || '?'}, farthest=${Math.round(ranked[ranked.length - 1].dist)}km`,
+      `| ${ranked.length} places, deviceCountry=${deviceCountry || '?'}, farthest=${Math.round(ranked[ranked.length - 1].dist)}km, curator=${aiByTier.size ? `gemini(${aiByTier.size})` : 'geometric'}`,
     );
 
     return trips.length ? trips : getNextTrips(lang);

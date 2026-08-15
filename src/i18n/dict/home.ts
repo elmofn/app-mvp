@@ -23,11 +23,15 @@ export const home: Record<SupportedLang, Record<string, any>> = {
     nextTitle: 'Next',
     destinationsTitle: 'Destinations',
     bookYourTrip: 'BOOK YOUR TRIP',
-    // Rotulos dos "tiers" de nextTrips por distancia (TripEdge). Passo 1 usa
-    // so o Nearby; Regional/International ficam prontos para os proximos passos.
+    // Rotulos dos "tiers" de nextTrips por distancia (TripEdge), usados como
+    // fallback quando o Gemini nao curou a faixa.
     tripTagNearby: 'Nearby',
     tripTagRegional: 'Explore',
     tripTagInternational: 'International',
+    // Tags por categoria escolhida pelo Gemini (apresentacao preferida).
+    tripTagCapital: 'Capital',
+    tripTagCoastal: 'Coastal',
+    tripTagTouristic: 'Must-see',
     tabHome: 'Home',
     tabTravelshop: 'Travelshop',
     tabStatement: 'Statement',
@@ -57,6 +61,9 @@ export const home: Record<SupportedLang, Record<string, any>> = {
     tripTagNearby: 'Perto de você',
     tripTagRegional: 'Explore',
     tripTagInternational: 'Internacional',
+    tripTagCapital: 'Capital',
+    tripTagCoastal: 'Litoral',
+    tripTagTouristic: 'Imperdível',
     tabHome: 'Início',
     tabTravelshop: 'Travelshop',
     tabStatement: 'Extrato',
@@ -86,6 +93,9 @@ export const home: Record<SupportedLang, Record<string, any>> = {
     tripTagNearby: 'Cerca de ti',
     tripTagRegional: 'Explora',
     tripTagInternational: 'Internacional',
+    tripTagCapital: 'Capital',
+    tripTagCoastal: 'Costa',
+    tripTagTouristic: 'Imperdible',
     tabHome: 'Inicio',
     tabTravelshop: 'Travelshop',
     tabStatement: 'Movimientos',

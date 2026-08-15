@@ -11,6 +11,7 @@ import {
   rankDestinations,
   type RankCandidate,
   type RankCategory,
+  type RankPick,
   type RankTier,
 } from './gemini';
 import type { LocationCoords } from './location';
@@ -268,8 +269,9 @@ export async function getGeoNextTrips(
 
     // --- Curadoria pelo Gemini (preferida) -------------------------------------
     // Monta candidatas reais (com placeId) rotuladas por faixa, com teto por
-    // tier, e pede ao Gemini a cidade mais turistica de cada faixa. Qualquer
-    // falha/timeout retorna null e mantemos so a selecao geometrica acima.
+    // tier, e pede ao Gemini uma shortlist ranqueada das mais turisticas de cada
+    // faixa. Qualquer falha/timeout retorna null e mantemos so a selecao
+    // geometrica acima.
     const candidates: RankCandidate[] = [];
     const perTierCount: Record<RankTier, number> = { nearby: 0, regional: 0, international: 0 };
     for (const r of ranked) {
@@ -297,28 +299,34 @@ export async function getGeoNextTrips(
       { city: deviceCity, country: deviceCountryLabel },
       lang,
     );
-    const aiByTier = new Map<RankTier, { place: Place; description: string; category: RankCategory }>();
+    // Shortlist curada por tier (melhor primeiro). byId resolve placeId -> Place.
+    const byId = new Map(ranked.map((r) => [placeId(r.place), r.place] as const));
+    const aiByTier = new Map<RankTier, RankPick[]>();
     if (aiResults) {
-      const byId = new Map(ranked.map((r) => [placeId(r.place), r.place] as const));
-      for (const res of aiResults) {
-        const place = byId.get(res.placeId);
-        if (place) aiByTier.set(res.tier, { place, description: res.description, category: res.category });
-      }
+      for (const res of aiResults) aiByTier.set(res.tier, res.picks);
     }
 
     // --- Montagem final: Gemini por tier, caindo no geometrico onde faltar -----
+    // Em vez de fixar o "melhor" (o Gemini ordena sempre igual -> mesmo place a
+    // cada refresh), SORTEIA dentro da shortlist curada do tier, entre os que
+    // ainda nao foram usados. Assim varia o place mantendo a curadoria.
     const chosen: { place: Place; tagKey: string; description?: string }[] = [];
     const usedIds = new Set<string>();
     for (const tier of TIER_ORDER) {
-      const ai = aiByTier.get(tier);
-      if (ai && !usedIds.has(placeId(ai.place))) {
-        usedIds.add(placeId(ai.place));
-        chosen.push({
-          place: ai.place,
-          tagKey: CATEGORY_TAG_KEYS[ai.category] ?? TIER_TAG_KEYS[tier],
-          description: ai.description,
-        });
-        continue;
+      const picks = aiByTier.get(tier);
+      if (picks?.length) {
+        const available = picks.filter((p) => byId.has(p.placeId) && !usedIds.has(p.placeId));
+        const pick = pickRandom(available);
+        if (pick) {
+          const place = byId.get(pick.placeId)!;
+          usedIds.add(pick.placeId);
+          chosen.push({
+            place,
+            tagKey: CATEGORY_TAG_KEYS[pick.category] ?? TIER_TAG_KEYS[tier],
+            description: pick.description,
+          });
+          continue;
+        }
       }
       const geo = geoByTier[tier];
       if (geo && !usedIds.has(placeId(geo.place))) {

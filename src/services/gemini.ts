@@ -92,11 +92,13 @@ async function callGemini<T>(
 
 // ----------------------------------------------------------------------------
 // rankDestinations: dada a lista de candidatas REAIS (com placeId) e o contexto
-// do device, pede ao Gemini a melhor cidade turistica por faixa (nearby /
-// regional / international). O responseSchema forca o modelo a devolver APENAS
-// placeIds da lista (anti-alucinacao) + uma categoria e uma descricao atraente
-// no idioma do usuario. Retorna null em qualquer falha (chamador cai no
-// fallback geometrico).
+// do device, pede ao Gemini uma SHORTLIST ranqueada das cidades mais turisticas
+// por faixa (nearby / regional / international) - nao so a melhor. O app sorteia
+// dentro da shortlist (vide content.ts) para variar o place a cada login/refresh
+// sem perder a curadoria (o Gemini ordenaria sempre igual). O responseSchema
+// forca o modelo a devolver APENAS placeIds da lista (anti-alucinacao) + uma
+// categoria e uma descricao atraente no idioma do usuario. Retorna null em
+// qualquer falha (chamador cai no fallback geometrico).
 // ----------------------------------------------------------------------------
 
 export type RankTier = 'nearby' | 'regional' | 'international';
@@ -111,12 +113,22 @@ export type RankCandidate = {
   tier: RankTier;
 };
 
-export type RankResult = {
-  tier: RankTier;
+// Uma cidade curada (dentro de um tier).
+export type RankPick = {
   placeId: string;
   category: RankCategory;
   description: string;
 };
+
+// Shortlist ranqueada (melhor primeiro) de um tier.
+export type RankTierResult = {
+  tier: RankTier;
+  picks: RankPick[];
+};
+
+// Teto da shortlist por tier: o suficiente para variar sem inflar tokens/latencia.
+const MAX_PICKS_PER_TIER = 4;
+const RANK_CATEGORIES: RankCategory[] = ['capital', 'coastal', 'touristic'];
 
 const LANG_LABEL: Record<SupportedLang, string> = {
   'en-US': 'English',
@@ -124,26 +136,40 @@ const LANG_LABEL: Record<SupportedLang, string> = {
   'es-ES': 'Spanish',
 };
 
-// Schema (subset OpenAPI aceito pelo Gemini) da resposta estruturada.
+// Schema (subset OpenAPI aceito pelo Gemini) da resposta estruturada: por tier,
+// uma shortlist ranqueada (melhor primeiro).
 const RANK_RESPONSE_SCHEMA: Record<string, unknown> = {
   type: 'array',
   items: {
     type: 'object',
     properties: {
       tier: { type: 'string', enum: ['nearby', 'regional', 'international'] },
-      placeId: { type: 'string' },
-      category: { type: 'string', enum: ['capital', 'coastal', 'touristic'] },
-      description: { type: 'string' },
+      picks: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            placeId: { type: 'string' },
+            category: { type: 'string', enum: ['capital', 'coastal', 'touristic'] },
+            description: { type: 'string' },
+          },
+          required: ['placeId', 'category', 'description'],
+        },
+      },
     },
-    required: ['tier', 'placeId', 'category', 'description'],
+    required: ['tier', 'picks'],
   },
 };
+
+// Shape cru que o modelo devolve (antes da nossa validacao).
+type RawTierResult = { tier?: unknown; picks?: unknown };
+type RawPick = { placeId?: unknown; category?: unknown; description?: unknown };
 
 export async function rankDestinations(
   candidates: RankCandidate[],
   deviceContext: { city: string; country: string },
   lang: SupportedLang,
-): Promise<RankResult[] | null> {
+): Promise<RankTierResult[] | null> {
   if (candidates.length === 0) return null;
 
   // Lista compacta - so o que o modelo precisa para escolher (economiza tokens).
@@ -157,33 +183,61 @@ export async function rankDestinations(
   const prompt = [
     'You are a travel curator for a global travel app.',
     `The user is near ${deviceContext.city || 'unknown'}, ${deviceContext.country || 'unknown'}.`,
-    'From the candidate cities below (all real), pick the SINGLE most travel-worthy city',
+    'From the candidate cities below (all real), rank the MOST travel-worthy cities',
     'for EACH tier present (nearby, regional, international). Prefer capitals, coastal/beach',
     'cities and well-known touristic destinations; AVOID dull inland towns with no tourism.',
     'Rules:',
     '- Use ONLY placeId values from the list. Never invent a city or a placeId.',
-    '- Return at most one item per tier, and only for tiers that appear in the list.',
-    `- Write "description" as a short, appealing one-line hook (max ~90 chars) in ${LANG_LABEL[lang]}.`,
-    '- "category" must reflect why it stands out: capital | coastal | touristic.',
+    `- For each tier present, return "picks": up to ${MAX_PICKS_PER_TIER} cities ordered best-first.`,
+    '  Include only genuinely appealing cities; fewer is fine if only a few stand out.',
+    '- Only include tiers that appear in the list.',
+    `- Write each "description" as a short, appealing one-line hook (max ~90 chars) in ${LANG_LABEL[lang]}.`,
+    '- "category" must reflect why the city stands out: capital | coastal | touristic.',
     '',
     'Candidates:',
     lines,
   ].join('\n');
 
-  const result = await callGemini<RankResult[]>(prompt, RANK_RESPONSE_SCHEMA);
+  const result = await callGemini<RawTierResult[]>(prompt, RANK_RESPONSE_SCHEMA);
   if (!Array.isArray(result)) return null;
 
-  // Defesa extra: mantem so itens cujo placeId realmente existe nas candidatas
-  // (o schema ja restringe, mas o modelo pode escorregar) e 1 por tier.
+  // Defesa extra (o schema ja restringe, mas o modelo pode escorregar):
+  // - so tiers validos, 1 entrada por tier;
+  // - dentro do tier, so placeIds que existem nas candidatas, sem repetir,
+  //   ate o teto da shortlist;
+  // - categoria coagida para um valor valido.
   const validIds = new Set(candidates.map((c) => c.placeId));
+  const validTiers: RankTier[] = ['nearby', 'regional', 'international'];
   const seenTiers = new Set<RankTier>();
-  const clean: RankResult[] = [];
-  for (const item of result) {
-    if (!item || typeof item.placeId !== 'string') continue;
-    if (!validIds.has(item.placeId)) continue;
-    if (seenTiers.has(item.tier)) continue;
-    seenTiers.add(item.tier);
-    clean.push(item);
+  const out: RankTierResult[] = [];
+
+  for (const item of result as RawTierResult[]) {
+    const tier = item?.tier as RankTier;
+    if (!validTiers.includes(tier) || seenTiers.has(tier)) continue;
+    if (!Array.isArray(item.picks)) continue;
+
+    const usedInTier = new Set<string>();
+    const picks: RankPick[] = [];
+    for (const raw of item.picks as RawPick[]) {
+      const id = raw?.placeId;
+      if (typeof id !== 'string' || !validIds.has(id) || usedInTier.has(id)) continue;
+      usedInTier.add(id);
+      const category: RankCategory = RANK_CATEGORIES.includes(raw?.category as RankCategory)
+        ? (raw.category as RankCategory)
+        : 'touristic';
+      picks.push({
+        placeId: id,
+        category,
+        description: typeof raw?.description === 'string' ? raw.description : '',
+      });
+      if (picks.length >= MAX_PICKS_PER_TIER) break;
+    }
+
+    if (picks.length) {
+      seenTiers.add(tier);
+      out.push({ tier, picks });
+    }
   }
-  return clean.length ? clean : null;
+
+  return out.length ? out : null;
 }

@@ -41,10 +41,15 @@ export async function getCityPhoto(place: Place): Promise<string | null> {
   if (!name) return null;
 
   const cached = photoCache.get(name);
-  if (cached !== undefined) return cached;
+  if (cached !== undefined) {
+    console.log(`[cityPhoto] cache hit "${name}" -> ${cached ?? 'null'}`);
+    return cached;
+  }
+
+  const url = `${WIKIPEDIA_SUMMARY_URL}/${encodeURIComponent(name)}`;
+  console.log(`[cityPhoto] fetching "${name}" ${url}`);
 
   try {
-    const url = `${WIKIPEDIA_SUMMARY_URL}/${encodeURIComponent(name)}`;
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -55,6 +60,8 @@ export async function getCityPhoto(place: Place): Promise<string | null> {
     });
 
     if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      console.warn(`[cityPhoto] HTTP ${response.status} for "${name}": ${body.slice(0, 200)}`);
       photoCache.set(name, null);
       return null;
     }
@@ -63,21 +70,27 @@ export async function getCityPhoto(place: Place): Promise<string | null> {
 
     // Pagina de desambiguacao nao e uma cidade especifica -> nao serve.
     if (data?.type === 'disambiguation') {
+      console.warn(`[cityPhoto] "${name}" e desambiguacao -> sem foto`);
       photoCache.set(name, null);
       return null;
     }
 
     const thumbSource: unknown = data?.thumbnail?.source;
     const originalWidth: unknown = data?.originalimage?.width;
-    const result =
-      typeof thumbSource === 'string' && thumbSource
-        ? sizedThumb(thumbSource, typeof originalWidth === 'number' ? originalWidth : undefined)
-        : null;
 
+    if (typeof thumbSource !== 'string' || !thumbSource) {
+      console.warn(`[cityPhoto] "${name}" sem thumbnail (type=${data?.type}, title=${data?.title})`);
+      photoCache.set(name, null);
+      return null;
+    }
+
+    const result = sizedThumb(thumbSource, typeof originalWidth === 'number' ? originalWidth : undefined);
+    console.log(`[cityPhoto] "${name}" OK -> ${result} (thumb=${thumbSource}, origW=${String(originalWidth)})`);
     photoCache.set(name, result);
     return result;
-  } catch {
+  } catch (err) {
     // Rede/JSON/etc.: sem foto => o card usa o generico.
+    console.warn(`[cityPhoto] falhou para "${name}":`, err);
     photoCache.set(name, null);
     return null;
   }

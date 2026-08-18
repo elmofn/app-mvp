@@ -1,9 +1,10 @@
 import { z } from 'zod';
 
+import { endpoints } from '@/src/config/env';
 import { SignInAccountDetailsSchema } from './auth';
 import type { SupportedLang } from './locale';
 
-const API_BASE_URL = 'https://travelcash-api-stg.azurewebsites.net';
+const API_BASE_URL = endpoints.travelCashApi;
 
 // O backend gera o accountId real - o que mandamos no CreateAccount eh
 // um placeholder fixo (vide spec do endpoint). Nunca persistir este id.

@@ -1,7 +1,9 @@
 import { Platform } from 'react-native';
 import { z } from 'zod';
 
-const API_BASE_URL = 'https://travelcash-api-stg.azurewebsites.net';
+import { endpoints } from '@/src/config/env';
+
+const API_BASE_URL = endpoints.travelCashApi;
 
 export type SignInRequest = {
   login: string;

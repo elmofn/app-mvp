@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { endpoints } from '@/src/config/env';
 import type { LocationCoords } from './location';
 
 // ----------------------------------------------------------------------------
@@ -13,7 +14,7 @@ import type { LocationCoords } from './location';
 // Mantemos tudo isolado neste arquivo justamente para essa migracao ser trivial.
 // ----------------------------------------------------------------------------
 
-const TRIPEDGE_BASE_URL = 'https://prod-rv-search.tripedge.com';
+const TRIPEDGE_BASE_URL = endpoints.tripEdgeSearch;
 // ⚠️ TEMPORARIO / SANDBOX - nao enviar para producao (vide comentario acima).
 // Reutilizada pelo catalog (src/services/catalog.ts) - o segredo vive so aqui.
 export const TRIPEDGE_PARTNER_KEY = 'SANDBOX_8aac2f66-372f-459c-9e72-b4d3cd4afc0d';

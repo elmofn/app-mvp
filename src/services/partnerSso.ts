@@ -1,5 +1,7 @@
 import { sha256 } from 'js-sha256';
 
+import { endpoints } from '@/src/config/env';
+
 // ----------------------------------------------------------------------------
 // Partner SSO da TripEdge: abre o marketplace com o usuario JA LOGADO.
 //
@@ -21,7 +23,7 @@ import { sha256 } from 'js-sha256';
 // PARTNER_SSO_SECRET vazio => buildPartnerSsoUrl retorna null (SSO desabilitado).
 // ----------------------------------------------------------------------------
 
-const PARTNER_SSO_BASE_URL = 'https://travelback-dev.tripedge.com';
+const PARTNER_SSO_BASE_URL = endpoints.tripEdgeSite;
 // ⚠️ placeholder de teste — trocar pelo segredo real (partner_sso_secret) depois.
 const PARTNER_SSO_SECRET = 'aaaaa';
 

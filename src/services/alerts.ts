@@ -1,8 +1,9 @@
 import { z } from 'zod';
 
+import { endpoints } from '@/src/config/env';
 import type { SupportedLang } from './locale';
 
-const API_BASE_URL = 'https://travelcash-api-stg.azurewebsites.net';
+const API_BASE_URL = endpoints.travelCashApi;
 
 // O backend gera o confirmationId real - mandamos um placeholder fixo
 // (mesmo padrao do CreateAccount). O id retornado nao eh persistido pelo

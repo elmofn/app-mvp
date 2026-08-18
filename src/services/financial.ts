@@ -1,6 +1,7 @@
+import { endpoints } from '@/src/config/env';
 import type { SupportedLang } from './locale';
 
-const API_BASE_URL = 'https://travelcash-api-stg.azurewebsites.net';
+const API_BASE_URL = endpoints.travelCashApi;
 
 // Subset do payload de currency que o app consome. A API costuma
 // devolver mais campos (symbol, currentExchangeRate, etc.) - mantemos

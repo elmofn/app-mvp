@@ -1,8 +1,9 @@
 import { z } from 'zod';
 
+import { endpoints } from '@/src/config/env';
 import type { SupportedLang } from './locale';
 
-const API_BASE_URL = 'https://travelcash-api-stg.azurewebsites.net';
+const API_BASE_URL = endpoints.travelCashApi;
 
 // O endpoint GetPolices aceita o idioma em lowercase com hifen (pt-br /
 // en-us / es-es) - diferente do SupportedLang usado nos demais servicos

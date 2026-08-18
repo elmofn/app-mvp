@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
-const API_BASE_URL = 'https://travelcash-api-stg.azurewebsites.net';
+import { endpoints } from '@/src/config/env';
+
+const API_BASE_URL = endpoints.travelCashApi;
 
 // ----------------------------------------------------------------------------
 // CreateNavigationCode: POST /api/MarketplaceAuth/CreateNavigationCode

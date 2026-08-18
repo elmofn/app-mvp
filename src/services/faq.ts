@@ -1,8 +1,9 @@
 import { z } from 'zod';
 
+import { endpoints } from '@/src/config/env';
 import type { SupportedLang } from './locale';
 
-const API_BASE_URL = 'https://travelcash-api-stg.azurewebsites.net';
+const API_BASE_URL = endpoints.travelCashApi;
 
 // Schema do payload de FAQ retornado por /api/Content/GetFAQ. A propriedade
 // children eh recursiva (children pode ter children), portanto declaramos

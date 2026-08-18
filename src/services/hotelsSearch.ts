@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { endpoints } from '@/src/config/env';
+
 // ----------------------------------------------------------------------------
 // Busca de hoteis por place_id (a MESMA que a pagina /results do marketplace
 // dispara): POST {base}/api/hotels/search
@@ -16,7 +18,7 @@ import { z } from 'zod';
 // sessao/parceria server-side), igual ao restante da integracao TripEdge.
 // ----------------------------------------------------------------------------
 
-const HOTELS_SEARCH_BASE_URL = 'https://travelback-dev.tripedge.com';
+const HOTELS_SEARCH_BASE_URL = endpoints.tripEdgeSite;
 
 const CHECK_IN_OFFSET_DAYS = 30; // busca uma estadia ~1 mes a frente (so p/ ter tarifas)
 const STAY_NIGHTS = 7; // 7 noites, igual ao exemplo do /results

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { endpoints } from '@/src/config/env';
 import { searchHotelsByPlaceId, type SearchHotel } from './hotelsSearch';
 import type { LocationCoords } from './location';
 import {
@@ -26,7 +27,7 @@ import {
 // (que baixaria/cachearia o catalog) antes de producao.
 // ----------------------------------------------------------------------------
 
-const CATALOG_BASE_URL = 'https://prod-rv-search.tripedge.com';
+const CATALOG_BASE_URL = endpoints.tripEdgeSearch;
 
 const TARGET_RECOMMENDED = 10; // quantos hoteis 5★ mostramos no carrossel
 const POOL_TARGET = 40; // pool maior de 5★ do qual sorteamos os TARGET a exibir

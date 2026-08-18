@@ -1,3 +1,4 @@
+import { endpoints } from '@/src/config/env';
 import { translate } from '@/src/i18n';
 
 import {
@@ -29,7 +30,7 @@ import {
   type Place,
 } from './places';
 
-const API_BASE_URL = 'https://travelcash-api-stg.azurewebsites.net';
+const API_BASE_URL = endpoints.travelCashApi;
 
 // ----------------------------------------------------------------------------
 // GetBanners: GET /api/Content/GetBanners?language={lang}

@@ -5,7 +5,9 @@
 // - telefone: somente digitos, incluindo o DDI sem o "+" (ex: 5511999999999)
 // - legalId: somente digitos (CPF/CNPJ chegam com mascara em alguns clientes)
 
-const API_BASE_URL = 'https://travelcash-api-stg.azurewebsites.net';
+import { endpoints } from '@/src/config/env';
+
+const API_BASE_URL = endpoints.travelCashApi;
 
 // Exportado para fluxos que ja conhecem o valor pronto (ex: edit de phone
 // no review do activate, onde phoneNumber ja vem normalizado pelo backend).

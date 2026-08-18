@@ -15,6 +15,26 @@ import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-c
 import { BiometricGate } from '@/src/components/BiometricGate';
 import { AlertProvider } from '@/src/contexts/AlertContext';
 import { AuthProvider, useAuth } from '@/src/contexts/AuthContext';
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://a93811f878a12dcb61bd5ca5f7b34c55@o4511931827748864.ingest.de.sentry.io/4511931839545424',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 // 1. Impede que a tela de splash inicial feche antes de carregarmos os assets
 SplashScreen.preventAutoHideAsync();
@@ -23,7 +43,7 @@ export const unstable_settings = {
   initialRouteName: 'index',
 };
 
-export default function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   // 2. Carrega os arquivos físicos da fonte
   const [fontsLoaded, error] = useFonts({
     Inter_400Regular,
@@ -56,7 +76,7 @@ export default function RootLayout() {
       </AlertProvider>
     </SafeAreaProvider>
   );
-}
+});
 
 function AppShell() {
   const { isRestoring } = useAuth();

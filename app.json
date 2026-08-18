@@ -55,6 +55,14 @@
         {
           "faceIDPermission": "Allow TravelBACK to use Face ID to unlock your account."
         }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "travelback"
+        }
       ]
     ],
     "experiments": {

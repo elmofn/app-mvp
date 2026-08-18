@@ -1,7 +1,8 @@
+import { Image as ExpoImage } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { MapPinIcon } from 'phosphor-react-native';
 import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown, FadeInLeft, FadeInRight } from 'react-native-reanimated';
 
 import type { SignInNextTrip } from '@/src/services/auth';
@@ -21,11 +22,12 @@ function TripImage({ trip }: { trip: SignInNextTrip }) {
 
   if (trip.imageUrl && !failed) {
     return (
-      <Image
+      <ExpoImage
         // A Wikimedia (upload.wikimedia.org) retorna 403 para User-Agents de
-        // biblioteca/app (okhttp) por politica de UA; so serve para navegador.
-        // Mandamos um UA estilo navegador (com o app identificado) para ser
-        // aceito. Sem isso, a foto falha so no device e o card cai no generico.
+        // biblioteca/app; so serve para navegador. O <Image> do RN (Fresco)
+        // IGNORA headers na New Architecture, entao usamos expo-image, que
+        // aplica o User-Agent estilo navegador (a API ja prova que a Wikimedia
+        // aceita esse UA). Sem isso a foto da 403 so no device -> card generico.
         source={{
           uri: trip.imageUrl,
           headers: {
@@ -34,9 +36,9 @@ function TripImage({ trip }: { trip: SignInNextTrip }) {
           },
         }}
         style={styles.tripImg}
-        resizeMode="cover"
+        contentFit="cover"
         onError={(e) => {
-          console.warn('[NextTrips] image failed:', trip.imageUrl, e?.nativeEvent?.error);
+          console.warn('[NextTrips] image failed:', trip.imageUrl, e?.error);
           setFailed(true);
         }}
       />

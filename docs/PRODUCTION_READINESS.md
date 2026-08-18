@@ -34,6 +34,7 @@ endurecido para produção".
 4. **Token (JWT) + PII completo indo para os logs no SignIn.**
    - `src/services/auth.ts:222` e `:237` logam `rawBody` (JWT + toda a conta) em erro/parse-fail. Credencial em log de device.
    - **Ação:** remover/máscarar antes do release.
+   - ⚠️ **Interação com o Sentry (`enableLogs: true` em `app/_layout.tsx`):** enquanto esses `console.warn(rawBody)` existirem, ligar o encaminhamento de logs manda **JWT/PII para o Sentry**. **Adiado a pedido** (os logs de terminal ainda são usados em dev). Resolver JUNTO com este item: limpar/mascarar os logs sensíveis e então decidir `enableLogs`. Observação: desligar `enableLogs` **não** apaga os logs do terminal/Metro — só para o envio ao Sentry.
 
 ---
 

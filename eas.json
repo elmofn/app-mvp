@@ -23,6 +23,12 @@
         "EXPO_PUBLIC_APP_ENV": "staging"
       }
     },
+    "staging": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "staging"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "env": {
@@ -31,6 +37,11 @@
     }
   },
   "submit": {
+    "staging": {
+      "android": {
+        "track": "internal"
+      }
+    },
     "production": {}
   }
 }

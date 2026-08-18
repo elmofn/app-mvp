@@ -283,19 +283,19 @@ export default function HomeScreen() {
   </Animated.View>
 
   {/* AI Assistant: entra da esquerda */}
-   {
+   {/*
   <Animated.View entering={FadeInLeft.delay(650).duration(500)}>
-    <TouchableOpacity style={styles.actionCard} onPress={ () => { Sentry.captureException(new Error('First error')) }} activeOpacity={0.8}>
+    <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/assistant')} activeOpacity={0.8}>
       <View style={styles.actionInfo}>
         <Text style={styles.actionTitle}>TravelBACK IA</Text>
         <Text style={styles.actionDesc}>{t('home.assistantDesc')}</Text>
       </View>
       <View style={styles.actionIconWrapper}>
-        <CoinsIcon size={32} color="#0F022D" weight="regular" />
+        <SparkleIcon size={32} color="#0F022D" weight="regular" />
       </View>
     </TouchableOpacity>
   </Animated.View>
-  }
+  */}
 </View>
 
 {/* --- NEXT TRIP IDEAS: via payload do SignIn --- */}

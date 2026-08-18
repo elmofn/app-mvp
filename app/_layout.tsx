@@ -20,9 +20,10 @@ import * as Sentry from '@sentry/react-native';
 Sentry.init({
   dsn: 'https://a93811f878a12dcb61bd5ca5f7b34c55@o4511931827748864.ingest.de.sentry.io/4511931839545424',
 
-  // Adds more context data to events (IP address, cookies, user, etc.)
-  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
-  sendDefaultPii: true,
+  // sendDefaultPii=false: NAO anexar IP / cookies / dados de usuario aos
+  // eventos. Decisao de privacidade (vide docs/PRODUCTION_READINESS.md).
+  // Doc: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: false,
 
   // Enable Logs
   enableLogs: true,

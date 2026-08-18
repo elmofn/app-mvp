@@ -22,10 +22,18 @@ function TripImage({ trip }: { trip: SignInNextTrip }) {
   if (trip.imageUrl && !failed) {
     return (
       <Image
-        source={{ uri: trip.imageUrl }}
+        // User-Agent explicito: a Wikimedia pode recusar o UA padrao do okhttp
+        // (upload.wikimedia.org) e ai a imagem falharia so no device.
+        source={{
+          uri: trip.imageUrl,
+          headers: { 'User-Agent': 'TravelBACKApp/1.0 (+https://travelback.com)' },
+        }}
         style={styles.tripImg}
         resizeMode="cover"
-        onError={() => setFailed(true)}
+        onError={(e) => {
+          console.warn('[NextTrips] image failed:', trip.imageUrl, e?.nativeEvent?.error);
+          setFailed(true);
+        }}
       />
     );
   }

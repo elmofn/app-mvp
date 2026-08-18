@@ -1,8 +1,7 @@
-import { Image as ExpoImage } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { MapPinIcon } from 'phosphor-react-native';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown, FadeInLeft, FadeInRight } from 'react-native-reanimated';
 
 import type { SignInNextTrip } from '@/src/services/auth';
@@ -14,35 +13,57 @@ type Props = {
   trips: SignInNextTrip[] | undefined;
 };
 
-// Imagem do card: foto real da cidade (Google imagens) quando ha URL e ela carrega;
-// senao (sem foto, ou a URL falhou no onError) um generico bonito - fundo de
-// cor estavel por cidade + nome + pin. Nunca um quadro cinza quebrado.
+// User-Agent estilo navegador: a Wikimedia (upload.wikimedia.org) devolve 403
+// para UAs de app/okhttp. O <Image> do RN ignora headers (Fresco/New Arch), entao
+// nao da para setar o UA nele. Solucao: baixamos os bytes via fetch (que aplica o
+// UA, como a API do cityPhoto ja faz) e exibimos como data URI - imagem
+// "embutida", sem novo download, logo sem 403.
+const WIKI_IMAGE_UA =
+  'Mozilla/5.0 (Linux; Android 12; TravelBACK/1.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+
+// Cache em MEMORIA por sessao (url -> data URI): nao re-baixa a mesma foto no
+// mesmo processo. NAO persistido - a sessao guarda so a URL curta (nextTrips),
+// sem inchar o AsyncStorage com base64.
+const dataUriCache = new Map<string, string>();
+
+// Imagem do card: foto real da cidade (Wikipedia) quando ha URL e ela baixa;
+// senao (sem foto, ou o download falhou) um generico bonito - fundo de cor
+// estavel por cidade + nome + pin. Nunca um quadro cinza quebrado.
 function TripImage({ trip }: { trip: SignInNextTrip }) {
+  const url = trip.imageUrl;
+  const [dataUri, setDataUri] = React.useState<string | null>(
+    url ? (dataUriCache.get(url) ?? null) : null,
+  );
   const [failed, setFailed] = React.useState(false);
 
-  if (trip.imageUrl && !failed) {
-    return (
-      <ExpoImage
-        // A Wikimedia (upload.wikimedia.org) retorna 403 para User-Agents de
-        // biblioteca/app; so serve para navegador. O <Image> do RN (Fresco)
-        // IGNORA headers na New Architecture, entao usamos expo-image, que
-        // aplica o User-Agent estilo navegador (a API ja prova que a Wikimedia
-        // aceita esse UA). Sem isso a foto da 403 so no device -> card generico.
-        source={{
-          uri: trip.imageUrl,
-          headers: {
-            'User-Agent':
-              'Mozilla/5.0 (Linux; Android 12; TravelBACK/1.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-          },
-        }}
-        style={styles.tripImg}
-        contentFit="cover"
-        onError={(e) => {
-          console.warn('[NextTrips] image failed:', trip.imageUrl, e?.error);
-          setFailed(true);
-        }}
-      />
-    );
+  React.useEffect(() => {
+    if (!url || dataUriCache.has(url)) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(url, { headers: { 'User-Agent': WIKI_IMAGE_UA } });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        const uri = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = () => reject(reader.error);
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+        dataUriCache.set(url, uri);
+        if (!cancelled) setDataUri(uri);
+      } catch (err) {
+        console.warn('[NextTrips] image fetch failed:', url, err);
+        if (!cancelled) setFailed(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  if (dataUri && !failed) {
+    return <Image source={{ uri: dataUri }} style={styles.tripImg} resizeMode="cover" />;
   }
 
   return (

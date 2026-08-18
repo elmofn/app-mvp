@@ -78,9 +78,12 @@ export async function getCityPhoto(place: Place): Promise<string | null> {
       return null;
     }
 
-    console.log(`[cityPhoto] "${name}" OK -> ${thumb}`);
-    photoCache.set(name, thumb);
-    return thumb;
+    // A API gruda ?utm_source=...&utm_campaign=api&... no thumbnail; removemos
+    // para usar a URL canonica limpa do upload.wikimedia.org.
+    const clean = thumb.split('?')[0];
+    console.log(`[cityPhoto] "${name}" OK -> ${clean}`);
+    photoCache.set(name, clean);
+    return clean;
   } catch (err) {
     // Rede/JSON/etc.: sem foto => o card usa o generico.
     console.warn(`[cityPhoto] falhou para "${name}":`, err);

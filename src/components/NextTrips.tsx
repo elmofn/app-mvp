@@ -22,11 +22,16 @@ function TripImage({ trip }: { trip: SignInNextTrip }) {
   if (trip.imageUrl && !failed) {
     return (
       <Image
-        // User-Agent explicito: a Wikimedia pode recusar o UA padrao do okhttp
-        // (upload.wikimedia.org) e ai a imagem falharia so no device.
+        // A Wikimedia (upload.wikimedia.org) retorna 403 para User-Agents de
+        // biblioteca/app (okhttp) por politica de UA; so serve para navegador.
+        // Mandamos um UA estilo navegador (com o app identificado) para ser
+        // aceito. Sem isso, a foto falha so no device e o card cai no generico.
         source={{
           uri: trip.imageUrl,
-          headers: { 'User-Agent': 'TravelBACKApp/1.0 (+https://travelback.com)' },
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Linux; Android 12; TravelBACK/1.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+          },
         }}
         style={styles.tripImg}
         resizeMode="cover"

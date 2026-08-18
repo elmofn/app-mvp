@@ -11,6 +11,7 @@ import {
   searchPlacesByCoordinate,
   TRIPEDGE_PARTNER_KEY,
 } from './places';
+import { captureHandledError } from './telemetry';
 
 // ----------------------------------------------------------------------------
 // Catalog da TripEdge: inventario completo de hoteis, paginado.
@@ -247,6 +248,7 @@ export async function getRecommendedHotels(): Promise<Hotel[]> {
     if (hotels.length > 0) pool = hotels;
     return shuffle(hotels).slice(0, TARGET_RECOMMENDED);
   } catch (err) {
+    captureHandledError(err, { scope: 'getRecommendedHotels' });
     console.warn('[catalog] getRecommendedHotels failed:', err);
     return [];
   }
@@ -333,6 +335,7 @@ export async function getNearbyHotels(coords: LocationCoords | null): Promise<Ho
     if (hotels.length > 0) nearbyCache = { placeId: id, hotels };
     return hotels;
   } catch (err) {
+    captureHandledError(err, { scope: 'getNearbyHotels' });
     console.warn('[catalog] getNearbyHotels failed:', err);
     return [];
   }

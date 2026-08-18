@@ -1,4 +1,5 @@
 import type { SupportedLang } from './locale';
+import { captureHandledError } from './telemetry';
 
 // ----------------------------------------------------------------------------
 // Cliente do Gemini (Google Generative Language API) - usado para CURAR os
@@ -83,6 +84,7 @@ async function callGemini<T>(
     if (typeof textPart !== 'string') return null;
     return JSON.parse(textPart) as T;
   } catch (err) {
+    captureHandledError(err, { scope: 'callGemini' });
     console.warn('[gemini] call failed:', err);
     return null;
   } finally {

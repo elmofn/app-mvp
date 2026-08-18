@@ -12,6 +12,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 
+import { APP_ENV } from '@/src/config/env';
 import { BiometricGate } from '@/src/components/BiometricGate';
 import { AlertProvider } from '@/src/contexts/AlertContext';
 import { AuthProvider, useAuth } from '@/src/contexts/AuthContext';
@@ -19,6 +20,10 @@ import * as Sentry from '@sentry/react-native';
 
 Sentry.init({
   dsn: 'https://a93811f878a12dcb61bd5ca5f7b34c55@o4511931827748864.ingest.de.sentry.io/4511931839545424',
+
+  // Separa os eventos por ambiente no painel (staging/production), reusando a
+  // mesma camada de EXPO_PUBLIC_APP_ENV dos endpoints (src/config/env.ts).
+  environment: APP_ENV,
 
   // sendDefaultPii=false: NAO anexar IP / cookies / dados de usuario aos
   // eventos. Decisao de privacidade (vide docs/PRODUCTION_READINESS.md).

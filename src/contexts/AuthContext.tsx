@@ -4,6 +4,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import { getAccount } from '@/src/services/account';
 import { authenticateWithBiometric, getBiometricStatus } from '@/src/services/biometric';
 import { getBanners, getGeoNextTrips } from '@/src/services/content';
+import { captureHandledError } from '@/src/services/telemetry';
 import { getFAQ, type FAQItem } from '@/src/services/faq';
 import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/src/services/location';
 import { getUserLanguage, type SupportedLang } from '@/src/services/locale';
@@ -145,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             getGeoNextTrips(coords, lang),
           ]);
         } catch (err) {
+          captureHandledError(err, { scope: 'signIn.contentFetch' });
           console.warn('[auth] content fetch on signIn failed, using payload:', err);
         }
         const account: SignInAccountDetails = { ...response.accountDetails, banners, nextTrips };
@@ -188,6 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return null;
     } catch (err) {
+      captureHandledError(err, { scope: 'refreshSession' });
       console.warn('[auth] refreshSession failed:', err);
       return null;
     }
@@ -258,6 +261,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const items = await getFAQ(lang);
       setFaq({ items, loading: false, error: false });
     } catch (err) {
+      captureHandledError(err, { scope: 'reloadFAQ' });
       console.warn('[auth] FAQ reload failed:', err);
       setFaq((prev) => ({ ...prev, loading: false, error: true }));
     }

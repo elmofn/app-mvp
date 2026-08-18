@@ -29,6 +29,7 @@ import {
   searchPlacesByCoordinate,
   type Place,
 } from './places';
+import { captureHandledError } from './telemetry';
 
 const API_BASE_URL = endpoints.travelCashApi;
 
@@ -356,6 +357,7 @@ export async function getGeoNextTrips(
 
     return trips.length ? trips : getNextTrips(lang);
   } catch (err) {
+    captureHandledError(err, { scope: 'getGeoNextTrips' });
     console.warn('[content] getGeoNextTrips failed, using backend nextTrips:', err);
     return getNextTrips(lang);
   }

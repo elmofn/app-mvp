@@ -3,16 +3,24 @@ import { placeName, type Place } from './places';
 // ----------------------------------------------------------------------------
 // Foto da cidade para os cards do NextTrips.
 //
-// FONTE: Wikipedia (REST v1 "page summary"), gratuita e sem chave:
-//   GET https://en.wikipedia.org/api/rest_v1/page/summary/<Cidade>
-//   -> { type, thumbnail: { source, width, height }, originalimage: {...}, ... }
-// Buscamos pelo nome da cidade (placeName). Como o Gemini prioriza capitais /
-// litoral / cidades turisticas (src/services/gemini.ts), o hit rate na Wikipedia
-// e alto e consistente. Idioma: usamos a Wikipedia em ingles por ter a cobertura
-// mais ampla de nomes de cidade.
+// FONTE: Wikipedia (MediaWiki Action API "pageimages"), gratuita e sem chave:
+//   GET https://en.wikipedia.org/w/api.php?action=query&prop=pageimages
+//       &piprop=thumbnail&pithumbsize=<W>&redirects=1&titles=<Cidade>
+//   -> query.pages[0].thumbnail.source (URL ja num tamanho VALIDO)
 //
-// Resiliente: NUNCA lanca. Sem foto / cidade ambigua / erro / timeout => null,
-// e o card cai no generico bonito (pickGenericColor). O TripImage do NextTrips
+// Por que a Action API e nao a REST "summary": a Wikimedia restringe a geracao
+// de thumbnails a uma lista fixa de tamanhos (erro "Use thumbnail sizes listed
+// on ..." para tamanhos fora dela). Reescrever a largura na URL na mao quebra;
+// o `pithumbsize` faz a API devolver uma URL ja num bucket valido. Alem disso,
+// evita os parametros ?utm_* que a REST summary gruda no thumbnail. `redirects=1`
+// resolve nomes (ex.: "Ciudad del este" -> "Ciudad del Este").
+//
+// Idioma: Wikipedia em ingles (cobertura mais ampla de nomes de cidade). Como o
+// Gemini prioriza capitais / litoral / turisticas (src/services/gemini.ts), o hit
+// rate e alto e consistente.
+//
+// Resiliente: NUNCA lanca. Sem foto / cidade ambigua / erro / timeout => null, e
+// o card cai no generico bonito (pickGenericColor). O TripImage do NextTrips
 // ainda tem onError, entao mesmo uma URL que falhe ao carregar degrada sozinha.
 //
 // ⚠️ Nota de escala: hoje o app fala direto com a Wikipedia (~1 req por cidade,
@@ -20,21 +28,12 @@ import { placeName, type Place } from './places';
 // chamada do cliente, o ponto de injecao continua sendo esta funcao.
 // ----------------------------------------------------------------------------
 
-const WIKIPEDIA_SUMMARY_URL = 'https://en.wikipedia.org/api/rest_v1/page/summary';
-const TARGET_THUMB_WIDTH = 640; // largura alvo do thumbnail para os cards
+const WIKIPEDIA_API_URL = 'https://en.wikipedia.org/w/api.php';
+const THUMB_WIDTH = 800; // largura alvo; a API ajusta para o bucket valido mais proximo
 
 // Cache por titulo (nome da cidade) para nao re-buscar a mesma cidade no mesmo
 // processo (ex.: pull-to-refresh que reescolhe places parecidos).
 const photoCache = new Map<string, string | null>();
-
-// URLs de thumbnail do Wikimedia trazem um segmento ".../<N>px-Nome.jpg". Para
-// nao pegar o thumbnail padrao (~320px, borrado num card full-width) nem o
-// original (que pode ter MBs), reescrevemos a largura para TARGET_THUMB_WIDTH,
-// sem passar da largura do original (evita 404 por upscale alem do disponivel).
-function sizedThumb(thumbSource: string, originalWidth: number | undefined): string {
-  const target = Math.min(TARGET_THUMB_WIDTH, originalWidth ?? TARGET_THUMB_WIDTH);
-  return thumbSource.replace(/\/\d+px-/, `/${target}px-`);
-}
 
 export async function getCityPhoto(place: Place): Promise<string | null> {
   const name = placeName(place).trim();
@@ -46,7 +45,10 @@ export async function getCityPhoto(place: Place): Promise<string | null> {
     return cached;
   }
 
-  const url = `${WIKIPEDIA_SUMMARY_URL}/${encodeURIComponent(name)}`;
+  const url =
+    `${WIKIPEDIA_API_URL}?action=query&format=json&formatversion=2` +
+    `&prop=pageimages&piprop=thumbnail&pithumbsize=${THUMB_WIDTH}&redirects=1` +
+    `&titles=${encodeURIComponent(name)}`;
   console.log(`[cityPhoto] fetching "${name}" ${url}`);
 
   try {
@@ -67,27 +69,18 @@ export async function getCityPhoto(place: Place): Promise<string | null> {
     }
 
     const data = await response.json();
+    const page = data?.query?.pages?.[0];
+    const thumb: unknown = page?.thumbnail?.source;
 
-    // Pagina de desambiguacao nao e uma cidade especifica -> nao serve.
-    if (data?.type === 'disambiguation') {
-      console.warn(`[cityPhoto] "${name}" e desambiguacao -> sem foto`);
+    if (typeof thumb !== 'string' || !thumb) {
+      console.warn(`[cityPhoto] "${name}" sem thumbnail (title=${page?.title}, missing=${page?.missing})`);
       photoCache.set(name, null);
       return null;
     }
 
-    const thumbSource: unknown = data?.thumbnail?.source;
-    const originalWidth: unknown = data?.originalimage?.width;
-
-    if (typeof thumbSource !== 'string' || !thumbSource) {
-      console.warn(`[cityPhoto] "${name}" sem thumbnail (type=${data?.type}, title=${data?.title})`);
-      photoCache.set(name, null);
-      return null;
-    }
-
-    const result = sizedThumb(thumbSource, typeof originalWidth === 'number' ? originalWidth : undefined);
-    console.log(`[cityPhoto] "${name}" OK -> ${result} (thumb=${thumbSource}, origW=${String(originalWidth)})`);
-    photoCache.set(name, result);
-    return result;
+    console.log(`[cityPhoto] "${name}" OK -> ${thumb}`);
+    photoCache.set(name, thumb);
+    return thumb;
   } catch (err) {
     // Rede/JSON/etc.: sem foto => o card usa o generico.
     console.warn(`[cityPhoto] falhou para "${name}":`, err);

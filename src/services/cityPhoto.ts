@@ -1,21 +1,86 @@
-import { type Place } from './places';
+import { placeName, type Place } from './places';
 
 // ----------------------------------------------------------------------------
 // Foto da cidade para os cards do NextTrips.
 //
-// STATUS: sem fonte de foto por enquanto. Todo card usa o GENERICO
-// (pickGenericColor) - um fundo colorido deterministico por cidade. A escolha da
-// fonte real (Google imagens, Wikimedia, backend proxy, etc.) fica para depois.
+// FONTE: Wikipedia (REST v1 "page summary"), gratuita e sem chave:
+//   GET https://en.wikipedia.org/api/rest_v1/page/summary/<Cidade>
+//   -> { type, thumbnail: { source, width, height }, originalimage: {...}, ... }
+// Buscamos pelo nome da cidade (placeName). Como o Gemini prioriza capitais /
+// litoral / cidades turisticas (src/services/gemini.ts), o hit rate na Wikipedia
+// e alto e consistente. Idioma: usamos a Wikipedia em ingles por ter a cobertura
+// mais ampla de nomes de cidade.
 //
-// getCityPhoto e o ponto de injecao dessa fonte: hoje sempre retorna null (=>
-// generico). Quando definirmos a fonte, e so implementar aqui - a fiacao no
-// content.ts (timeout curto + busca em paralelo + persistencia da URL no
-// nextTrips) ja esta pronta e nao precisa mudar.
+// Resiliente: NUNCA lanca. Sem foto / cidade ambigua / erro / timeout => null,
+// e o card cai no generico bonito (pickGenericColor). O TripImage do NextTrips
+// ainda tem onError, entao mesmo uma URL que falhe ao carregar degrada sozinha.
+//
+// ⚠️ Nota de escala: hoje o app fala direto com a Wikipedia (~1 req por cidade,
+// cacheada no processo e persistida no nextTrips). Se um dia quiser tirar essa
+// chamada do cliente, o ponto de injecao continua sendo esta funcao.
 // ----------------------------------------------------------------------------
 
-// Ponto de injecao da fonte de foto (a definir). Nunca lanca; null => generico.
-export async function getCityPhoto(_place: Place): Promise<string | null> {
-  return null;
+const WIKIPEDIA_SUMMARY_URL = 'https://en.wikipedia.org/api/rest_v1/page/summary';
+const TARGET_THUMB_WIDTH = 640; // largura alvo do thumbnail para os cards
+
+// Cache por titulo (nome da cidade) para nao re-buscar a mesma cidade no mesmo
+// processo (ex.: pull-to-refresh que reescolhe places parecidos).
+const photoCache = new Map<string, string | null>();
+
+// URLs de thumbnail do Wikimedia trazem um segmento ".../<N>px-Nome.jpg". Para
+// nao pegar o thumbnail padrao (~320px, borrado num card full-width) nem o
+// original (que pode ter MBs), reescrevemos a largura para TARGET_THUMB_WIDTH,
+// sem passar da largura do original (evita 404 por upscale alem do disponivel).
+function sizedThumb(thumbSource: string, originalWidth: number | undefined): string {
+  const target = Math.min(TARGET_THUMB_WIDTH, originalWidth ?? TARGET_THUMB_WIDTH);
+  return thumbSource.replace(/\/\d+px-/, `/${target}px-`);
+}
+
+export async function getCityPhoto(place: Place): Promise<string | null> {
+  const name = placeName(place).trim();
+  if (!name) return null;
+
+  const cached = photoCache.get(name);
+  if (cached !== undefined) return cached;
+
+  try {
+    const url = `${WIKIPEDIA_SUMMARY_URL}/${encodeURIComponent(name)}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        // Wikimedia pede um User-Agent descritivo (politica de uso da API).
+        'User-Agent': 'TravelBACKApp/1.0 (+https://travelback.com)',
+      },
+    });
+
+    if (!response.ok) {
+      photoCache.set(name, null);
+      return null;
+    }
+
+    const data = await response.json();
+
+    // Pagina de desambiguacao nao e uma cidade especifica -> nao serve.
+    if (data?.type === 'disambiguation') {
+      photoCache.set(name, null);
+      return null;
+    }
+
+    const thumbSource: unknown = data?.thumbnail?.source;
+    const originalWidth: unknown = data?.originalimage?.width;
+    const result =
+      typeof thumbSource === 'string' && thumbSource
+        ? sizedThumb(thumbSource, typeof originalWidth === 'number' ? originalWidth : undefined)
+        : null;
+
+    photoCache.set(name, result);
+    return result;
+  } catch {
+    // Rede/JSON/etc.: sem foto => o card usa o generico.
+    photoCache.set(name, null);
+    return null;
+  }
 }
 
 // Fundo do generico: paleta curada (tons de viagem) escolhida de forma

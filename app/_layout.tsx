@@ -25,6 +25,12 @@ Sentry.init({
   // mesma camada de EXPO_PUBLIC_APP_ENV dos endpoints (src/config/env.ts).
   environment: APP_ENV,
 
+  // Ativo apenas em builds compilados (preview/production). Em dev local
+  // (__DEV__, rodando via Metro) fica desligado, para nao poluir o painel nem
+  // gastar cota de Session Replay. Builds de TESTE devem usar o perfil `preview`
+  // (release, __DEV__=false) -> reportam normalmente.
+  enabled: !__DEV__,
+
   // sendDefaultPii=false: NAO anexar IP / cookies / dados de usuario aos
   // eventos. Decisao de privacidade (vide docs/PRODUCTION_READINESS.md).
   // Doc: https://docs.sentry.io/platforms/react-native/data-management/data-collected/

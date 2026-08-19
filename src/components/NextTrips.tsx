@@ -52,8 +52,8 @@ function TripImage({ trip }: { trip: SignInNextTrip }) {
         });
         dataUriCache.set(url, uri);
         if (!cancelled) setDataUri(uri);
-      } catch (err) {
-        console.warn('[NextTrips] image fetch failed:', url, err);
+      } catch {
+        // download falhou (rede/403/etc.) -> card cai no generico
         if (!cancelled) setFailed(true);
       }
     })();

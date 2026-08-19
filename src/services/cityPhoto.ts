@@ -40,16 +40,12 @@ export async function getCityPhoto(place: Place): Promise<string | null> {
   if (!name) return null;
 
   const cached = photoCache.get(name);
-  if (cached !== undefined) {
-    console.log(`[cityPhoto] cache hit "${name}" -> ${cached ?? 'null'}`);
-    return cached;
-  }
+  if (cached !== undefined) return cached;
 
   const url =
     `${WIKIPEDIA_API_URL}?action=query&format=json&formatversion=2` +
     `&prop=pageimages&piprop=thumbnail&pithumbsize=${THUMB_WIDTH}&redirects=1` +
     `&titles=${encodeURIComponent(name)}`;
-  console.log(`[cityPhoto] fetching "${name}" ${url}`);
 
   try {
     const response = await fetch(url, {
@@ -62,8 +58,6 @@ export async function getCityPhoto(place: Place): Promise<string | null> {
     });
 
     if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      console.warn(`[cityPhoto] HTTP ${response.status} for "${name}": ${body.slice(0, 200)}`);
       photoCache.set(name, null);
       return null;
     }
@@ -73,7 +67,7 @@ export async function getCityPhoto(place: Place): Promise<string | null> {
     const thumb: unknown = page?.thumbnail?.source;
 
     if (typeof thumb !== 'string' || !thumb) {
-      console.warn(`[cityPhoto] "${name}" sem thumbnail (title=${page?.title}, missing=${page?.missing})`);
+      // Cidade sem imagem de destaque na Wikipedia -> card usa o generico.
       photoCache.set(name, null);
       return null;
     }
@@ -81,12 +75,10 @@ export async function getCityPhoto(place: Place): Promise<string | null> {
     // A API gruda ?utm_source=...&utm_campaign=api&... no thumbnail; removemos
     // para usar a URL canonica limpa do upload.wikimedia.org.
     const clean = thumb.split('?')[0];
-    console.log(`[cityPhoto] "${name}" OK -> ${clean}`);
     photoCache.set(name, clean);
     return clean;
-  } catch (err) {
+  } catch {
     // Rede/JSON/etc.: sem foto => o card usa o generico.
-    console.warn(`[cityPhoto] falhou para "${name}":`, err);
     photoCache.set(name, null);
     return null;
   }

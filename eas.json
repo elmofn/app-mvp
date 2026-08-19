@@ -40,8 +40,22 @@
     "staging": {
       "android": {
         "track": "internal"
+      },
+      // iOS nao tem "track": o build sobe para o App Store Connect e fica
+      // disponivel no TestFlight (equivalente ao internal testing do Android).
+      // O appleId (e-mail de login) NAO fica aqui - e credencial; o `eas submit`
+      // pergunta interativamente. ascAppId = App ID numerico do App Store Connect;
+      // appleTeamId = Team ID (Membership no developer.apple.com).
+      "ios": {
+        "ascAppId": "6802664762",
+        "appleTeamId": "97B9Z94N86"
       }
     },
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6802664762",
+        "appleTeamId": "97B9Z94N86"
+      }
+    }
   }
 }

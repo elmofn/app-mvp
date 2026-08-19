@@ -36,7 +36,7 @@ const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? '';
 
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 // Modelo barato o suficiente para uma curadoria de ~1 chamada por login.
-const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 const GEMINI_TIMEOUT_MS = 4000; // teto curto: se demorar, a home usa o fallback
 
 // ----------------------------------------------------------------------------

@@ -7,12 +7,14 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "environment": "development",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "staging"
       }
     },
     "preview": {
       "distribution": "internal",
+      "environment": "preview",
       "android": {
         "buildType": "apk"
       },
@@ -25,12 +27,14 @@
     },
     "staging": {
       "autoIncrement": true,
+      "environment": "preview",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "staging"
       }
     },
     "production": {
       "autoIncrement": true,
+      "environment": "production",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production"
       }

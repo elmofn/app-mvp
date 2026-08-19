@@ -196,7 +196,8 @@ export default function TravelShopScreen() {
           <>
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>
-                Hotéis <Text style={styles.sectionTitleAccent}>Recomendados</Text>
+                {t('travelshop.recommendedTitle')}{' '}
+                <Text style={styles.sectionTitleAccent}>{t('travelshop.recommendedTitleAccent')}</Text>
               </Text>
             </View>
             {recommended === null ? (
@@ -231,7 +232,8 @@ export default function TravelShopScreen() {
           <>
             <View style={[styles.section, { marginTop: 24 }]}>
               <Text style={styles.sectionTitle}>
-                Hotéis <Text style={styles.sectionTitleAccent}>Próximos</Text>
+                {t('travelshop.nearbyTitle')}{' '}
+                <Text style={styles.sectionTitleAccent}>{t('travelshop.nearbyTitleAccent')}</Text>
               </Text>
             </View>
             {nearby === null ? (

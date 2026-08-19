@@ -27,10 +27,10 @@ export const travelshop: Record<SupportedLang, Record<string, any>> = {
   },
   'pt-BR': {
     headerLabel: 'TRAVELSHOP',
-    mainTitle: 'Find Your',
-    mainTitleAccent: 'Stay',
+    mainTitle: 'Encontre sua',
+    mainTitleAccent: 'Estadia',
     pageDescription:
-      'Search hotels, compare deals and book your next trip with TravelBACK cashback.',
+      'Busque hotéis, compare ofertas e reserve sua próxima viagem com o cashback da TravelBACK.',
     searchButton: 'Buscar Hotéis',
     searchFlightsButton: 'Buscar Passagens Aéreas',
     marketplaceUnavailable: 'Não foi possível abrir o marketplace agora.',

@@ -37,14 +37,31 @@ const MARKETPLACE = {
 
 type Vertical = keyof typeof MARKETPLACE;
 
+// Busca via deep-link dos cards "Next Trip Ideas": check-in amanha (hoje+1) e
+// check-out em hoje+5 (4 noites), no fuso local. rooms=2-0 = 2 adultos, 0
+// criancas (padrao fixo de todas essas buscas).
+const DEFAULT_ROOMS = '2-0';
+
+// Data YYYY-MM-DD a `days` dias de hoje, no fuso LOCAL (nao UTC) para respeitar
+// o "amanha" do usuario mesmo perto da meia-noite.
+function ymdInDays(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export default function MarketplaceScreen() {
   const router = useRouter();
   const { t } = useT();
   const { account } = useAuth();
-  const { vertical, hotelId, placeId } = useLocalSearchParams<{
+  const { vertical, hotelId, placeId, city } = useLocalSearchParams<{
     vertical?: string;
     hotelId?: string;
     placeId?: string;
+    city?: string;
   }>();
   // Overlay so na 1a carga: nas navegacoes seguintes (abrir um hotel etc.) a
   // WebView ja mostra o conteudo progressivamente. Cobrir tudo a cada navegacao
@@ -56,13 +73,18 @@ export default function MarketplaceScreen() {
   const accountId = account?.accountDetails.accountId ?? '';
 
   // Com hotelId, o SSO cai direto na pagina do hotel (return_to=/hotel/{id});
-  // com placeId (deep-link dos cards "Next Trip Ideas"), cai na busca da cidade
-  // (return_to=/results?place_id=...), a mesma pagina/param que a search da
-  // TripEdge usa. Senao, usa o return_to da vertical.
+  // com placeId (deep-link dos cards "Next Trip Ideas"), cai na busca da cidade.
+  // A URL de /results precisa vir COMPLETA (place_id + city + datas + rooms):
+  // so o place_id fazia o site reaproveitar o estado cacheado da ultima busca
+  // (nome/hospedes errados no cabecalho). city fixa o rotulo; datas e rooms
+  // definem a busca. Senao, usa o return_to da vertical.
   const returnTo = hotelId
     ? `/hotel/${hotelId}`
     : placeId
-      ? `/results?place_id=${encodeURIComponent(placeId)}`
+      ? `/results?place_id=${encodeURIComponent(placeId)}` +
+        `&city=${encodeURIComponent(city ?? '')}` +
+        `&checkin=${ymdInDays(1)}&checkout=${ymdInDays(5)}` +
+        `&rooms=${DEFAULT_ROOMS}`
       : entry.returnTo;
 
   // Gate de acesso ao marketplace: exige telefone E email verificados (mesma

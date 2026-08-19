@@ -86,11 +86,15 @@ export function NextTrips({ trips }: Props) {
   if (!trips || trips.length === 0) return null;
 
   // Trips gerados por geolocalizacao carregam o place_id da TripEdge: o card
-  // abre o marketplace ja na busca daquela cidade (/results?place_id=...). Trips
-  // do backend nao tem placeId => card permanece nao-clicavel.
+  // abre o marketplace ja na busca daquela cidade. Passamos tambem o nome
+  // (city) para o marketplace montar a URL /results completa (place_id + city +
+  // datas + rooms) e o site nao reaproveitar o estado cacheado. Trips do backend
+  // nao tem placeId => card permanece nao-clicavel.
   const openTrip = (trip: SignInNextTrip) => {
     if (!trip.placeId) return;
-    router.push(`/marketplace?placeId=${encodeURIComponent(trip.placeId)}`);
+    router.push(
+      `/marketplace?placeId=${encodeURIComponent(trip.placeId)}&city=${encodeURIComponent(trip.title)}`,
+    );
   };
 
   return (

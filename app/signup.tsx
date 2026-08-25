@@ -5,6 +5,7 @@ import { CaretDownIcon, CheckCircleIcon, CheckIcon, EyeIcon, EyeSlashIcon, XIcon
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  BackHandler,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -176,6 +177,9 @@ export default function SignupScreen() {
   // accountId real (retornado pelo CreateAccount). Usado no
   // RequestValidationCode e no SetNewPasswordAccount.
   const [accountId, setAccountId] = useState<string>('');
+  // Marca que o codigo de email ja foi validado com sucesso. Como o usuario
+  // pode voltar etapas, evitamos revalidar (consumir de novo) o mesmo codigo.
+  const [emailValidated, setEmailValidated] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [codeError, setCodeError] = useState<string | null>(null);
   const [codeSending, setCodeSending] = useState(false);
@@ -272,6 +276,39 @@ export default function SignupScreen() {
     });
   };
 
+  // Recua uma etapa (mesma transicao do advanceStep, para tras).
+  const retreatStep = () => {
+    contentOpacity.value = withTiming(0, { duration: 200 }, (finished) => {
+      if (finished) {
+        runOnJS(changeStep)(currentStep - 1);
+        contentOpacity.value = withTiming(1, { duration: 300 });
+      }
+    });
+  };
+
+  // "Voltar" (seta do header e botao fisico do Android): recua UMA etapa do
+  // fluxo em vez de sair da tela inteira. So na primeira etapa sai do signup
+  // (router.back). Ignorado durante uma submissao em andamento.
+  const handleBack = () => {
+    if (isSubmitting) return;
+    if (currentStep > 1) {
+      retreatStep();
+    } else {
+      router.back();
+    }
+  };
+
+  // Intercepta o back fisico do Android para seguir a mesma logica por etapas.
+  // Retorna true para consumir o evento (sem isso, o SO popa a tela inteira).
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleBack();
+      return true;
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, isSubmitting]);
+
   // Dispara o RequestValidationCode (email por enquanto). Usado tanto no
   // auto-disparo da entrada do step 5 quanto no botao "Resend".
   const sendValidationCode = async (id: string) => {
@@ -322,6 +359,12 @@ export default function SignupScreen() {
   };
 
   const handleCreateAccount = async () => {
+    // Conta ja criada (usuario voltou etapas e avancou de novo): nao recria,
+    // apenas segue para a proxima etapa. Evita erro de "email ja em uso".
+    if (accountId) {
+      advanceStep();
+      return;
+    }
     setIsSubmitting(true);
     try {
       // Garante uma coordenada antes da chamada. Se o usuario negou
@@ -356,10 +399,17 @@ export default function SignupScreen() {
   };
 
   const handleValidateCode = async () => {
+    // Email ja validado (usuario voltou do step de PIN e avancou de novo): nao
+    // revalida (o codigo e de uso unico), apenas segue.
+    if (emailValidated) {
+      advanceStep();
+      return;
+    }
     setIsSubmitting(true);
     setCodeError(null);
     try {
       await validateCode(normalizeEmail(formData.email), formData.code, deviceLang);
+      setEmailValidated(true);
       advanceStep();
     } catch (err) {
       if (err instanceof ValidateCodeError) {
@@ -498,7 +548,7 @@ export default function SignupScreen() {
       >
         <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
 
-        <ScreenHeader title={t('signup.headerTitle')} dark={true} />
+        <ScreenHeader title={t('signup.headerTitle')} dark={true} onBack={handleBack} />
 
         <View style={styles.stepCounter}>
           <Text>

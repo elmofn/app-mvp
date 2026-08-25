@@ -5,6 +5,7 @@ import { CheckIcon, EyeIcon, EyeSlashIcon, XIcon } from 'phosphor-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  BackHandler,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -169,6 +170,28 @@ export default function ActivationScreen() {
       }
     });
   };
+
+  // "Voltar" (seta do header e botao fisico do Android): recua UMA etapa do
+  // fluxo em vez de sair da tela inteira. So na primeira etapa sai da ativacao
+  // (router.back). Ignorado durante uma operacao em andamento.
+  const handleBack = () => {
+    if (isVerifyingCode || isSavingPassword || isFinishing) return;
+    if (currentStep > 1) {
+      advanceTo(currentStep - 1);
+    } else {
+      router.back();
+    }
+  };
+
+  // Intercepta o back fisico do Android para seguir a mesma logica por etapas.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleBack();
+      return true;
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, isVerifyingCode, isSavingPassword, isFinishing]);
 
   const handleVerifyCode = async () => {
     if (code.trim().length === 0) {
@@ -357,7 +380,7 @@ export default function ActivationScreen() {
       >
         <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
 
-        <ScreenHeader title={t('activate.headerTitle')} dark={true} />
+        <ScreenHeader title={t('activate.headerTitle')} dark={true} onBack={handleBack} />
 
         <View style={styles.stepCounter}>
           <Text>

@@ -36,6 +36,18 @@ export const support: Record<SupportedLang, Record<string, any>> = {
     // Bottom buttons
     aboutApp: 'About the app',
     termsAndConditions: 'Terms and Conditions',
+
+    // About the app modal (device + version info for support)
+    aboutEyebrow: 'ABOUT',
+    aboutTitleBase: 'About the',
+    aboutTitleAccent: 'app',
+    aboutSubtitle: 'Share this information with support if you need help.',
+    aboutVersionLabel: 'Version',
+    aboutDeviceLabel: 'Device',
+    aboutSystemLabel: 'System',
+    aboutEnvironmentLabel: 'Environment',
+    aboutCopy: 'Copy info',
+    aboutCopied: 'Copied!',
   },
   'pt-BR': {
     // Header
@@ -67,6 +79,18 @@ export const support: Record<SupportedLang, Record<string, any>> = {
     // Bottom buttons
     aboutApp: 'Sobre o app',
     termsAndConditions: 'Termos e Condições',
+
+    // About the app modal (device + version info for support)
+    aboutEyebrow: 'SOBRE',
+    aboutTitleBase: 'Sobre o',
+    aboutTitleAccent: 'app',
+    aboutSubtitle: 'Compartilhe estas informações com o suporte caso precise de ajuda.',
+    aboutVersionLabel: 'Versão',
+    aboutDeviceLabel: 'Dispositivo',
+    aboutSystemLabel: 'Sistema',
+    aboutEnvironmentLabel: 'Ambiente',
+    aboutCopy: 'Copiar informações',
+    aboutCopied: 'Copiado!',
   },
   'es-ES': {
     // Header
@@ -98,5 +122,17 @@ export const support: Record<SupportedLang, Record<string, any>> = {
     // Bottom buttons
     aboutApp: 'Sobre la app',
     termsAndConditions: 'Términos y Condiciones',
+
+    // About the app modal (device + version info for support)
+    aboutEyebrow: 'ACERCA DE',
+    aboutTitleBase: 'Sobre la',
+    aboutTitleAccent: 'app',
+    aboutSubtitle: 'Comparte esta información con el soporte si necesitas ayuda.',
+    aboutVersionLabel: 'Versión',
+    aboutDeviceLabel: 'Dispositivo',
+    aboutSystemLabel: 'Sistema',
+    aboutEnvironmentLabel: 'Entorno',
+    aboutCopy: 'Copiar información',
+    aboutCopied: '¡Copiado!',
   },
 };

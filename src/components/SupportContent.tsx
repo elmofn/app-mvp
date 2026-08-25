@@ -6,10 +6,11 @@ import {
   ShieldCheckIcon,
   WhatsappLogoIcon
 } from 'phosphor-react-native';
-import React from 'react';
+import React, { useState } from 'react';
 import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AboutAppModal } from '@/src/components/AboutAppModal';
 import { FAQSection } from '@/src/components/FAQSection';
 import { useT } from '@/src/i18n';
 import type { SupportedLang } from '@/src/services/locale';
@@ -54,6 +55,7 @@ export function SupportContent({
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t } = useT();
+  const [aboutVisible, setAboutVisible] = useState(false);
 
   const openExternal = (url: string) => {
     Linking.openURL(url).catch((err) => {
@@ -62,6 +64,7 @@ export function SupportContent({
   };
 
   return (
+    <>
     <ScrollView
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ paddingBottom: bottomInset }}
@@ -143,7 +146,11 @@ export function SupportContent({
         <View style={styles.divider} />
 
         <View style={styles.bottomButtons}>
-          <TouchableOpacity style={styles.darkButton} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.darkButton}
+            activeOpacity={0.85}
+            onPress={() => setAboutVisible(true)}
+          >
             <View style={[styles.darkButtonIcon, { backgroundColor: '#85EDD3' }]}>
               <ShieldCheckIcon size={24} color="#0F022D" weight="bold" />
             </View>
@@ -161,6 +168,9 @@ export function SupportContent({
         </View>
       </View>
     </ScrollView>
+
+    <AboutAppModal visible={aboutVisible} onClose={() => setAboutVisible(false)} />
+    </>
   );
 }
 

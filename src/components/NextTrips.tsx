@@ -100,7 +100,7 @@ export function NextTrips({ trips }: Props) {
   return (
     <View style={styles.tripsSection}>
       <Animated.View entering={FadeInDown.delay(750).duration(500)} style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{t('home.nextTitle')}</Text>
+        <Text style={[styles.sectionTitle, styles.sectionTitleFirstLine]}>{t('home.nextTitle')}</Text>
         <Text style={styles.sectionTitleItalic}>
           {t('home.destinationsTitle')}<Text style={styles.sectionTitle}>.</Text>
         </Text>
@@ -147,7 +147,7 @@ export function NextTrips({ trips }: Props) {
 const styles = StyleSheet.create({
   tripsSection: {
     padding: 20,
-    paddingTop: 72,
+    paddingTop: 56,
     marginBottom: -20,
   },
   sectionHeader: {
@@ -158,6 +158,14 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     color: '#1a1a1a',
     lineHeight: 36,
+  },
+  // O lineHeight (36) e menor que a fonte (45) para deixar as duas linhas do
+  // titulo bem juntas. No iOS isso faz o topo da PRIMEIRA linha (acentos de
+  // "Proximos") estourar a caixa da linha e ser cortado pela borda da view.
+  // Este paddingTop da a folga necessaria so na primeira linha, sem alterar o
+  // espacamento apertado entre as duas linhas.
+  sectionTitleFirstLine: {
+    paddingTop: 18,
   },
   sectionTitleItalic: {
     fontSize: 45,

@@ -4,9 +4,11 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import {
   AirplaneTiltIcon,
+  CaretRightIcon,
   MagnifyingGlassIcon,
   MapPinIcon,
-  StarIcon
+  StarIcon,
+  TicketIcon
 } from 'phosphor-react-native';
 import React, { useEffect, useState } from 'react';
 import {
@@ -164,6 +166,18 @@ export default function TravelShopScreen() {
               <Text style={styles.searchButtonText}>{t('travelshop.searchFlightsButton')}</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Acesso discreto as compras do usuario: link mint sobre o header
+              roxo (nao um CTA solido). Cai logado em /trips via SSO. */}
+          <TouchableOpacity
+            style={styles.myTripsLink}
+            activeOpacity={0.7}
+            onPress={() => router.push('/marketplace?vertical=trips')}
+          >
+            <TicketIcon size={16} color="#85EDD3" weight="bold" />
+            <Text style={styles.myTripsLinkText}>{t('travelshop.myTripsButton')}</Text>
+            <CaretRightIcon size={14} color="#85EDD3" weight="bold" />
+          </TouchableOpacity>
         </LinearGradient>
 
         {/* Recomendados (catalog 5★): carregando -> spinner; vazio/erro -> some. */}
@@ -313,6 +327,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fonts.bold,
     letterSpacing: 0.4,
+  },
+  // Link discreto "Minhas viagens": acento mint sobre o header roxo, centrado
+  // sob o card de busca. Deliberadamente mais leve que os CTAs de busca.
+  myTripsLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 16,
+    paddingVertical: 6,
+  },
+  myTripsLinkText: {
+    color: '#85EDD3',
+    fontSize: 13,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.3,
   },
 
   // --- ACTION CARD (Balance) - identico ao da home ---

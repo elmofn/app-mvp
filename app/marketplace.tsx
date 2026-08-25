@@ -32,6 +32,12 @@ const MARKETPLACE = {
     returnTo: '/flights',
     titleKey: 'travelshop.searchFlightsButton',
   },
+  // "Minhas viagens": cai logado na pagina de compras do usuario (via SSO,
+  // return_to=/trips). Sem hotelId/placeId, entao usa este returnTo fixo.
+  trips: {
+    returnTo: '/trips',
+    titleKey: 'travelshop.myTripsButton',
+  },
 } as const;
 
 type Vertical = keyof typeof MARKETPLACE;
@@ -67,7 +73,9 @@ export default function MarketplaceScreen() {
   // arriscava o overlay branco ficar preso ("carregando infinitamente").
   const [initialLoading, setInitialLoading] = useState(true);
 
-  const key: Vertical = vertical === 'flights' ? 'flights' : 'hotels';
+  // Valida o vertical contra o mapa (hotels/flights/trips); default = hotels.
+  const key: Vertical =
+    vertical && vertical in MARKETPLACE ? (vertical as Vertical) : 'hotels';
   const entry = MARKETPLACE[key];
   const accountId = account?.accountDetails.accountId ?? '';
 

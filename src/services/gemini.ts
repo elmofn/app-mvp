@@ -84,7 +84,14 @@ async function callGemini<T>(
     if (typeof textPart !== 'string') return null;
     return JSON.parse(textPart) as T;
   } catch (err) {
-    captureHandledError(err, { scope: 'callGemini' });
+    // Timeout proprio (controller.abort) => AbortError: condicao ESPERADA em
+    // rede movel. Ja degradamos para o fallback geometrico (return null), entao
+    // nao e um erro que deva virar evento no Sentry. So reportamos falhas
+    // realmente inesperadas.
+    const isAbort = (err as { name?: string })?.name === 'AbortError';
+    if (!isAbort) {
+      captureHandledError(err, { scope: 'callGemini' });
+    }
     console.warn('[gemini] call failed:', err);
     return null;
   } finally {

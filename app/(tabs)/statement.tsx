@@ -244,9 +244,17 @@ export default function StatementScreen() {
                             <Text style={styles.txSubtitle}>{tx.details.productName}</Text>
                           ) : null}
                         </View>
-                        <Text style={[styles.txAmount, isPositive && styles.amountPositive]}>
-                          {isPositive ? '+' : '-'} {tx.originCurrencySymbol} {formatCurrency(valueLocal)}
-                        </Text>
+                        <View style={styles.txAmountContainer}>
+                          {/* originValue grande + reflexo em USD pequeno abaixo,
+                              mesmo vocabulario do header de saldo e da tela de
+                              detalhe da transacao. */}
+                          <Text style={[styles.txAmount, isPositive && styles.amountPositive]}>
+                            {isPositive ? '+' : '-'} {tx.originCurrencySymbol} {formatCurrency(valueLocal)}
+                          </Text>
+                          <Text style={styles.txAmountUsd}>
+                            {isPositive ? '+' : '-'} US$ {formatCurrency(tx.value)}
+                          </Text>
+                        </View>
                       </TouchableOpacity>
                     );
                   })}
@@ -414,10 +422,21 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     letterSpacing: 0.3,
   },
+  txAmountContainer: {
+    alignItems: 'flex-end',
+  },
   txAmount: {
     color: colors.text.dark,
     fontSize: 15,
     fontFamily: fonts.bold,
+  },
+  // Reflexo em USD: menor e apagado, como o balanceUsd do header.
+  txAmountUsd: {
+    color: colors.text.muted,
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    letterSpacing: -0.3,
+    marginTop: 1,
   },
   amountPositive: {
     color: '#00A86B',

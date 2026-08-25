@@ -7,7 +7,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
 import { EmailVerifyModal } from '@/src/components/EmailVerifyModal';
-import { PhoneVerifyModal } from '@/src/components/PhoneVerifyModal';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useT } from '@/src/i18n';
 import { buildPartnerSsoUrl } from '@/src/services/partnerSso';
@@ -87,20 +86,18 @@ export default function MarketplaceScreen() {
         `&rooms=${DEFAULT_ROOMS}`
       : entry.returnTo;
 
-  // Gate de acesso ao marketplace: exige telefone E email verificados (mesma
-  // logica do gate de telefone da aba TravelShop, agora tambem no destino para
-  // cobrir todas as entradas — botoes, cards e deep-links app://hotels|flights
-  // dos banners). Mostra o modal de telefone e, depois, o de email; so libera a
-  // WebView quando os dois estiverem verificados.
-  const phoneOk = !!account?.accountDetails.validPhoneNumber;
+  // Gate de acesso ao marketplace: exige email verificado (a verificacao de
+  // telefone foi desativada para a 1.0). Cobre todas as entradas — botoes,
+  // cards e deep-links app://hotels|flights dos banners. Mostra o modal de
+  // email; so libera a WebView quando o email estiver verificado.
   const emailOk = !!account?.accountDetails.validEmail;
-  const gated = !phoneOk || !emailOk;
+  const gated = !emailOk;
 
   // URL SSO: montada SO quando o gate libera (nao no mount). A assinatura do
   // Partner SSO inclui um timestamp com janela curta de validade; se montassemos
-  // no mount, a espera da verificacao (SMS/email) poderia deixar o ts vencido
-  // antes da WebView carregar. Montamos uma unica vez, quando os dois contatos
-  // ja estao verificados, para o ts estar fresco no momento do load.
+  // no mount, a espera da verificacao (email) poderia deixar o ts vencido antes
+  // da WebView carregar. Montamos uma unica vez, quando o email ja esta
+  // verificado, para o ts estar fresco no momento do load.
   // ssoTried distingue "ainda nao montou" (gated) de "montou e deu null" (erro).
   const [uri, setUri] = useState<string | null>(null);
   const [ssoTried, setSsoTried] = useState(false);
@@ -172,13 +169,8 @@ export default function MarketplaceScreen() {
         </View>
       )}
 
-      {/* Gate: telefone primeiro; depois email. Dispensar (X) volta a tela anterior. */}
-      <PhoneVerifyModal visible={!phoneOk} onClose={scheduleBack} onVerified={cancelBack} />
-      <EmailVerifyModal
-        visible={phoneOk && !emailOk}
-        onClose={scheduleBack}
-        onVerified={cancelBack}
-      />
+      {/* Gate: email verificado. Dispensar (X) volta a tela anterior. */}
+      <EmailVerifyModal visible={!emailOk} onClose={scheduleBack} onVerified={cancelBack} />
     </SafeAreaView>
   );
 }

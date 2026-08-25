@@ -8,7 +8,7 @@ import {
   MapPinIcon,
   StarIcon
 } from 'phosphor-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -21,7 +21,6 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BannersCarousel } from '@/src/components/BannersCarousel';
-import { PhoneVerifyModal } from '@/src/components/PhoneVerifyModal';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useT } from '@/src/i18n';
 import { getNearbyHotels, getRecommendedHotels, type Hotel } from '@/src/services/catalog';
@@ -99,15 +98,6 @@ export default function TravelShopScreen() {
   const { account } = useAuth();
   const { t } = useT();
 
-  // Gate do TravelShop: acessar qualquer coisa aqui (buscar hoteis, campos de
-  // busca, cards) exige telefone verificado. Se nao estiver, abrimos a
-  // verificacao por SMS no proprio TravelShop (PhoneVerifyModal) em vez de rotear
-  // o usuario ao settings - e, no sucesso, seguimos com a acao que ele tentou.
-  // Excecao: o card de Balance (placeholder) nao passa por aqui.
-  const phoneVerified = !!account?.accountDetails.validPhoneNumber;
-  const [phoneModalVisible, setPhoneModalVisible] = useState(false);
-  const pendingActionRef = useRef<(() => void) | null>(null);
-
   // Hoteis 5★ do catalog da TripEdge. null = carregando; [] = vazio/erro
   // (a secao some). Cacheado no servico, entao reabrir a aba nao re-busca.
   const [recommended, setRecommended] = useState<Hotel[] | null>(null);
@@ -127,21 +117,6 @@ export default function TravelShopScreen() {
       .then(setNearby)
       .catch(() => setNearby([]));
   }, []);
-
-  const requirePhoneVerified = (action: () => void) => {
-    if (phoneVerified) {
-      action();
-      return;
-    }
-    pendingActionRef.current = action;
-    setPhoneModalVisible(true);
-  };
-
-  const handlePhoneVerified = () => {
-    const action = pendingActionRef.current;
-    pendingActionRef.current = null;
-    action?.();
-  };
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
@@ -174,7 +149,7 @@ export default function TravelShopScreen() {
             <TouchableOpacity
               style={[styles.searchButton, styles.searchButtonHotels]}
               activeOpacity={0.85}
-              onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=hotels'))}
+              onPress={() => router.push('/marketplace?vertical=hotels')}
             >
               <MagnifyingGlassIcon size={18} color={colors.text.light} weight="bold" />
               <Text style={styles.searchButtonText}>{t('travelshop.searchButton')}</Text>
@@ -183,7 +158,7 @@ export default function TravelShopScreen() {
             <TouchableOpacity
               style={[styles.searchButton, styles.searchButtonFlights]}
               activeOpacity={0.85}
-              onPress={() => requirePhoneVerified(() => router.push('/marketplace?vertical=flights'))}
+              onPress={() => router.push('/marketplace?vertical=flights')}
             >
               <AirplaneTiltIcon size={18} color={colors.text.light} weight="bold" />
               <Text style={styles.searchButtonText}>{t('travelshop.searchFlightsButton')}</Text>
@@ -215,9 +190,7 @@ export default function TravelShopScreen() {
                     key={hotel.id}
                     hotel={hotel}
                     onPress={() =>
-                      requirePhoneVerified(() =>
-                        router.push(`/marketplace?hotelId=${encodeURIComponent(hotel.id)}`),
-                      )
+                      router.push(`/marketplace?hotelId=${encodeURIComponent(hotel.id)}`)
                     }
                   />
                 ))}
@@ -251,9 +224,7 @@ export default function TravelShopScreen() {
                     key={hotel.id}
                     hotel={hotel}
                     onPress={() =>
-                      requirePhoneVerified(() =>
-                        router.push(`/marketplace?hotelId=${encodeURIComponent(hotel.id)}`),
-                      )
+                      router.push(`/marketplace?hotelId=${encodeURIComponent(hotel.id)}`)
                     }
                   />
                 ))}
@@ -267,13 +238,6 @@ export default function TravelShopScreen() {
           <BannersCarousel banners={account?.banners} category="Shop" />
         </View>
       </ScrollView>
-
-      <PhoneVerifyModal
-        visible={phoneModalVisible}
-        onClose={() => setPhoneModalVisible(false)}
-        onVerified={handlePhoneVerified}
-        introMessage={t('travelshop.verifyPhoneRequiredMessage')}
-      />
     </SafeAreaView>
   );
 }

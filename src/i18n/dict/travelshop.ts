@@ -19,11 +19,6 @@ export const travelshop: Record<SupportedLang, Record<string, any>> = {
     nearbyTitleAccent: 'Nearby',
     reviewCount: '{count} reviews',
     priceCaption: '1 room x 1 night including taxes',
-    // Gate: telefone verificado eh pre-requisito para usar o TravelShop.
-    verifyPhoneRequiredTitle: 'Verify your phone',
-    verifyPhoneRequiredMessage:
-      'You need to verify your phone number to use the TravelShop. Verify it now to continue.',
-    verifyPhoneRequiredCta: 'Verify phone',
   },
   'pt-BR': {
     headerLabel: 'TRAVELSHOP',
@@ -42,11 +37,6 @@ export const travelshop: Record<SupportedLang, Record<string, any>> = {
     nearbyTitleAccent: 'Próximos',
     reviewCount: '{count} avaliações',
     priceCaption: '1 quarto x 1 noite incluindo impostos',
-    // Gate: telefone verificado eh pre-requisito para usar o TravelShop.
-    verifyPhoneRequiredTitle: 'Verifique seu telefone',
-    verifyPhoneRequiredMessage:
-      'Você precisa verificar seu número de telefone para usar o TravelShop. Verifique agora para continuar.',
-    verifyPhoneRequiredCta: 'Verificar telefone',
   },
   'es-ES': {
     headerLabel: 'TRAVELSHOP',
@@ -65,10 +55,5 @@ export const travelshop: Record<SupportedLang, Record<string, any>> = {
     nearbyTitleAccent: 'Cercanos',
     reviewCount: '{count} reseñas',
     priceCaption: '1 habitación x 1 noche con impuestos incluidos',
-    // Gate: telefone verificado eh pre-requisito para usar o TravelShop.
-    verifyPhoneRequiredTitle: 'Verifica tu teléfono',
-    verifyPhoneRequiredMessage:
-      'Necesitas verificar tu número de teléfono para usar el TravelShop. Verifícalo ahora para continuar.',
-    verifyPhoneRequiredCta: 'Verificar teléfono',
   },
 };

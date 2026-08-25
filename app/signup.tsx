@@ -434,6 +434,14 @@ export default function SignupScreen() {
     if (step.key) setFormData({ ...formData, [step.key]: val });
   };
 
+  // No step de verificacao de email, injeta o endereco de destino na descricao
+  // (o dict traz o placeholder {email}) para o usuario ver para onde o codigo
+  // foi enviado - mesmo padrao das demais telas de verificacao.
+  const stepDescription =
+    isCode && formData.email.trim()
+      ? step.description.replace('{email}', normalizeEmail(formData.email))
+      : step.description;
+
   const ctaLabel = isReview ? 'Create Account' : currentStep === STEPS.length ? 'Finish' : 'Next';
   const pinIncomplete = isPassword && formData.password.length !== 4;
   const disabled =
@@ -511,7 +519,7 @@ export default function SignupScreen() {
           <Text style={styles.mainTitle}>
             {step.titleFirst} <Text style={styles.mainTitleAccent}>{step.titleAccent}</Text>
           </Text>
-          <Text style={styles.pageDescription}>{step.description}</Text>
+          <Text style={styles.pageDescription}>{stepDescription}</Text>
         </Animated.View>
       </LinearGradient>
 

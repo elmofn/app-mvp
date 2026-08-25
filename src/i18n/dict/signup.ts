@@ -39,7 +39,7 @@ export const signup: Record<SupportedLang, Record<string, any>> = {
       {
         titleFirst: 'Verify',
         titleAccent: 'E-mail',
-        description: 'We sent a 6-digit code to your e-mail. Enter it below to validate your address.',
+        description: 'We sent a 6-digit code to {email}. Enter it below to validate your address.',
         label: 'Verification Code',
         placeholder: '0 0 0 0 0 0',
       },
@@ -133,7 +133,7 @@ export const signup: Record<SupportedLang, Record<string, any>> = {
       {
         titleFirst: 'Verificar',
         titleAccent: 'E-mail',
-        description: 'Enviamos um código de 6 dígitos para o seu e-mail. Digite abaixo para validar seu endereço.',
+        description: 'Enviamos um código de 6 dígitos para {email}. Digite abaixo para validar seu endereço.',
         label: 'Código de Verificação',
         placeholder: '0 0 0 0 0 0',
       },
@@ -227,7 +227,7 @@ export const signup: Record<SupportedLang, Record<string, any>> = {
       {
         titleFirst: 'Verificar',
         titleAccent: 'E-mail',
-        description: 'Enviamos un código de 6 dígitos a tu e-mail. Introdúcelo abajo para validar tu dirección.',
+        description: 'Enviamos un código de 6 dígitos a {email}. Introdúcelo abajo para validar tu dirección.',
         label: 'Código de Verificación',
         placeholder: '0 0 0 0 0 0',
       },

@@ -16,6 +16,19 @@ type Props = {
 // richtext do banner, tolerando as duas grafias que a API pode mandar.
 const bannerHtml = (b: SignInBanner): string => b.richtext ?? b.richText ?? '';
 
+// Cache-bust pontual dos banners. O <Image> do RN indexa o cache em disco pela
+// URL: se o backend troca a imagem mantendo o MESMO link, o app continua
+// mostrando a versao antiga cacheada. Anexar ?cb=<versao> muda a chave de cache
+// e forca um unico novo download. Vale para home e shop (mesmo componente).
+// So incrementar este numero quando uma imagem for trocada reusando a URL.
+const BANNER_CACHE_BUST = '2';
+
+const bannerImageUri = (uri: string): string => {
+  if (!uri) return uri;
+  const sep = uri.includes('?') ? '&' : '?';
+  return `${uri}${sep}cb=${BANNER_CACHE_BUST}`;
+};
+
 // Carousel de banners promocionais. Template unico (foto + gradient
 // overlay) usado tanto na home quanto na travelshop. Os banners chegam
 // num unico array no payload de SignIn e sao separados pelo campo
@@ -42,7 +55,11 @@ export function BannersCarousel({ banners, category }: Props) {
             disabled={!bannerHtml(banner)}
             onPress={() => setSelected(banner)}
           >
-            <Image source={{ uri: banner.imageUrl }} style={styles.bannerImg} resizeMode="cover" />
+            <Image
+              source={{ uri: bannerImageUri(banner.imageUrl) }}
+              style={styles.bannerImg}
+              resizeMode="cover"
+            />
             <LinearGradient
               colors={['transparent', 'rgba(0,0,0,0.85)']}
               style={styles.bannerOverlay}

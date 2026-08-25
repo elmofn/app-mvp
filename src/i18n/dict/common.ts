@@ -26,6 +26,10 @@ export const common: Record<SupportedLang, Record<string, any>> = {
     biometricTitleFirst: 'Welcome',
     biometricTitleAccent: 'back',
     biometricSubtitle: 'Tap below to unlock your TravelBACK account with biometric authentication.',
+    offlineTitleFirst: "You're",
+    offlineTitleAccent: 'offline',
+    offlineSubtitle:
+      'TravelBACK needs an internet connection to continue. Reconnect and try again.',
     editFieldEyebrow: 'EDIT {label}',
     editFieldNewPrefix: 'New ',
     editFieldPlaceholder: 'Enter the new {label}',
@@ -56,6 +60,10 @@ export const common: Record<SupportedLang, Record<string, any>> = {
     biometricTitleFirst: 'Bem-vindo de',
     biometricTitleAccent: 'volta',
     biometricSubtitle: 'Toque abaixo para desbloquear sua conta TravelBACK com autenticação biométrica.',
+    offlineTitleFirst: 'Você está',
+    offlineTitleAccent: 'offline',
+    offlineSubtitle:
+      'O TravelBACK precisa de conexão com a internet para continuar. Reconecte e tente novamente.',
     editFieldEyebrow: 'EDITAR {label}',
     editFieldNewPrefix: 'Novo ',
     editFieldPlaceholder: 'Digite o novo {label}',
@@ -86,6 +94,10 @@ export const common: Record<SupportedLang, Record<string, any>> = {
     biometricTitleFirst: 'Bienvenido de',
     biometricTitleAccent: 'nuevo',
     biometricSubtitle: 'Toca abajo para desbloquear tu cuenta TravelBACK con autenticación biométrica.',
+    offlineTitleFirst: 'Estás',
+    offlineTitleAccent: 'sin conexión',
+    offlineSubtitle:
+      'TravelBACK necesita conexión a internet para continuar. Reconéctate e inténtalo de nuevo.',
     editFieldEyebrow: 'EDITAR {label}',
     editFieldNewPrefix: 'Nuevo ',
     editFieldPlaceholder: 'Introduce el nuevo {label}',

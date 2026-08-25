@@ -1,5 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import {
+  ArrowLeftIcon,
   FileTextIcon,
   ShieldCheckIcon,
   WhatsappLogoIcon
@@ -34,6 +36,9 @@ type Props = {
   titleAccent?: string;
   titleAfter?: string;
   onTermsPress?: () => void;
+  // Seta de "Voltar" no topo do header. Usada quando a tela e aberta fora das
+  // tabs (ex.: help.tsx, antes do login); a aba de suporte nao passa isso.
+  showBackButton?: boolean;
 };
 
 export function SupportContent({
@@ -44,8 +49,10 @@ export function SupportContent({
   titleAccent,
   titleAfter,
   onTermsPress,
+  showBackButton = false,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { t } = useT();
 
   const openExternal = (url: string) => {
@@ -67,6 +74,17 @@ export function SupportContent({
         style={[styles.headerGradient, { paddingTop: insets.top }]}
       >
         <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
+
+        {showBackButton ? (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+            hitSlop={10}
+          >
+            <ArrowLeftIcon size={29} color={colors.text.light} weight="bold" />
+          </TouchableOpacity>
+        ) : null}
 
         <View style={styles.headerBody}>
           <Text style={styles.headerLabel}>{t('support.headerLabel')}</Text>
@@ -149,6 +167,14 @@ export function SupportContent({
 const styles = StyleSheet.create({
   headerGradient: {
     paddingBottom: 32,
+  },
+  // Alinhado como o ScreenHeader das demais telas: icone junto a margem de 24
+  // (paddingLeft 16 + folga interna do glifo).
+  backButton: {
+    alignSelf: 'flex-start',
+    paddingLeft: 16,
+    paddingTop: 5,
+    paddingBottom: 4,
   },
   headerBody: {
     paddingHorizontal: 24,

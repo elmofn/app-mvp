@@ -18,6 +18,7 @@ export default function HelpScreen() {
       <SupportContent
         lang={lang}
         showTravelAssistant={false}
+        showBackButton
         titleFirst={t('support.helpTitleFirst')}
         titleAccent={t('support.helpTitleAccent')}
         titleAfter={t('support.helpTitleAfter')}

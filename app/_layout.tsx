@@ -14,6 +14,7 @@ import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-c
 
 import { APP_ENV } from '@/src/config/env';
 import { BiometricGate } from '@/src/components/BiometricGate';
+import { LoadingScreen } from '@/src/components/LoadingScreen';
 import { OfflineGate } from '@/src/components/OfflineGate';
 import { AlertProvider } from '@/src/contexts/AlertContext';
 import { AuthProvider, useAuth } from '@/src/contexts/AuthContext';
@@ -94,14 +95,15 @@ export default Sentry.wrap(function RootLayout() {
 function AppShell() {
   const { isRestoring } = useAuth();
 
-  // 3. Segura o splash enquanto a sessao ainda esta sendo restaurada do storage
+  // 3. As fontes ja carregaram (AppShell so monta depois disso). Escondemos a
+  // splash nativa assim que montamos e entregamos para o LoadingScreen enquanto
+  // a sessao termina de restaurar - assim o usuario ve um loading comum em vez
+  // do logo parado por alguns instantes.
   useEffect(() => {
-    if (!isRestoring) {
-      SplashScreen.hideAsync();
-    }
-  }, [isRestoring]);
+    SplashScreen.hideAsync();
+  }, []);
 
-  if (isRestoring) return null;
+  if (isRestoring) return <LoadingScreen />;
 
   return (
     <>

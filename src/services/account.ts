@@ -34,6 +34,17 @@ export class ValidateCodeError extends Error {
   }
 }
 
+// CreateAccount retornou 200 mas sem account.id. Na pratica isso acontece
+// quando o e-mail/telefone foi bloqueado (opcao "deletar e bloquear conta"):
+// o backend aceita a chamada mas nao cria a conta. O signup traduz isso numa
+// mensagem de "entre em contato com o suporte".
+export class AccountBlockedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AccountBlockedError';
+  }
+}
+
 async function parseLocalizedError(
   response: Response,
   lang: SupportedLang,
@@ -112,12 +123,14 @@ export async function createAccount(
     const parsed = JSON.parse(rawBody);
     const accountId: string | undefined = parsed?.account?.id;
     if (!accountId) {
-      console.warn('[account] CreateAccount missing account.id:', rawBody);
-      throw new Error('Account creation succeeded but no accountId was returned.');
+      // 200 sem account.id => e-mail/telefone bloqueado. Erro tipado para o
+      // signup exibir a mensagem de "contate o suporte".
+      console.warn('[account] CreateAccount missing account.id (blocked?):', rawBody);
+      throw new AccountBlockedError('Account creation returned no accountId (blocked).');
     }
     return { accountId };
   } catch (err) {
-    if (err instanceof Error && err.message.includes('accountId')) throw err;
+    if (err instanceof AccountBlockedError) throw err;
     console.warn('[account] CreateAccount could not parse body:', rawBody);
     throw new Error('Invalid response from server.');
   }

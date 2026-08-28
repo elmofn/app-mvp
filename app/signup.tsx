@@ -38,6 +38,7 @@ import { useDebounce } from '@/src/hooks/useDebounce';
 import { useT } from '@/src/i18n';
 import { formatResendCountdown, useExpiryTimer, useResendTimer } from '@/src/hooks/useResendTimer';
 import {
+  AccountBlockedError,
   createAccount,
   getAccount,
   LANGUAGE_COUNTRY_IDS,
@@ -475,7 +476,14 @@ export default function SignupScreen() {
       submittedProfileRef.current = profile;
       advanceStep();
     } catch (err) {
-      const message = err instanceof Error ? err.message : t('signup.alerts.createError');
+      // E-mail/telefone bloqueado (deletar+bloquear): CreateAccount volta 200
+      // sem accountId. Mostra a mensagem de contatar o suporte.
+      const message =
+        err instanceof AccountBlockedError
+          ? t('signup.alerts.createBlocked')
+          : err instanceof Error
+            ? err.message
+            : t('signup.alerts.createError');
       showAlert(t('signup.alerts.signupFailedTitle'), message);
     } finally {
       setIsSubmitting(false);

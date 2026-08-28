@@ -54,6 +54,7 @@ export const signup: Record<SupportedLang, Record<string, any>> = {
     review: {
       nameEdit: 'Name • tap to edit',
       email: 'E-mail',
+      emailEdit: 'E-mail • tap to edit',
       phoneEdit: 'Phone • tap to edit',
       empty: '—',
     },
@@ -80,7 +81,9 @@ export const signup: Record<SupportedLang, Record<string, any>> = {
     },
     edit: {
       name: 'Name',
+      email: 'E-mail',
       phone: 'Phone',
+      invalidEmail: 'Enter a valid e-mail address.',
     },
     termsModal: {
       eyebrow: 'POLICIES',
@@ -148,6 +151,7 @@ export const signup: Record<SupportedLang, Record<string, any>> = {
     review: {
       nameEdit: 'Nome • toque para editar',
       email: 'E-mail',
+      emailEdit: 'E-mail • toque para editar',
       phoneEdit: 'Telefone • toque para editar',
       empty: '—',
     },
@@ -174,7 +178,9 @@ export const signup: Record<SupportedLang, Record<string, any>> = {
     },
     edit: {
       name: 'Nome',
+      email: 'E-mail',
       phone: 'Telefone',
+      invalidEmail: 'Digite um e-mail válido.',
     },
     termsModal: {
       eyebrow: 'POLÍTICAS',
@@ -242,6 +248,7 @@ export const signup: Record<SupportedLang, Record<string, any>> = {
     review: {
       nameEdit: 'Nombre • toca para editar',
       email: 'E-mail',
+      emailEdit: 'E-mail • toca para editar',
       phoneEdit: 'Teléfono • toca para editar',
       empty: '—',
     },
@@ -268,7 +275,9 @@ export const signup: Record<SupportedLang, Record<string, any>> = {
     },
     edit: {
       name: 'Nombre',
+      email: 'E-mail',
       phone: 'Teléfono',
+      invalidEmail: 'Introduce un e-mail válido.',
     },
     termsModal: {
       eyebrow: 'POLÍTICAS',

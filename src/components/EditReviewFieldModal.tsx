@@ -17,7 +17,7 @@ import { useT } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
-export type EditFieldKind = 'text' | 'phone' | 'legalId';
+export type EditFieldKind = 'text' | 'phone' | 'legalId' | 'email';
 
 type Props = {
   visible: boolean;
@@ -64,16 +64,18 @@ export function EditReviewFieldModal({
     }
   }, [visible, initialValue]);
 
-  const normalizeForKind = (raw: string) =>
-    kind === 'text' ? raw : raw.replace(/\D/g, '');
+  // phone/legalId sao digit-only; text/email preservam o texto (email so
+  // e trimado no save).
+  const digitsOnly = kind === 'phone' || kind === 'legalId';
+  const normalizeForKind = (raw: string) => (digitsOnly ? raw.replace(/\D/g, '') : raw);
 
   const handleSave = async () => {
-    const next = kind === 'text' ? value.trim() : value.replace(/\D/g, '');
+    const next = digitsOnly ? value.replace(/\D/g, '') : value.trim();
     if (!next) {
       setError(t('common.editFieldFill'));
       return;
     }
-    if (next === (kind === 'text' ? initialValue.trim() : initialValue.replace(/\D/g, ''))) {
+    if (next === (digitsOnly ? initialValue.replace(/\D/g, '') : initialValue.trim())) {
       onClose();
       return;
     }
@@ -111,7 +113,14 @@ export function EditReviewFieldModal({
     },
     autoCapitalize: kind === 'text' ? 'words' : 'none',
     autoCorrect: false,
-    keyboardType: kind === 'phone' ? 'phone-pad' : kind === 'legalId' ? 'number-pad' : 'default',
+    keyboardType:
+      kind === 'phone'
+        ? 'phone-pad'
+        : kind === 'legalId'
+          ? 'number-pad'
+          : kind === 'email'
+            ? 'email-address'
+            : 'default',
   };
 
   return (

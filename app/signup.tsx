@@ -169,7 +169,7 @@ export default function SignupScreen() {
   // voltar. Como o account ainda nao existe nesse fluxo, edit so atualiza
   // o formData local e o CreateAccount no final envia ja os valores
   // corretos. BMG/search roda antes para checar conflito de telefone.
-  type EditableField = 'name' | 'phone';
+  type EditableField = 'name' | 'email' | 'phone';
   const [editingField, setEditingField] = useState<EditableField | null>(null);
 
   // Modal de termos do review (step 4). Diferente do activate, aqui a
@@ -603,6 +603,20 @@ export default function SignupScreen() {
     check?: (val: string) => Promise<boolean>;
   }> = {
     name: { label: t('signup.edit.name'), kind: 'text', initial: formData.name },
+    email: {
+      label: t('signup.edit.email'),
+      kind: 'email',
+      initial: formData.email,
+      // Valida formato e conflito (mesma checagem do step 2). Formato
+      // invalido lanca erro exibido inline pelo modal.
+      check: async (val) => {
+        const normalized = normalizeEmail(val);
+        if (!normalized.includes('@') || !normalized.includes('.')) {
+          throw new Error(t('signup.edit.invalidEmail'));
+        }
+        return searchByEmail(normalized);
+      },
+    },
     phone: {
       label: t('signup.edit.phone'),
       kind: 'phone',
@@ -614,6 +628,12 @@ export default function SignupScreen() {
   const handleEditSave = async (newValue: string) => {
     if (editingField === 'name') {
       setFormData((prev) => ({ ...prev, name: newValue }));
+    } else if (editingField === 'email') {
+      setFormData((prev) => ({ ...prev, email: normalizeEmail(newValue) }));
+      // O modal acabou de checar formato + disponibilidade; refletimos
+      // available para o gate do fluxo. A conta so tera o email trocado
+      // no backend (UpdateAccount) + novo codigo ao avancar do review.
+      setEmailStatus('available');
     } else if (editingField === 'phone') {
       setFormData((prev) => ({ ...prev, phone: newValue }));
       // O step 3 ja cacheou status do phone original - como mudou o
@@ -686,10 +706,14 @@ export default function SignupScreen() {
                       <Text style={styles.reviewLabel}>{t('signup.review.nameEdit')}</Text>
                       <Text style={styles.reviewValue}>{formData.name || t('signup.review.empty')}</Text>
                     </TouchableOpacity>
-                    <View style={styles.reviewRow}>
-                      <Text style={styles.reviewLabel}>{t('signup.review.email')}</Text>
+                    <TouchableOpacity
+                      style={styles.reviewRow}
+                      onPress={() => setEditingField('email')}
+                      activeOpacity={0.6}
+                    >
+                      <Text style={styles.reviewLabel}>{t('signup.review.emailEdit')}</Text>
                       <Text style={styles.reviewValue}>{formData.email || t('signup.review.empty')}</Text>
-                    </View>
+                    </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.reviewRow}
                       onPress={() => setEditingField('phone')}

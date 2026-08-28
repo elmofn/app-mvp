@@ -36,7 +36,7 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { Country, DEFAULT_COUNTRY } from '@/src/data/countries';
 import { useDebounce } from '@/src/hooks/useDebounce';
 import { useT } from '@/src/i18n';
-import { formatResendCountdown, useResendTimer } from '@/src/hooks/useResendTimer';
+import { formatResendCountdown, useExpiryTimer, useResendTimer } from '@/src/hooks/useResendTimer';
 import {
   createAccount,
   requestValidationCode,
@@ -192,6 +192,8 @@ export default function SignupScreen() {
   const debouncedEmail = useDebounce(formData.email, 500);
   const debouncedPhone = useDebounce(formData.phone, 500);
   const resendTimer = useResendTimer();
+  // Janela de validade do codigo (15min). Reinicia a cada envio/reenvio.
+  const codeExpiry = useExpiryTimer();
 
   // Verifica e-mail no debounce: a flag cancelled descarta requests obsoletos.
   useEffect(() => {
@@ -319,6 +321,7 @@ export default function SignupScreen() {
     try {
       await requestValidationCode(id, 'email', deviceLang);
       resendTimer.start();
+      codeExpiry.start();
     } catch (err) {
       const message = err instanceof Error ? err.message : t('signup.alerts.verificationSendError');
       showAlert(t('signup.alerts.verificationTitle'), message);
@@ -766,6 +769,15 @@ export default function SignupScreen() {
                     maxLength={6}
                   />
                   {codeError ? <Text style={styles.errorText}>{codeError}</Text> : null}
+                  {codeExpiry.started ? (
+                    <Text style={styles.codeExpiryText}>
+                      {codeExpiry.expired
+                        ? t('common.codeExpired')
+                        : t('common.codeExpiresIn', {
+                            time: formatResendCountdown(codeExpiry.secondsLeft),
+                          })}
+                    </Text>
+                  ) : null}
                   <TouchableOpacity
                     onPress={handleResendCode}
                     activeOpacity={0.7}
@@ -1025,6 +1037,12 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: 22,
     textAlign: 'left',
+  },
+  codeExpiryText: {
+    marginTop: 10,
+    fontSize: 12,
+    fontFamily: fonts.medium,
+    color: colors.text.muted,
   },
   resendButton: {
     alignSelf: 'flex-start',

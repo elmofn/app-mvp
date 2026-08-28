@@ -66,3 +66,45 @@ export function useResendTimer(): ResendTimer {
 
   return { secondsLeft, canResend: secondsLeft <= 0, attempts, start, reset };
 }
+
+// Validade do codigo de verificacao enviado por e-mail/SMS: 15 minutos.
+// O backend nao devolve a expiracao, entao a janela e conhecida no cliente.
+export const CODE_EXPIRY_SECONDS = 15 * 60;
+
+// Contagem regressiva simples de expiracao (independente do cooldown de
+// reenvio). start() (re)inicia a janela; expired vira true ao zerar depois
+// de iniciada. Usada para exibir "o codigo expira em m:ss" nas telas de
+// verificacao.
+export type ExpiryTimer = {
+  secondsLeft: number;
+  expired: boolean;
+  started: boolean;
+  start: () => void;
+  reset: () => void;
+};
+
+export function useExpiryTimer(durationSeconds: number = CODE_EXPIRY_SECONDS): ExpiryTimer {
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  const [started, setStarted] = useState(false);
+
+  const start = useCallback(() => {
+    setStarted(true);
+    setSecondsLeft(durationSeconds);
+  }, [durationSeconds]);
+
+  const reset = useCallback(() => {
+    setStarted(false);
+    setSecondsLeft(0);
+  }, []);
+
+  const isCounting = secondsLeft > 0;
+  useEffect(() => {
+    if (!isCounting) return;
+    const id = setInterval(() => {
+      setSecondsLeft((s) => Math.max(0, s - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [isCounting]);
+
+  return { secondsLeft, expired: started && secondsLeft === 0, started, start, reset };
+}

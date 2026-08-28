@@ -36,6 +36,8 @@ export const common: Record<SupportedLang, Record<string, any>> = {
     editFieldFill: 'Please fill out this field.',
     editFieldInUse: 'This value is already in use on another account.',
     editFieldSaveError: 'Could not save the change.',
+    codeExpiresIn: 'Code expires in {time}',
+    codeExpired: 'Code expired — request a new one.',
   },
   'pt-BR': {
     ok: 'OK',
@@ -70,6 +72,8 @@ export const common: Record<SupportedLang, Record<string, any>> = {
     editFieldFill: 'Preencha este campo.',
     editFieldInUse: 'Este valor já está em uso em outra conta.',
     editFieldSaveError: 'Não foi possível salvar a alteração.',
+    codeExpiresIn: 'O código expira em {time}',
+    codeExpired: 'Código expirado — solicite um novo.',
   },
   'es-ES': {
     ok: 'OK',
@@ -104,5 +108,7 @@ export const common: Record<SupportedLang, Record<string, any>> = {
     editFieldFill: 'Completa este campo.',
     editFieldInUse: 'Este valor ya está en uso en otra cuenta.',
     editFieldSaveError: 'No se pudo guardar el cambio.',
+    codeExpiresIn: 'El código caduca en {time}',
+    codeExpired: 'Código caducado — solicita uno nuevo.',
   },
 };

@@ -29,7 +29,7 @@ import {
   validateCode,
   ValidateCodeError,
 } from '@/src/services/account';
-import { formatResendCountdown, useResendTimer } from '@/src/hooks/useResendTimer';
+import { formatResendCountdown, useExpiryTimer, useResendTimer } from '@/src/hooks/useResendTimer';
 import { getDeviceLanguage } from '@/src/services/locale';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
@@ -39,6 +39,8 @@ export default function LoginFormScreen() {
   const insets = useSafeAreaInsets();
   const { signIn, isSigningIn } = useAuth();
   const resendTimer = useResendTimer();
+  // Janela de validade do codigo de recuperacao (15min).
+  const codeExpiry = useExpiryTimer();
   const showAlert = useAlert();
   const { t } = useT();
 
@@ -95,6 +97,7 @@ export default function LoginFormScreen() {
     setRecoveryAccountId('');
     setRecoveryError(null);
     resendTimer.reset();
+    codeExpiry.reset();
   };
 
   const closeRecoveryModal = () => {
@@ -122,6 +125,7 @@ export default function LoginFormScreen() {
     try {
       await sendPasswordRecoveryToken(target, recoveryLang);
       resendTimer.start();
+      codeExpiry.start();
       setRecoveryEmail(target);
       setRecoveryStage('verifyCode');
     } catch (err) {
@@ -160,6 +164,7 @@ export default function LoginFormScreen() {
     try {
       await sendPasswordRecoveryToken(recoveryEmail, recoveryLang);
       resendTimer.start();
+      codeExpiry.start();
     } catch (err) {
       const message = err instanceof Error ? err.message : t('login.recoverySendCodeError');
       setRecoveryError(message);
@@ -416,6 +421,16 @@ export default function LoginFormScreen() {
 
                 {recoveryError ? (
                   <Text style={styles.recoveryErrorText}>{recoveryError}</Text>
+                ) : null}
+
+                {codeExpiry.started ? (
+                  <Text style={styles.recoveryExpiryText}>
+                    {codeExpiry.expired
+                      ? t('common.codeExpired')
+                      : t('common.codeExpiresIn', {
+                          time: formatResendCountdown(codeExpiry.secondsLeft),
+                        })}
+                  </Text>
                 ) : null}
 
                 <TouchableOpacity
@@ -710,6 +725,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: fonts.medium,
     color: '#f07167',
+  },
+  recoveryExpiryText: {
+    marginTop: 10,
+    fontSize: 12,
+    fontFamily: fonts.medium,
+    color: colors.text.muted,
   },
   recoveryResend: {
     alignSelf: 'flex-start',

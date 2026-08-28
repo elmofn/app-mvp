@@ -28,7 +28,7 @@ import { DismissKeyboard } from '@/src/components/DismissKeyboard';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
-import { formatResendCountdown, useResendTimer } from '@/src/hooks/useResendTimer';
+import { formatResendCountdown, useExpiryTimer, useResendTimer } from '@/src/hooks/useResendTimer';
 import { translate, useT } from '@/src/i18n';
 import {
   LANGUAGE_COUNTRY_IDS,
@@ -144,6 +144,8 @@ export default function SettingsScreen() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const resendTimer = useResendTimer();
+  // Janela de validade do codigo de verificacao (15min).
+  const codeExpiry = useExpiryTimer();
 
   // O mesmo modal serve tres fluxos (atualizar perfil, trocar PIN e
   // deletar conta); pendingAction guarda qual deles esta em curso e
@@ -252,6 +254,7 @@ export default function SettingsScreen() {
     setNewPin('');
     setPinError(null);
     resendTimer.reset();
+    codeExpiry.reset();
   };
 
   const closeVerifyModal = () => {
@@ -274,6 +277,7 @@ export default function SettingsScreen() {
     try {
       await requestValidationCode(account.accountDetails.accountId, 'email', lang);
       resendTimer.start();
+      codeExpiry.start();
     } catch (err) {
       const message = err instanceof Error ? err.message : t('settings.sendCodeFailedMessage');
       showAlert(t('common.verification'), message);
@@ -291,6 +295,7 @@ export default function SettingsScreen() {
     try {
       await requestValidationCode(account.accountDetails.accountId, 'email', lang);
       resendTimer.start();
+      codeExpiry.start();
     } catch (err) {
       const message = err instanceof Error ? err.message : t('settings.sendCodeFailedMessage');
       showAlert(t('common.verification'), message);
@@ -308,6 +313,7 @@ export default function SettingsScreen() {
     try {
       await requestValidationCode(account.accountDetails.accountId, 'email', lang);
       resendTimer.start();
+      codeExpiry.start();
     } catch (err) {
       const message = err instanceof Error ? err.message : t('settings.sendCodeFailedMessage');
       showAlert(t('common.verification'), message);
@@ -394,6 +400,7 @@ export default function SettingsScreen() {
       // Todos os fluxos restantes usam o canal de email.
       await requestValidationCode(account.accountDetails.accountId, 'email', lang);
       resendTimer.start();
+      codeExpiry.start();
     } catch (err) {
       const message = err instanceof Error ? err.message : t('settings.sendCodeFailedMessage');
       showAlert(t('common.verification'), message);
@@ -820,6 +827,16 @@ export default function SettingsScreen() {
 
                 {verifyError ? <Text style={styles.verifyErrorText}>{verifyError}</Text> : null}
 
+                {codeExpiry.started ? (
+                  <Text style={styles.verifyExpiryText}>
+                    {codeExpiry.expired
+                      ? t('common.codeExpired')
+                      : t('common.codeExpiresIn', {
+                          time: formatResendCountdown(codeExpiry.secondsLeft),
+                        })}
+                  </Text>
+                ) : null}
+
                 <TouchableOpacity
                   onPress={handleResendCode}
                   activeOpacity={0.7}
@@ -1189,6 +1206,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: fonts.medium,
     color: '#f07167',
+  },
+  verifyExpiryText: {
+    marginTop: 10,
+    fontSize: 12,
+    fontFamily: fonts.medium,
+    color: colors.text.muted,
   },
   resendButton: {
     alignSelf: 'flex-start',

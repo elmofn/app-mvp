@@ -118,9 +118,9 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     logoutMessage: 'Do you want to end your TravelBACK session?',
     deleteAccountTitle: 'Delete Account',
     deleteAccountMessage:
-      'Choose how to proceed. You can delete only this account, or also block any future account from being created for this email. This action is irreversible.',
+      'Choose how you’d like to proceed. You can delete this account only, or also prevent new accounts from being created using the same user information. This action cannot be undone.',
     deleteOnlyAccount: 'Delete account',
-    deleteAndBlockEmail: 'Delete and block this email',
+    deleteAndBlockEmail: 'Delete and block account',
 
     // CountryPicker
     selectCountry: 'Select country',
@@ -249,9 +249,9 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     logoutMessage: 'Deseja encerrar sua sessão no TravelBACK?',
     deleteAccountTitle: 'Deletar Conta',
     deleteAccountMessage:
-      'Escolha como proceder. Você pode deletar apenas esta conta, ou também bloquear a criação de qualquer conta futura para este e-mail. Esta ação é irreversível.',
+      'Escolha como deseja prosseguir. Você pode excluir apenas esta conta ou também impedir que novas contas sejam criadas usando os mesmos dados do usuário. Esta ação é irreversível.',
     deleteOnlyAccount: 'Deletar conta',
-    deleteAndBlockEmail: 'Deletar e bloquear este e-mail',
+    deleteAndBlockEmail: 'Deletar e bloquear conta',
 
     // CountryPicker
     selectCountry: 'Selecionar país',
@@ -380,9 +380,9 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     logoutMessage: '¿Deseas finalizar tu sesión en TravelBACK?',
     deleteAccountTitle: 'Eliminar Cuenta',
     deleteAccountMessage:
-      'Elige cómo proceder. Puedes eliminar solo esta cuenta, o también bloquear la creación de cualquier cuenta futura para este correo. Esta acción es irreversible.',
+      'Elige cómo deseas continuar. Puedes eliminar únicamente esta cuenta o también impedir que se creen nuevas cuentas utilizando los mismos datos del usuario. Esta acción no se puede deshacer.',
     deleteOnlyAccount: 'Eliminar cuenta',
-    deleteAndBlockEmail: 'Eliminar y bloquear este correo',
+    deleteAndBlockEmail: 'Eliminar y bloquear cuenta',
 
     // CountryPicker
     selectCountry: 'Seleccionar país',

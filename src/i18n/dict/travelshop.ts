@@ -4,10 +4,10 @@ import type { SupportedLang } from '@/src/services/locale';
 export const travelshop: Record<SupportedLang, Record<string, any>> = {
   'en-US': {
     headerLabel: 'TRAVELSHOP',
-    mainTitle: 'Find Your',
-    mainTitleAccent: 'Stay',
+    mainTitle: 'Everything for Your',
+    mainTitleAccent: 'Trip',
     pageDescription:
-      'Search hotels, compare deals and book your next trip with TravelBACK cashback.',
+      'Discover over 1.4 million hotels, 250 airlines, and many other travel products.',
     searchButton: 'Search Hotels',
     searchFlightsButton: 'Search Flights',
     myTripsButton: 'My trips',
@@ -23,10 +23,10 @@ export const travelshop: Record<SupportedLang, Record<string, any>> = {
   },
   'pt-BR': {
     headerLabel: 'TRAVELSHOP',
-    mainTitle: 'Encontre sua',
-    mainTitleAccent: 'Estadia',
+    mainTitle: 'Tudo para sua',
+    mainTitleAccent: 'Viagem',
     pageDescription:
-      'Busque hotéis, compare ofertas e reserve sua próxima viagem com o cashback da TravelBACK.',
+      'Encontre mais de 1,4 milhão de hotéis, 250 companhias aéreas e muitos outros produtos de viagem..',
     searchButton: 'Buscar Hotéis',
     searchFlightsButton: 'Buscar Passagens Aéreas',
     myTripsButton: 'Minhas viagens',
@@ -42,10 +42,10 @@ export const travelshop: Record<SupportedLang, Record<string, any>> = {
   },
   'es-ES': {
     headerLabel: 'TRAVELSHOP',
-    mainTitle: 'Encuentra tu',
-    mainTitleAccent: 'Alojamiento',
+    mainTitle: 'Todo para tu',
+    mainTitleAccent: 'Viaje',
     pageDescription:
-      'Busca hoteles, compara ofertas y reserva tu próximo viaje con el cashback de TravelBACK.',
+      'Encuentra más de 1,4 millones de hoteles, 250 aerolíneas y muchos otros productos de viaje.',
     searchButton: 'Buscar Hoteles',
     searchFlightsButton: 'Buscar Vuelos',
     myTripsButton: 'Mis viajes',

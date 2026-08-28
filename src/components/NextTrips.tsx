@@ -1,12 +1,12 @@
 import { useRouter } from 'expo-router';
 import { MapPinIcon } from 'phosphor-react-native';
 import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown, FadeInLeft, FadeInRight } from 'react-native-reanimated';
 
+import { useT } from '@/src/i18n';
 import type { SignInNextTrip } from '@/src/services/auth';
 import { pickGenericColor } from '@/src/services/cityPhoto';
-import { useT } from '@/src/i18n';
 import { fonts } from '@/src/theme/typography';
 
 type Props = {
@@ -172,6 +172,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.italic,
     color: '#f07167',
     lineHeight: 36,
+    ...(Platform.OS === 'ios' ? { paddingTop: 12 } : {}),
   },
   sectionSubtitle: {
     fontSize: 15,

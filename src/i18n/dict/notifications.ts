@@ -11,7 +11,7 @@ export const notifications: Record<SupportedLang, Record<string, any>> = {
     label: 'NOTIFICATIONS',
     titleBase: 'Your',
     titleAccent: 'Alerts',
-    pageDescription: 'Stay up to date with your account activity and travel updates.',
+    pageDescription: 'Stay up to date with your account activity and TravelBACK updates.',
 
     // States
     error: 'Could not load alerts. Try again later.',
@@ -45,7 +45,7 @@ export const notifications: Record<SupportedLang, Record<string, any>> = {
     label: 'NOTIFICAÇÕES',
     titleBase: 'Seus',
     titleAccent: 'Alertas',
-    pageDescription: 'Fique por dentro da atividade da sua conta e das novidades de viagem.',
+    pageDescription: 'Fique por dentro da atividade da sua conta e das novidades TravelBACK.',
 
     // States
     error: 'Não foi possível carregar os alertas. Tente novamente mais tarde.',
@@ -79,7 +79,7 @@ export const notifications: Record<SupportedLang, Record<string, any>> = {
     label: 'NOTIFICACIONES',
     titleBase: 'Tus',
     titleAccent: 'Alertas',
-    pageDescription: 'Mantente al día con la actividad de tu cuenta y las novedades de viaje.',
+    pageDescription: 'Mantente al día con la actividad de tu cuenta y las novedades TravelBACK.',
 
     // States
     error: 'No se pudieron cargar las alertas. Inténtalo de nuevo más tarde.',

@@ -10,7 +10,7 @@ export const terms: Record<SupportedLang, Record<string, any>> = {
     // Split title — "Terms & Conditions"
     titleFirst: 'Terms & ',
     titleAccent: 'Conditions',
-    pageDescription: 'Review the policies that apply to your TravelBACK account.',
+    pageDescription: 'Policies that apply to your TravelBACK account.',
     empty: 'No policies available for your account at this moment.',
   },
   'pt-BR': {
@@ -19,7 +19,7 @@ export const terms: Record<SupportedLang, Record<string, any>> = {
     // Split title — "Termos & Condições"
     titleFirst: 'Termos & ',
     titleAccent: 'Condições',
-    pageDescription: 'Revise as políticas que se aplicam à sua conta TravelBACK.',
+    pageDescription: 'Políticas que se aplicam à sua conta TravelBACK.',
     empty: 'Nenhuma política disponível para a sua conta no momento.',
   },
   'es-ES': {
@@ -28,7 +28,7 @@ export const terms: Record<SupportedLang, Record<string, any>> = {
     // Split title — "Términos & Condiciones"
     titleFirst: 'Términos & ',
     titleAccent: 'Condiciones',
-    pageDescription: 'Revisa las políticas que se aplican a tu cuenta TravelBACK.',
+    pageDescription: 'Políticas que se aplican a tu cuenta TravelBACK.',
     empty: 'No hay políticas disponibles para tu cuenta en este momento.',
   },
 };

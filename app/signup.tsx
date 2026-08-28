@@ -39,8 +39,11 @@ import { useT } from '@/src/i18n';
 import { formatResendCountdown, useExpiryTimer, useResendTimer } from '@/src/hooks/useResendTimer';
 import {
   createAccount,
+  getAccount,
+  LANGUAGE_COUNTRY_IDS,
   requestValidationCode,
   setNewPassword,
+  updateAccount,
   validateCode,
   ValidateCodeError,
 } from '@/src/services/account';
@@ -188,6 +191,14 @@ export default function SignupScreen() {
   // Guarda se ja disparamos o envio de codigo para o step 5 atual -
   // evita re-disparo a cada render. Reseta no botao "Resend".
   const codeRequestedRef = useRef(false);
+  // Snapshot do perfil (name/email/phoneE164) efetivamente enviado ao
+  // backend no ultimo Create/Update. Serve para detectar se o usuario
+  // editou algo depois de criar a conta e, nesse caso, persistir via
+  // UpdateAccount em vez de so avancar na interface.
+  const submittedProfileRef = useRef<{ name: string; email: string; phoneE164: string } | null>(null);
+  // currencyId/countryId que o backend atribuiu a conta - necessarios no
+  // UpdateAccount. Buscados sob demanda (so quando ha edicao) e cacheados.
+  const accountDefaultsRef = useRef<{ currencyId: string; countryId: string } | null>(null);
 
   const debouncedEmail = useDebounce(formData.email, 500);
   const debouncedPhone = useDebounce(formData.phone, 500);
@@ -363,11 +374,82 @@ export default function SignupScreen() {
     sendValidationCode(accountId);
   };
 
-  const handleCreateAccount = async () => {
-    // Conta ja criada (usuario voltou etapas e avancou de novo): nao recria,
-    // apenas segue para a proxima etapa. Evita erro de "email ja em uso".
-    if (accountId) {
+  // Perfil atual normalizado exatamente como vai para o backend (name
+  // trimado, email normalizado, telefone em E.164). Base para detectar
+  // edicoes feitas depois da criacao da conta.
+  const currentProfile = () => ({
+    name: formData.name.trim(),
+    email: normalizeEmail(formData.email),
+    phoneE164: toE164Phone(normalizePhone(country.dial, formData.phone.replace(/\D/g, ''))),
+  });
+
+  // Persiste no backend as edicoes feitas no review depois que a conta ja
+  // existe (UpdateAccount). Sem isso, alterar name/telefone so mudava a
+  // interface. currencyId/countryId sao lidos da conta (GetAccount) na
+  // primeira vez e reaproveitados.
+  const pushAccountUpdate = async (profile: { name: string; email: string; phoneE164: string }) => {
+    setIsSubmitting(true);
+    try {
+      let defaults = accountDefaultsRef.current;
+      if (!defaults) {
+        const snap = await getAccount(accountId, deviceLang);
+        defaults = {
+          currencyId: snap.setups.currency.id,
+          countryId: snap.account.countryId || LANGUAGE_COUNTRY_IDS[deviceLang],
+        };
+        accountDefaultsRef.current = defaults;
+      }
+      // Reaproveita a localizacao ja obtida na criacao (nao dispara novo
+      // prompt de permissao); ausente, segue sem geolocation.
+      const coords = getCachedLocation();
+      const geolocation = coords ? formatLocationPayload(coords) : '';
+
+      await updateAccount(
+        {
+          accountId,
+          name: profile.name,
+          email: profile.email,
+          phoneNumber: profile.phoneE164,
+          currencyId: defaults.currencyId,
+          countryId: defaults.countryId,
+          geolocation,
+        },
+        deviceLang,
+      );
+
+      // Se o email mudou, o codigo enviado antes era para o endereco antigo:
+      // forca um novo envio ao reentrar no step 5.
+      if (submittedProfileRef.current && submittedProfileRef.current.email !== profile.email) {
+        codeRequestedRef.current = false;
+        setEmailValidated(false);
+      }
+      submittedProfileRef.current = profile;
       advanceStep();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('signup.alerts.createError');
+      showAlert(t('signup.alerts.signupFailedTitle'), message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCreateAccount = async () => {
+    // Conta ja criada (usuario voltou etapas e avancou de novo): se editou
+    // algo, persiste via UpdateAccount; senao, so avanca. Evita recriar a
+    // conta (erro de "email ja em uso") e evita perder edicoes do review.
+    if (accountId) {
+      const profile = currentProfile();
+      const sent = submittedProfileRef.current;
+      const changed =
+        !sent ||
+        sent.name !== profile.name ||
+        sent.email !== profile.email ||
+        sent.phoneE164 !== profile.phoneE164;
+      if (changed) {
+        await pushAccountUpdate(profile);
+      } else {
+        advanceStep();
+      }
       return;
     }
     setIsSubmitting(true);
@@ -377,23 +459,20 @@ export default function SignupScreen() {
       let coords = getCachedLocation();
       if (!coords) coords = await getCurrentLocation();
       const geolocation = formatLocationPayload(coords);
-      const phoneDigits = formData.phone.replace(/\D/g, '');
-      // E.164 com "+" na frente: o backend precisa do "+" para a validacao/
-      // envio de mensagens. normalizePhone monta DDI+numero em digitos; toE164
-      // so prefixa o "+".
-      const phoneNumber = toE164Phone(normalizePhone(country.dial, phoneDigits));
+      const profile = currentProfile();
 
       const { accountId: newId } = await createAccount(
         {
-          name: formData.name.trim(),
-          email: normalizeEmail(formData.email),
-          phoneNumber,
+          name: profile.name,
+          email: profile.email,
+          phoneNumber: profile.phoneE164,
           language: deviceLang,
           geolocation,
         },
         deviceLang,
       );
       setAccountId(newId);
+      submittedProfileRef.current = profile;
       advanceStep();
     } catch (err) {
       const message = err instanceof Error ? err.message : t('signup.alerts.createError');

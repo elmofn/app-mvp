@@ -561,9 +561,9 @@ export default function ActivationScreen() {
           >
             <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
             <TouchableOpacity
-              style={styles.termsClose}
+              style={[styles.termsClose, { top: insets.top + 8 }]}
               onPress={() => setTermsVisible(false)}
-              hitSlop={10}
+              hitSlop={16}
             >
               <XIcon size={22} color={colors.text.light} weight="bold" />
             </TouchableOpacity>

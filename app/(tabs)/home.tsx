@@ -158,7 +158,15 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      
+
+      {/* Backdrop atras do topo do scroll: no iOS o overscroll do pull-to-
+          refresh estica alem do conteudo e revelava o fundo branco do
+          container. Pintamos essa area com a cor de topo do header
+          (#6444DA), entao o "puxar" parece o header esticando e o loader
+          branco desce sobre ela, em vez de um vazio branco. pointerEvents
+          none para nao interceptar o gesto. */}
+      <View pointerEvents="none" style={styles.overscrollBackdrop} />
+
       <Animated.ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
@@ -355,6 +363,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
+  },
+  // Cobre a faixa superior (inclui a status bar) com a cor de topo do
+  // header. Altura generosa para o overscroll do iOS; fica atras do
+  // conteudo, so aparece quando o scroll e puxado para baixo.
+  overscrollBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 600,
+    backgroundColor: '#6444DA',
   },
   
   // --- HEADER ---

@@ -33,7 +33,7 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     authCodeTitleBase: 'Your',
     authCodeTitleAccent: 'code',
     authCodeDescription:
-      'Use this code to securely access the marketplace. It refreshes automatically when it expires.',
+      'Use this code to securely access the web marketplace. It refreshes automatically when it expires.',
     authCodeExpiresIn: 'Expires in {time}',
     authCodeLoading: 'Generating code…',
     authCodeError: "Couldn't generate the code.",
@@ -164,7 +164,7 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     authCodeTitleBase: 'Seu',
     authCodeTitleAccent: 'código',
     authCodeDescription:
-      'Use este código para acessar o marketplace com segurança. Ele é renovado automaticamente ao expirar.',
+      'Use este código para acessar o marketplace web com segurança. Ele é renovado automaticamente ao expirar.',
     authCodeExpiresIn: 'Expira em {time}',
     authCodeLoading: 'Gerando código…',
     authCodeError: 'Não foi possível gerar o código.',
@@ -295,7 +295,7 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     authCodeTitleBase: 'Tu',
     authCodeTitleAccent: 'código',
     authCodeDescription:
-      'Usa este código para acceder al marketplace de forma segura. Se renueva automáticamente al expirar.',
+      'Usa este código para acceder al marketplace web de forma segura. Se renueva automáticamente al expirar.',
     authCodeExpiresIn: 'Expira en {time}',
     authCodeLoading: 'Generando código…',
     authCodeError: 'No se pudo generar el código.',

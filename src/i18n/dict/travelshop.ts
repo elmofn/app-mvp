@@ -26,7 +26,7 @@ export const travelshop: Record<SupportedLang, Record<string, any>> = {
     mainTitle: 'Tudo para sua',
     mainTitleAccent: 'Viagem',
     pageDescription:
-      'Encontre mais de 1,4 milhão de hotéis, 250 companhias aéreas e muitos outros produtos de viagem..',
+      'Encontre mais de 1.4 milhão de hotéis, 250 companhias aéreas e muitos outros produtos de viagem.',
     searchButton: 'Buscar Hotéis',
     searchFlightsButton: 'Buscar Passagens Aéreas',
     myTripsButton: 'Minhas viagens',
@@ -45,7 +45,7 @@ export const travelshop: Record<SupportedLang, Record<string, any>> = {
     mainTitle: 'Todo para tu',
     mainTitleAccent: 'Viaje',
     pageDescription:
-      'Encuentra más de 1,4 millones de hoteles, 250 aerolíneas y muchos otros productos de viaje.',
+      'Encuentra más de 1.4 millones de hoteles, 250 aerolíneas y muchos otros productos de viaje.',
     searchButton: 'Buscar Hoteles',
     searchFlightsButton: 'Buscar Vuelos',
     myTripsButton: 'Mis viajes',

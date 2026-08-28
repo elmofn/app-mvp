@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   BackHandler,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -28,6 +29,7 @@ import Animated, {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CountryPicker } from '@/src/components/CountryPicker';
+import { DismissKeyboard } from '@/src/components/DismissKeyboard';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
@@ -540,6 +542,7 @@ export default function SignupScreen() {
   };
 
   return (
+    <DismissKeyboard>
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <StatusBar style="light" />
 
@@ -752,7 +755,11 @@ export default function SignupScreen() {
                     value={inputValue}
                     onChangeText={(val) => {
                       if (codeError) setCodeError(null);
-                      setInputValue(val.replace(/\D/g, ''));
+                      const digits = val.replace(/\D/g, '');
+                      setInputValue(digits);
+                      // Codigo completo (6 digitos): fecha o teclado para
+                      // revelar o botao de prosseguir sem toque extra.
+                      if (digits.length >= 6) Keyboard.dismiss();
                     }}
                     keyboardType="number-pad"
                     autoComplete="one-time-code"
@@ -883,6 +890,7 @@ export default function SignupScreen() {
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
+    </DismissKeyboard>
   );
 }
 

@@ -24,6 +24,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AuthCodeModal } from '@/src/components/AuthCodeModal';
+import { DismissKeyboard } from '@/src/components/DismissKeyboard';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
@@ -485,6 +486,7 @@ export default function SettingsScreen() {
     (isDirty ? 84 : 0) + (keyboardHeight > 0 ? keyboardHeight : insets.bottom) + 16;
 
   return (
+    <DismissKeyboard>
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <StatusBar style="light" />
 
@@ -757,6 +759,7 @@ export default function SettingsScreen() {
         animationType="fade"
         onRequestClose={closeVerifyModal}
       >
+        <DismissKeyboard>
         <View style={styles.verifyOverlay}>
           <View style={styles.verifyCard}>
             <TouchableOpacity
@@ -805,7 +808,10 @@ export default function SettingsScreen() {
                   value={verifyCode}
                   onChangeText={(val) => {
                     if (verifyError) setVerifyError(null);
-                    setVerifyCode(val.replace(/\D/g, ''));
+                    const digits = val.replace(/\D/g, '');
+                    setVerifyCode(digits);
+                    // Codigo completo (6 digitos): fecha o teclado.
+                    if (digits.length >= 6) Keyboard.dismiss();
                   }}
                   keyboardType="number-pad"
                   autoComplete="one-time-code"
@@ -912,8 +918,10 @@ export default function SettingsScreen() {
             )}
           </View>
         </View>
+        </DismissKeyboard>
       </Modal>
     </SafeAreaView>
+    </DismissKeyboard>
   );
 }
 

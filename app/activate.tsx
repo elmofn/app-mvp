@@ -28,6 +28,7 @@ import Animated, {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EditFieldKind, EditReviewFieldModal } from '@/src/components/EditReviewFieldModal';
+import { DismissKeyboard } from '@/src/components/DismissKeyboard';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
@@ -368,6 +369,7 @@ export default function ActivationScreen() {
     : [];
 
   return (
+    <DismissKeyboard>
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <StatusBar style="light" />
 
@@ -591,6 +593,7 @@ export default function ActivationScreen() {
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
+    </DismissKeyboard>
   );
 }
 

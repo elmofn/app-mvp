@@ -5,6 +5,7 @@ import { EyeIcon, EyeSlashIcon, XIcon } from 'phosphor-react-native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -17,6 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DismissKeyboard } from '@/src/components/DismissKeyboard';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
@@ -188,6 +190,7 @@ export default function LoginFormScreen() {
   };
 
   return (
+    <DismissKeyboard>
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <StatusBar style="light" />
 
@@ -313,6 +316,7 @@ export default function LoginFormScreen() {
         animationType="fade"
         onRequestClose={closeRecoveryModal}
       >
+        <DismissKeyboard>
         <KeyboardAvoidingView
           style={styles.recoveryOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -400,7 +404,10 @@ export default function LoginFormScreen() {
                   value={recoveryCode}
                   onChangeText={(val) => {
                     if (recoveryError) setRecoveryError(null);
-                    setRecoveryCode(val.replace(/\D/g, ''));
+                    const digits = val.replace(/\D/g, '');
+                    setRecoveryCode(digits);
+                    // Codigo completo (6 digitos): fecha o teclado.
+                    if (digits.length >= 6) Keyboard.dismiss();
                   }}
                   keyboardType="number-pad"
                   autoComplete="one-time-code"
@@ -504,8 +511,10 @@ export default function LoginFormScreen() {
             )}
           </View>
         </KeyboardAvoidingView>
+        </DismissKeyboard>
       </Modal>
     </SafeAreaView>
+    </DismissKeyboard>
   );
 }
 

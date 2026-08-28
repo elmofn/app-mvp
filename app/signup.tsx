@@ -440,7 +440,7 @@ export default function SignupScreen() {
         ]);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not save your PIN.';
+      const message = err instanceof Error ? err.message : t('signup.alerts.pinError');
       showAlert(t('signup.alerts.signupFailedTitle'), message);
     } finally {
       setIsSubmitting(false);
@@ -492,7 +492,11 @@ export default function SignupScreen() {
       ? step.description.replace('{email}', normalizeEmail(formData.email))
       : step.description;
 
-  const ctaLabel = isReview ? 'Create Account' : currentStep === STEPS.length ? 'Finish' : 'Next';
+  const ctaLabel = isReview
+    ? t('signup.cta.createAccount')
+    : currentStep === STEPS.length
+      ? t('signup.cta.finish')
+      : t('signup.cta.next');
   const pinIncomplete = isPassword && formData.password.length !== 4;
   const disabled =
     isSubmitting ||
@@ -503,7 +507,7 @@ export default function SignupScreen() {
 
   const reviewPhone = formData.phone
     ? `${country.dial} ${formData.phone}`
-    : '—';
+    : t('signup.review.empty');
 
   // Config + save handler do EditReviewFieldModal para o review do
   // signup. O account ainda nao existe, entao apenas atualizamos o
@@ -514,9 +518,9 @@ export default function SignupScreen() {
     initial: string;
     check?: (val: string) => Promise<boolean>;
   }> = {
-    name: { label: 'Name', kind: 'text', initial: formData.name },
+    name: { label: t('signup.edit.name'), kind: 'text', initial: formData.name },
     phone: {
-      label: 'Phone',
+      label: t('signup.edit.phone'),
       kind: 'phone',
       initial: formData.phone,
       check: (digits) => searchByPhone(country.dial, digits),
@@ -594,19 +598,19 @@ export default function SignupScreen() {
                       onPress={() => setEditingField('name')}
                       activeOpacity={0.6}
                     >
-                      <Text style={styles.reviewLabel}>Name • tap to edit</Text>
-                      <Text style={styles.reviewValue}>{formData.name || '—'}</Text>
+                      <Text style={styles.reviewLabel}>{t('signup.review.nameEdit')}</Text>
+                      <Text style={styles.reviewValue}>{formData.name || t('signup.review.empty')}</Text>
                     </TouchableOpacity>
                     <View style={styles.reviewRow}>
-                      <Text style={styles.reviewLabel}>E-mail</Text>
-                      <Text style={styles.reviewValue}>{formData.email || '—'}</Text>
+                      <Text style={styles.reviewLabel}>{t('signup.review.email')}</Text>
+                      <Text style={styles.reviewValue}>{formData.email || t('signup.review.empty')}</Text>
                     </View>
                     <TouchableOpacity
                       style={styles.reviewRow}
                       onPress={() => setEditingField('phone')}
                       activeOpacity={0.6}
                     >
-                      <Text style={styles.reviewLabel}>Phone • tap to edit</Text>
+                      <Text style={styles.reviewLabel}>{t('signup.review.phoneEdit')}</Text>
                       <Text style={styles.reviewValue}>{reviewPhone}</Text>
                     </TouchableOpacity>
                   </View>
@@ -620,15 +624,15 @@ export default function SignupScreen() {
                       {acceptedTerms && <CheckIcon size={14} color={colors.text.light} weight="bold" />}
                     </View>
                     <Text style={styles.checkboxText}>
-                      I accept the{' '}
+                      {t('signup.terms.accept')}
                       <Text style={styles.linkText} onPress={() => setTermsVisible(true)}>
-                        Terms and Conditions
-                      </Text>{' '}
-                      and the{' '}
-                      <Text style={styles.linkText} onPress={() => setTermsVisible(true)}>
-                        Privacy Policy
+                        {t('signup.terms.termsLink')}
                       </Text>
-                      .
+                      {t('signup.terms.and')}
+                      <Text style={styles.linkText} onPress={() => setTermsVisible(true)}>
+                        {t('signup.terms.privacyLink')}
+                      </Text>
+                      {t('signup.terms.end')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -699,7 +703,7 @@ export default function SignupScreen() {
                   </View>
                   <StatusMessage
                     status={phoneStatus}
-                    takenMessage="An account with this phone number already exists."
+                    takenMessage={t('signup.status.phoneTaken')}
                   />
                 </View>
               ) : isEmail ? (
@@ -730,7 +734,7 @@ export default function SignupScreen() {
                   </View>
                   <StatusMessage
                     status={emailStatus}
-                    takenMessage="An account with this e-mail already exists."
+                    takenMessage={t('signup.status.emailTaken')}
                   />
                 </View>
               ) : isCode ? (
@@ -769,10 +773,12 @@ export default function SignupScreen() {
                       ]}
                     >
                       {codeSending
-                        ? 'Sending code…'
+                        ? t('signup.code.sending')
                         : !resendTimer.canResend
-                          ? `Resend in ${formatResendCountdown(resendTimer.secondsLeft)}`
-                          : 'Resend code'}
+                          ? t('signup.code.resendIn', {
+                              time: formatResendCountdown(resendTimer.secondsLeft),
+                            })
+                          : t('signup.code.resend')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -848,9 +854,10 @@ export default function SignupScreen() {
               <XIcon size={22} color={colors.text.light} weight="bold" />
             </TouchableOpacity>
             <View style={styles.termsHeaderBody}>
-              <Text style={styles.termsEyebrow}>POLICIES</Text>
+              <Text style={styles.termsEyebrow}>{t('signup.termsModal.eyebrow')}</Text>
               <Text style={styles.termsTitle}>
-                Terms & <Text style={styles.termsTitleAccent}>Conditions</Text>
+                {t('signup.termsModal.titleFirst')}
+                <Text style={styles.termsTitleAccent}>{t('signup.termsModal.titleAccent')}</Text>
               </Text>
             </View>
           </LinearGradient>
@@ -870,7 +877,7 @@ export default function SignupScreen() {
                 </View>
               ))
             ) : (
-              <Text style={styles.termsEmpty}>Terms not available.</Text>
+              <Text style={styles.termsEmpty}>{t('signup.termsModal.empty')}</Text>
             )}
           </ScrollView>
         </SafeAreaView>

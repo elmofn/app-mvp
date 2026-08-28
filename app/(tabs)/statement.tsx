@@ -2,6 +2,7 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { InfoIcon } from 'phosphor-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ScrollView,
@@ -17,6 +18,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useT } from '@/src/i18n';
 import { SignInStatement } from '@/src/services/auth';
@@ -44,6 +46,7 @@ export default function StatementScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { account } = useAuth();
   const { t, tr } = useT();
+  const showAlert = useAlert();
 
   const monthsAbbr = tr('statement.monthsAbbr') as string[];
   const monthsFull = tr('statement.monthsFull') as string[];
@@ -153,7 +156,22 @@ export default function StatementScreen() {
                 <Text style={styles.balanceCurrency}>{local.symbol} </Text>
                 {balanceLocal}
               </Text>
-              <Text style={styles.balanceUsd}>US$ {balanceUSD}</Text>
+              <View style={styles.balanceUsdRow}>
+                <Text style={styles.balanceUsd}>US$ {balanceUSD}</Text>
+                <TouchableOpacity
+                  onPress={() =>
+                    showAlert(
+                      t('home.walletDollarizedTitle'),
+                      t('home.walletDollarizedBody'),
+                    )
+                  }
+                  activeOpacity={0.7}
+                  hitSlop={10}
+                  style={styles.balanceInfoBtn}
+                >
+                  <InfoIcon size={15} color="rgba(255,255,255,0.6)" weight="bold" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <ScrollView
@@ -318,12 +336,20 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontFamily: fonts.bold,
   },
+  balanceUsdRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: -4,
+  },
   balanceUsd: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.5)',
     fontFamily: fonts.bold,
     letterSpacing: -0.7,
-    marginTop: -4,
+  },
+  balanceInfoBtn: {
+    padding: 1,
   },
 
   yearContainer: {

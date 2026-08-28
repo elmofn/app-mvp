@@ -159,14 +159,6 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <StatusBar style="light" />
 
-      {/* Backdrop atras do topo do scroll: no iOS o overscroll do pull-to-
-          refresh estica alem do conteudo e revelava o fundo branco do
-          container. Pintamos essa area com a cor de topo do header
-          (#6444DA), entao o "puxar" parece o header esticando e o loader
-          branco desce sobre ela, em vez de um vazio branco. pointerEvents
-          none para nao interceptar o gesto. */}
-      <View pointerEvents="none" style={styles.overscrollBackdrop} />
-
       <Animated.ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
@@ -182,6 +174,13 @@ export default function HomeScreen() {
           />
         }
       >
+        {/* Backdrop do overscroll: fica ACIMA do topo do conteudo (top
+            negativo) e rola junto, entao so aparece na faixa que o iOS
+            estica no pull-to-refresh - nunca atras dos cards. Pintado com a
+            cor de topo do header (#6444DA) para o puxao parecer o header
+            esticando, com o loader branco descendo sobre ela. */}
+        <View pointerEvents="none" style={styles.overscrollBackdrop} />
+
         {/* --- HEADER SECTION --- */}
         <LinearGradient 
           colors={['#6444DA', '#4D2ACC', '#1B0F4A']} 
@@ -364,12 +363,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
   },
-  // Cobre a faixa superior (inclui a status bar) com a cor de topo do
-  // header. Altura generosa para o overscroll do iOS; fica atras do
-  // conteudo, so aparece quando o scroll e puxado para baixo.
+  // Faixa acima do conteudo (top negativo) que rola junto do scroll:
+  // preenche a area esticada no overscroll do iOS com a cor de topo do
+  // header. Fora do overscroll fica fora da tela, entao nao afeta o fundo
+  // atras dos cards.
   overscrollBackdrop: {
     position: 'absolute',
-    top: 0,
+    top: -600,
     left: 0,
     right: 0,
     height: 600,

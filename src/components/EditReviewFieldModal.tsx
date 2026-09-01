@@ -215,6 +215,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 17,
     fontFamily: fonts.regular,
+    // letterSpacing explicito evita o bug do iOS que espaca o placeholder
+    // quando ha fontFamily customizada sem letterSpacing definido.
+    letterSpacing: 0,
     color: colors.text.dark,
   },
   inputError: { borderColor: '#f07167' },

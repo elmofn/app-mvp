@@ -172,6 +172,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     fontFamily: fonts.regular,
+    // letterSpacing explicito evita o bug do iOS que espaca o placeholder
+    // quando ha fontFamily customizada sem letterSpacing definido.
+    letterSpacing: 0,
     color: colors.text.dark,
   },
   row: {

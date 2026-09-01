@@ -1,7 +1,7 @@
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 
-import { getAccount } from '@/src/services/account';
+import { getAccount, LANGUAGE_COUNTRY_IDS } from '@/src/services/account';
 import { authenticateWithBiometric, getBiometricStatus } from '@/src/services/biometric';
 import { getBanners, getGeoNextTrips } from '@/src/services/content';
 import { captureHandledError } from '@/src/services/telemetry';
@@ -44,7 +44,7 @@ type AuthContextValue = AuthState & {
   unlock: () => Promise<boolean>;
   lock: () => void;
   updateAccountDetails: (patch: AccountPatch) => Promise<void>;
-  refreshAccount: () => Promise<void>;
+  refreshAccount: (langOverride?: SupportedLang) => Promise<void>;
   reloadFAQ: (langOverride?: SupportedLang) => Promise<void>;
 };
 
@@ -271,11 +271,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // accountDetails/balance/setups/statements, e GetBanners/GetNextTrips
   // (que sairam do payload de SignIn) trazem o conteudo localizado. Usado
   // pelo pull-to-refresh da home. Propaga para o storage como o signIn.
-  const refreshAccount = useCallback(async () => {
+  //
+  // langOverride: quando o usuario acabou de trocar idioma/moeda em settings,
+  // o estado local ainda nao propagou para o stateRef nesta mesma tick;
+  // passar o idioma-alvo garante que banners/nextTrips/FAQ venham no idioma
+  // recem escolhido e que countryId/setups.lang refletam essa escolha.
+  const refreshAccount = useCallback(async (langOverride?: SupportedLang) => {
     const current = stateRef.current;
     if (!current.account || !current.token) return;
     const accountId = current.account.accountDetails.accountId;
-    const lang = getUserLanguage(current.account);
+    const lang = langOverride ?? getUserLanguage(current.account);
 
     // Coords para o nextTrips por geolocalizacao (TripEdge). Usa o cache e so
     // busca se ainda nao temos - mesmo padrao do signIn.
@@ -289,16 +294,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ]);
 
     // O idioma do app e uma preferencia do usuario (countryId/setups.lang, o
-    // que getUserLanguage le). Um pull-to-refresh atualiza dados, mas NAO deve
-    // reverter o idioma escolhido: preservamos esses campos da conta local em
-    // vez de deixar o snapshot do backend sobrescreve-los. O conteudo ja veio
-    // buscado no idioma correto (lang), entao tudo fica consistente.
+    // que getUserLanguage le). Sem override (pull-to-refresh), preservamos a
+    // escolha local para nao reverter o idioma. Com override (settings acabou
+    // de salvar), adotamos o idioma/pais recem escolhidos. Em ambos, o
+    // conteudo ja veio buscado no idioma correto (lang).
+    const preservedCountryId = langOverride
+      ? LANGUAGE_COUNTRY_IDS[langOverride]
+      : current.account.account.countryId;
+    const preservedLang = langOverride ?? current.account.setups.lang;
     const next: SignInAccountDetails = {
       ...snapshot,
       banners,
       nextTrips,
-      account: { ...snapshot.account, countryId: current.account.account.countryId },
-      setups: { ...snapshot.setups, lang: current.account.setups.lang },
+      account: { ...snapshot.account, countryId: preservedCountryId },
+      setups: { ...snapshot.setups, lang: preservedLang },
     };
     setState({ account: next, token: current.token });
     await saveSession(current.token, next);

@@ -43,6 +43,7 @@ import { CurrencyOption, getCurrencies } from '@/src/services/financial';
 import { getUserLanguage, SupportedLang } from '@/src/services/locale';
 import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/src/services/location';
 import { toE164Phone } from '@/src/services/search';
+import { captureHandledError } from '@/src/services/telemetry';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -84,7 +85,7 @@ function VerificationBadge({ verified }: { verified: boolean }) {
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { account, signOut, updateAccountDetails } = useAuth();
+  const { account, signOut, updateAccountDetails, refreshAccount } = useAuth();
   const showAlert = useAlert();
   const { t } = useT();
 
@@ -228,6 +229,19 @@ export default function SettingsScreen() {
             }
           : {}),
       });
+
+      // Trocar idioma/moeda muda o conteudo localizado servido pelo backend
+      // (banners da home e do shop, nextTrips, FAQ, etc.). Rodamos o mesmo
+      // GetAccount do pull-to-refresh, ja no idioma-alvo, para repopular tudo.
+      // Resiliente: uma falha aqui nao invalida o save ja concluido no backend.
+      if (langDirty || currencyDirty) {
+        try {
+          await refreshAccount(language.value);
+        } catch (err) {
+          captureHandledError(err, { scope: 'settings.refreshAfterPrefs' });
+          console.warn('[settings] refresh after prefs change failed:', err);
+        }
+      }
 
       // Usa o idioma-alvo (o que acabou de ser salvo), nao o `t` do render
       // anterior: apos updateAccountDetails a conta ja mudou de idioma, mas o

@@ -37,12 +37,8 @@ const ENDPOINTS: Record<AppEnv, Endpoints> = {
   },
   production: {
     travelCashApi: 'https://travelcash-api-prd.azurewebsites.net',
-    // ⚠️ TODO PROD: URLs de producao da TripEdge ainda NAO definidas. Deixadas
-    // vazias de proposito: as chamadas falham de forma barulhenta em vez de
-    // apontar para o host `-dev` sem querer. Preencher AS DUAS antes de shippar
-    // um build de producao.
-    tripEdgeSearch: '',
-    tripEdgeSite: '',
+    tripEdgeSearch: 'https://prod-rv-search.tripedge.com',
+    tripEdgeSite: 'https://shop.travelback.com',
   },
 };
 

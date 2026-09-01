@@ -83,11 +83,15 @@ export default Sentry.wrap(function RootLayout() {
     // de navegacao do Android. initialMetrics evita flash de inset 0 no
     // primeiro frame.
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-      <AlertProvider>
-        <AuthProvider>
+      {/* AuthProvider por fora do AlertProvider: assim o alert (um Modal, que
+          sobe acima de views normais como a BiometricGate) consegue ler o
+          isLocked e se esconder enquanto a trava de biometria/PIN esta ativa,
+          reaparecendo junto com o app so depois do unlock. */}
+      <AuthProvider>
+        <AlertProvider>
           <AppShell />
-        </AuthProvider>
-      </AlertProvider>
+        </AlertProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 });

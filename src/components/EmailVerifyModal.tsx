@@ -2,6 +2,7 @@ import { XIcon } from 'phosphor-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   Modal,
   StyleSheet,
   Text,
@@ -171,7 +172,11 @@ export function EmailVerifyModal({ visible, onClose, onVerified, introMessage }:
                 value={code}
                 onChangeText={(val) => {
                   if (error) setError(null);
-                  setCode(val.replace(/\D/g, ''));
+                  const digits = val.replace(/\D/g, '');
+                  setCode(digits);
+                  // Codigo completo (6 digitos): fecha o teclado para revelar
+                  // o botao de continuar sem toque extra (iOS).
+                  if (digits.length >= 6) Keyboard.dismiss();
                 }}
                 keyboardType="number-pad"
                 autoComplete="one-time-code"

@@ -10,6 +10,46 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
+
+import { APP_ENV } from '@/src/config/env';
+import { BiometricGate } from '@/src/components/BiometricGate';
+import { LoadingScreen } from '@/src/components/LoadingScreen';
+import { OfflineGate } from '@/src/components/OfflineGate';
+import { TermsGate } from '@/src/components/TermsGate';
+import { AlertProvider } from '@/src/contexts/AlertContext';
+import { AuthProvider, useAuth } from '@/src/contexts/AuthContext';
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://a93811f878a12dcb61bd5ca5f7b34c55@o4511931827748864.ingest.de.sentry.io/4511931839545424',
+
+  // Separa os eventos por ambiente no painel (staging/production), reusando a
+  // mesma camada de EXPO_PUBLIC_APP_ENV dos endpoints (src/config/env.ts).
+  environment: APP_ENV,
+
+  // Ativo apenas em builds compilados (preview/production). Em dev local
+  // (__DEV__, rodando via Metro) fica desligado, para nao poluir o painel nem
+  // gastar cota de Session Replay. Builds de TESTE devem usar o perfil `preview`
+  // (release, __DEV__=false) -> reportam normalmente.
+  enabled: !__DEV__,
+
+  // sendDefaultPii=false: NAO anexar IP / cookies / dados de usuario aos
+  // eventos. Decisao de privacidade (vide docs/PRODUCTION_READINESS.md).
+  // Doc: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: false,
+
+  // Enable Logs
+  enableLogs: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 // 1. Impede que a tela de splash inicial feche antes de carregarmos os assets
 SplashScreen.preventAutoHideAsync();
@@ -18,7 +58,7 @@ export const unstable_settings = {
   initialRouteName: 'index',
 };
 
-export default function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   // 2. Carrega os arquivos físicos da fonte
   const [fontsLoaded, error] = useFonts({
     Inter_400Regular,
@@ -28,33 +68,67 @@ export default function RootLayout() {
     Inter_700Bold_Italic,
   });
 
-  // 3. Monitora o carregamento
   useEffect(() => {
     if (error) throw error;
-    
-    // Se terminou de carregar, esconde a tela de splash e libera o app
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, error]);
+  }, [error]);
 
   // Se as fontes ainda não carregaram, segura a tela em branco/splash
   if (!fontsLoaded) {
     return null;
   }
 
-  // 4. Se chegou aqui, as fontes estão prontas e o app renderiza normalmente
+  return (
+    // SafeAreaProvider precisa envolver toda a arvore para que
+    // useSafeAreaInsets()/SafeAreaView retornem os insets reais do device.
+    // Sem ele, insets.bottom vinha 0 e a tab bar ficava atras dos botoes
+    // de navegacao do Android. initialMetrics evita flash de inset 0 no
+    // primeiro frame.
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      {/* AuthProvider por fora do AlertProvider: assim o alert (um Modal, que
+          sobe acima de views normais como a BiometricGate) consegue ler o
+          isLocked e se esconder enquanto a trava de biometria/PIN esta ativa,
+          reaparecendo junto com o app so depois do unlock. */}
+      <AuthProvider>
+        <AlertProvider>
+          <AppShell />
+        </AlertProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
+  );
+});
+
+function AppShell() {
+  const { isRestoring } = useAuth();
+
+  // 3. As fontes ja carregaram (AppShell so monta depois disso). Escondemos a
+  // splash nativa assim que montamos e entregamos para o LoadingScreen enquanto
+  // a sessao termina de restaurar - assim o usuario ve um loading comum em vez
+  // do logo parado por alguns instantes.
+  useEffect(() => {
+    SplashScreen.hideAsync();
+  }, []);
+
+  if (isRestoring) return <LoadingScreen />;
+
   return (
     <>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" /> 
+        <Stack.Screen name="index" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="signup" />
         <Stack.Screen name="settings" />
-        <Stack.Screen name="support" options={{ presentation: 'modal' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
+      {/* Gate de aceite dos termos: cobre o app quando a conta logada tem
+          politica pendente (readed=false). Vem ANTES do BiometricGate para
+          que a trava de biometria pinte por cima e o gate de termos so
+          apareca depois do unlock (a propria condicao checa !isLocked). */}
+      <TermsGate />
+      <BiometricGate />
+      {/* Trava de conectividade por cima de tudo: se o device esta sem internet,
+          bloqueia o app inteiro (evita uso so com cache). Some quando reconecta. */}
+      <OfflineGate />
     </>
   );
 }

@@ -1,321 +1,521 @@
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
 import {
+  AirplaneTiltIcon,
+  CaretRightIcon,
+  MagnifyingGlassIcon,
+  MapPinIcon,
+  StarIcon,
+  TicketIcon
+} from 'phosphor-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
   Image,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
-import Animated, {
-  useAnimatedScrollHandler,
-  useSharedValue
-} from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
-import { TopBar } from '@/src/components/Topbar';
+import { BannersCarousel } from '@/src/components/BannersCarousel';
+import { useAuth } from '@/src/contexts/AuthContext';
+import { useT } from '@/src/i18n';
+import { getNearbyHotels, getRecommendedHotels, type Hotel } from '@/src/services/catalog';
+import { getCurrentLocation } from '@/src/services/location';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
+
+// Hoteis "Recomendados" (5★) e "Proximos" (por cidade do device) agora vem do
+// catalog da TripEdge - vide src/services/catalog.ts.
+
+function HotelCard({ hotel, onPress }: { hotel: Hotel; onPress: () => void }) {
+  const { t } = useT();
+  return (
+    <TouchableOpacity style={styles.card} activeOpacity={0.9} onPress={onPress}>
+      <Image source={{ uri: hotel.image }} style={styles.cardImage} resizeMode="cover" />
+
+      <View style={styles.cardBody}>
+        <View style={styles.starsRow}>
+          {Array.from({ length: hotel.rating }).map((_, i) => (
+            <StarIcon key={i} size={12} color="#FFB400" weight="fill" />
+          ))}
+        </View>
+
+        <Text style={styles.cardName} numberOfLines={2}>
+          {hotel.name}
+        </Text>
+
+        <View style={styles.locationRow}>
+          <MapPinIcon size={12} color={colors.text.muted} weight="regular" />
+          <Text style={styles.locationText} numberOfLines={1}>
+            {hotel.location}
+          </Text>
+        </View>
+
+        {hotel.distance ? (
+          <Text style={styles.distanceText}>{hotel.distance}</Text>
+        ) : null}
+
+        <View style={styles.cardDivider} />
+
+        {/* Recomendados (catalog) nao trazem nota nem preco: renderizamos esses
+            blocos so quando presentes; reviews aparecem sempre. */}
+        <View style={styles.cardFooter}>
+          <View style={styles.scoreBlock}>
+            {hotel.score != null ? (
+              <View style={styles.scoreBadge}>
+                <Text style={styles.scoreValue}>{hotel.score}</Text>
+              </View>
+            ) : null}
+            <View style={styles.scoreText}>
+              {hotel.scoreLabel ? (
+                <Text style={styles.scoreLabel}>{hotel.scoreLabel}</Text>
+              ) : null}
+              <Text style={styles.reviewCount}>{t('travelshop.reviewCount', { count: hotel.reviewCount })}</Text>
+            </View>
+          </View>
+          {hotel.pricePerNight ? (
+            <View style={styles.priceBlock}>
+              <Text style={styles.priceValue}>{hotel.pricePerNight}</Text>
+              <Text style={styles.priceCaption} numberOfLines={2}>
+                {t('travelshop.priceCaption')}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 export default function TravelShopScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
+  const router = useRouter();
+  const { account } = useAuth();
+  const { t } = useT();
 
-  // Shared value para controlar a animação da TopBar
-  const scrollY = useSharedValue(0);
+  // Hoteis 5★ do catalog da TripEdge. null = carregando; [] = vazio/erro
+  // (a secao some). Cacheado no servico, entao reabrir a aba nao re-busca.
+  const [recommended, setRecommended] = useState<Hotel[] | null>(null);
+  useEffect(() => {
+    getRecommendedHotels()
+      .then(setRecommended)
+      .catch(() => setRecommended([]));
+  }, []);
 
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
+  // Hoteis "Proximos": pega a geolocation do device e busca hoteis do catalog na
+  // cidade correspondente. null = carregando; [] = sem permissao/sem match/erro
+  // (a secao some). getCurrentLocation ja cacheia as coords (pega no login).
+  const [nearby, setNearby] = useState<Hotel[] | null>(null);
+  useEffect(() => {
+    getCurrentLocation()
+      .then((coords) => getNearbyHotels(coords))
+      .then(setNearby)
+      .catch(() => setNearby([]));
+  }, []);
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <StatusBar style="light" />
-      
-      {/* ScrollView Animado para passar a posição Y para a TopBar */}
-      <Animated.ScrollView
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarHeight + 24 }]}
-      >
-        
-        {/* Seção Superior (DarkHeader) */}
-        {/* O paddingTop inclui a altura do insets + espaço para não sobrepor os ícones da TopBar */}
-        <View style={[styles.darkHeader, { paddingTop: insets.top + 70 }]}>
-          <Text style={styles.mainTitle}>
-            Use seu cashback{'\n'}para novas{'\n'}experiências.
-          </Text>
-          <View style={styles.accentLine} />
-        </View>
 
-        {/* Seção Inferior (Main Content) */}
-        <View style={styles.mainContent}>
-          
-          <View style={styles.sectionHeading}>
-            <Text style={styles.sectionHeadingText}>EXCLUSIVO</Text>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: tabBarHeight + 32 }}
+      >
+        <LinearGradient
+          colors={['#6444DA', '#4D2ACC', '#1B0F4A']}
+          start={{ x: 0.1, y: 0.1 }}
+          end={{ x: 0.8, y: 1.2 }}
+          locations={[0, 0.2, 0.7]}
+          style={[styles.headerGradient, { paddingTop: insets.top + 16 }]}
+        >
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
+
+          <View style={styles.headerInner}>
+            <Text style={styles.headerLabel}>{t('travelshop.headerLabel')}</Text>
+            <Text style={styles.mainTitle}>
+              {t('travelshop.mainTitle')} <Text style={styles.mainTitleAccent}>{t('travelshop.mainTitleAccent')}</Text>
+            </Text>
+            <Text style={styles.pageDescription}>
+              {t('travelshop.pageDescription')}
+            </Text>
           </View>
 
-          {/* CARD 1 - AÉREO */}
-          <TouchableOpacity style={styles.card} activeOpacity={0.9}>
-            <View style={styles.cardImageContainer}>
-              <Image 
-                source={{ uri: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80' }} 
-                style={styles.cardImage} 
-              />
-              {/* Overlay escuro opcional para simular a seriedade do grayscale */}
-              <View style={styles.imageOverlay} />
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>AÉREO</Text>
-              </View>
-            </View>
-            
-            <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>VOO PARA LONDRES</Text>
-              <Text style={styles.cardDesc}>
-                Classe executiva saindo de São Paulo. Experiência premium com acesso a lounges exclusivos e serviço de bordo internacional.
+          <View style={styles.searchCard}>
+            <TouchableOpacity
+              style={[styles.searchButton, styles.searchButtonHotels]}
+              activeOpacity={0.85}
+              onPress={() => router.push('/marketplace?vertical=hotels')}
+            >
+              <MagnifyingGlassIcon size={18} color={colors.text.light} weight="bold" />
+              <Text style={styles.searchButtonText}>{t('travelshop.searchButton')}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.searchButton, styles.searchButtonFlights]}
+              activeOpacity={0.85}
+              onPress={() => router.push('/marketplace?vertical=flights')}
+            >
+              <AirplaneTiltIcon size={18} color={colors.text.light} weight="bold" />
+              <Text style={styles.searchButtonText}>{t('travelshop.searchFlightsButton')}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Acesso discreto as compras do usuario: link mint sobre o header
+              roxo (nao um CTA solido). Cai logado em /trips via SSO. */}
+          <TouchableOpacity
+            style={styles.myTripsLink}
+            activeOpacity={0.7}
+            onPress={() => router.push('/marketplace?vertical=trips')}
+          >
+            <TicketIcon size={16} color="#85EDD3" weight="bold" />
+            <Text style={styles.myTripsLinkText}>{t('travelshop.myTripsButton')}</Text>
+            <CaretRightIcon size={14} color="#85EDD3" weight="bold" />
+          </TouchableOpacity>
+        </LinearGradient>
+
+        {/* Recomendados (catalog 5★): carregando -> spinner; vazio/erro -> some. */}
+        {recommended === null || recommended.length > 0 ? (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                {t('travelshop.recommendedTitle')}{' '}
+                <Text style={styles.sectionTitleAccent}>{t('travelshop.recommendedTitleAccent')}</Text>
               </Text>
-              
-              <Text style={styles.priceLabel}>A PARTIR DE</Text>
-              <Text style={styles.price}>R$ 12.400</Text>
-              <Text style={styles.points}>20% de CashBack!</Text>
-              
-              <View style={styles.btn}>
-                <Text style={styles.btnText}>COMPRAR</Text>
-              </View>
             </View>
-          </TouchableOpacity>
+            {recommended === null ? (
+              <View style={styles.carouselLoading}>
+                <ActivityIndicator color={colors.brand.primary} />
+              </View>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.carousel}
+              >
+                {recommended.map((hotel) => (
+                  <HotelCard
+                    key={hotel.id}
+                    hotel={hotel}
+                    onPress={() =>
+                      router.push(`/marketplace?hotelId=${encodeURIComponent(hotel.id)}`)
+                    }
+                  />
+                ))}
+              </ScrollView>
+            )}
+          </>
+        ) : null}
 
-          {/* CARD 2 - HOSPEDAGEM */}
-          <TouchableOpacity style={styles.card} activeOpacity={0.9}>
-            <View style={styles.cardImageContainer}>
-              <Image 
-                source={{ uri: 'https://images.unsplash.com/photo-1503899036067-0479ed6c9259?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80' }} 
-                style={styles.cardImage} 
-              />
-              <View style={styles.imageOverlay} />
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>HOSPEDAGEM</Text>
-              </View>
-            </View>
-            
-            <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>AMAN TOKYO</Text>
-              <Text style={styles.cardDesc}>
-                4 noites na Suíte Panorâmica. Imersão na tranquilidade minimalista acima do centro financeiro de Otemachi.
+        {/* Proximos (catalog, cidade do device): carregando -> spinner;
+            sem match/permissao/erro -> some. */}
+        {nearby === null || nearby.length > 0 ? (
+          <>
+            <View style={[styles.section, { marginTop: 24 }]}>
+              <Text style={styles.sectionTitle}>
+                {t('travelshop.nearbyTitle')}{' '}
+                <Text style={styles.sectionTitleAccent}>{t('travelshop.nearbyTitleAccent')}</Text>
               </Text>
-              
-              <Text style={[styles.priceLabel, { marginTop: 8 }]}>CASHBACK APLICÁVEL</Text>
-              <Text style={[styles.price ]}>R$ 8.200</Text>
-              <Text style={styles.points}>12% de CashBack!</Text>
-              
-              <View style={styles.btn}>
-                <Text style={styles.btnText}>COMPRAR</Text>
-              </View>
             </View>
-          </TouchableOpacity>
-
-          {/* CARD 3 - TEXTO APENAS */}
-          <TouchableOpacity style={styles.textCard} activeOpacity={0.8}>
-            <View style={styles.textCardContent}>
-              <Text style={styles.cardTitle}>EXPERIÊNCIA GASTRONÔMICA{'\n'}PARIS</Text>
-              <Text style={styles.cardDesc}>Reserva prioritária em restaurante com estrela Michelin.</Text>
-              
-              <View style={styles.cardFooter}>
-                <Text style={styles.price}>R$ 1.500</Text>
-                <View style={styles.linkDetails}>
-                  <Text style={styles.linkDetailsText}>DETALHES</Text>
-                </View>
+            {nearby === null ? (
+              <View style={styles.carouselLoading}>
+                <ActivityIndicator color={colors.brand.primary} />
               </View>
-            </View>
-          </TouchableOpacity>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.carousel}
+              >
+                {nearby.map((hotel) => (
+                  <HotelCard
+                    key={hotel.id}
+                    hotel={hotel}
+                    onPress={() =>
+                      router.push(`/marketplace?hotelId=${encodeURIComponent(hotel.id)}`)
+                    }
+                  />
+                ))}
+              </ScrollView>
+            )}
+          </>
+        ) : null}
 
-          {/* CARD 4 - TEXTO APENAS (INVITE ONLY) */}
-          <TouchableOpacity style={styles.textCard} activeOpacity={0.8}>
-            <View style={styles.textCardContent}>
-              <Text style={styles.cardTitle}>BOUTIQUE SUÍÇA</Text>
-              <Text style={styles.cardDesc}>Acesso antecipado a coleções limitadas com concierge.</Text>
-              
-              <View style={styles.cardFooter}>
-                <Text style={styles.inviteOnly}>Somente Convite</Text>
-                <View style={styles.linkDetails}>
-                  <Text style={styles.linkDetailsText}>DETALHES</Text>
-                </View>
-              </View>
-            </View>
-          </TouchableOpacity>
-
+        {/* --- SHOP BANNERS: via payload do SignIn (category=Shop) --- */}
+        <View style={{ marginTop: 24 }}>
+          <BannersCarousel banners={account?.banners} category="Shop" />
         </View>
-      </Animated.ScrollView>
-
-      {/* TopBar global que reage ao scroll */}
-      <TopBar scrollY={scrollY} />
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.light, // Fundo claro da aplicação
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
+
+  headerGradient: {
+    paddingBottom: 28,
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 40,
-  },
-  darkHeader: {
-    backgroundColor: colors.background.dark,
+  headerInner: {
     paddingHorizontal: 24,
-    paddingBottom: 40,
   },
-  mainTitle: {
-    fontSize: 32,
-    fontFamily: fonts.bold,
-    color: colors.text.light,
-    lineHeight: 36,
-    letterSpacing: -1,
-  },
-  accentLine: {
-    width: 32,
-    height: 3,
-    backgroundColor: colors.brand.primary,
-    marginTop: 24,
-  },
-  mainContent: {
-    padding: 24,
-  },
-  sectionHeading: {
-    marginBottom: 20,
-    alignSelf: 'flex-start',
-    borderBottomWidth: 2,
-    borderBottomColor: colors.text.dark,
-    paddingBottom: 4,
-  },
-  sectionHeadingText: {
+  headerLabel: {
+    color: 'rgba(255,255,255,0.7)',
     fontSize: 11,
     fontFamily: fonts.bold,
-    color: colors.text.dark,
-    letterSpacing: 1,
+    letterSpacing: 2,
+    marginBottom: 8,
   },
-  card: {
-    backgroundColor: '#FFFFFF',
+  mainTitle: {
+    fontSize: 38,
+    fontFamily: fonts.bold,
+    color: colors.text.light,
+    letterSpacing: -1.5,
+    marginBottom: 10,
+  },
+  mainTitleAccent: {
+    color: '#85EDD3',
+    fontFamily: fonts.italic,
+  },
+  pageDescription: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: 'rgba(255,255,255,0.7)',
+    lineHeight: 20,
+    maxWidth: '95%',
     marginBottom: 24,
-    borderRadius: 0, // Swiss style usa quinas mais duras (sharp edges)
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    overflow: 'hidden',
   },
-  cardImageContainer: {
-    width: '100%',
-    height: 200,
-    position: 'relative',
+
+  // Card branco unico envolvendo os dois CTAs (vocabulario do app).
+  searchCard: {
+    marginHorizontal: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  // CTA solido da marca: base (layout) + cor por vertical abaixo.
+  searchButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 10,
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  // Cor de cada botao (ambas com bom contraste para o icone/texto branco).
+  searchButtonHotels: {
+    backgroundColor: '#0F022D', // navy
+  },
+  searchButtonFlights: {
+    backgroundColor: '#0F022D', // roxo da marca
+  },
+  searchButtonText: {
+    color: colors.text.light,
+    fontSize: 14,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.4,
+  },
+  // Link discreto "Minhas viagens": acento mint sobre o header roxo, centrado
+  // sob o card de busca. Deliberadamente mais leve que os CTAs de busca.
+  myTripsLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 16,
+    paddingVertical: 6,
+  },
+  myTripsLinkText: {
+    color: '#85EDD3',
+    fontSize: 13,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.3,
+  },
+
+  // --- ACTION CARD (Balance) - identico ao da home ---
+  quickActions: {
+    paddingHorizontal: 20,
+    marginTop: 20,
+    zIndex: 10,
+  },
+  actionCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: '#EDEDF2',
+  },
+  actionInfo: {
+    flex: 1,
+  },
+  actionTitle: {
+    fontSize: 21,
+    fontFamily: fonts.bold,
+    color: '#0F022D',
+    letterSpacing: -0.5,
+    marginBottom: 2,
+  },
+  actionDesc: {
+    fontSize: 10,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.9,
+    paddingBottom: 4,
+    color: '#0F022D',
+  },
+  actionIconWrapper: {
+    marginLeft: 16,
+  },
+
+  section: {
+    paddingHorizontal: 24,
+    marginTop: 32,
+    marginBottom: 14,
+  },
+  sectionTitle: {
+    fontSize: 26,
+    fontFamily: fonts.bold,
+    color: colors.text.dark,
+    letterSpacing: -0.8,
+  },
+  sectionTitleAccent: {
+    color: '#f07167',
+    fontFamily: fonts.italic,
+  },
+
+  carousel: {
+    paddingHorizontal: 24,
+    gap: 14,
+  },
+  carouselLoading: {
+    height: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  card: {
+    width: 300,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#ECECEF',
+    overflow: 'hidden',
   },
   cardImage: {
     width: '100%',
-    height: '100%',
+    height: 170,
+    backgroundColor: '#EDEDF2',
   },
-  imageOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.1)', // Dá um toque levemente lavado
+  cardBody: {
+    padding: 16,
   },
-  badge: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    backgroundColor: colors.background.dark,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+  starsRow: {
+    flexDirection: 'row',
+    gap: 2,
+    marginBottom: 8,
   },
-  badgeText: {
-    color: colors.text.light,
-    fontSize: 9,
-    fontFamily: fonts.bold,
-    letterSpacing: 1,
-  },
-  cardContent: {
-    padding: 20,
-  },
-  cardTitle: {
-    fontSize: 18,
+  cardName: {
+    fontSize: 15,
     fontFamily: fonts.bold,
     color: colors.text.dark,
-    marginBottom: 12,
-    letterSpacing: -0.5,
-    textTransform: 'uppercase',
+    letterSpacing: -0.2,
+    lineHeight: 20,
+    marginBottom: 6,
+    minHeight: 40,
   },
-  cardDesc: {
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  locationText: {
+    flex: 1,
     fontSize: 12,
     fontFamily: fonts.regular,
     color: colors.text.muted,
-    lineHeight: 18,
-    marginBottom: 20,
   },
-  priceLabel: {
-    fontSize: 9,
-    fontFamily: fonts.bold,
-    color: '#888888',
-    marginBottom: 4,
-    letterSpacing: 0.5,
-  },
-  price: {
-    fontSize: 22,
-    fontFamily: fonts.bold,
-    color: colors.text.dark,
-    letterSpacing: -1,
-  },
-  points: {
-    fontSize: 10,
-    fontFamily: fonts.bold,
-    color: colors.brand.primary,
-    marginTop: 4,
-    marginBottom: 16,
-  },
-  btn: {
-    width: '100%',
-    backgroundColor: colors.brand.primary,
-    padding: 14,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  btnText: {
-    color: colors.text.light,
+  distanceText: {
     fontSize: 11,
     fontFamily: fonts.bold,
-    letterSpacing: 1,
+    color: colors.text.muted,
+    letterSpacing: 0.4,
+    marginTop: 6,
+    textTransform: 'uppercase',
   },
-  textCard: {
-    backgroundColor: '#FFFFFF',
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
+  cardDivider: {
+    height: 1,
+    backgroundColor: '#EDEDF2',
+    marginVertical: 12,
   },
-  textCardContent: {
-    padding: 24,
-  },
+
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  scoreBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  scoreBadge: {
+    backgroundColor: '#00A86B',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    minWidth: 36,
+    alignItems: 'center',
+  },
+  scoreValue: {
+    color: colors.text.light,
+    fontSize: 13,
+    fontFamily: fonts.bold,
+  },
+  scoreText: {
+    flex: 1,
+  },
+  scoreLabel: {
+    fontSize: 12,
+    fontFamily: fonts.bold,
+    color: colors.text.dark,
+  },
+  reviewCount: {
+    fontSize: 11,
+    fontFamily: fonts.regular,
+    color: colors.text.muted,
+  },
+  priceBlock: {
     alignItems: 'flex-end',
-    marginTop: 24,
+    maxWidth: 130,
   },
-  inviteOnly: {
-    fontSize: 16,
+  priceValue: {
+    fontSize: 18,
     fontFamily: fonts.bold,
     color: colors.text.dark,
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
-  linkDetails: {
-    borderBottomWidth: 1.5,
-    borderBottomColor: colors.text.dark,
-    paddingBottom: 2,
-  },
-  linkDetailsText: {
+  priceCaption: {
     fontSize: 10,
-    fontFamily: fonts.bold,
-    color: colors.text.dark,
-    letterSpacing: 0.5,
+    fontFamily: fonts.regular,
+    color: colors.text.muted,
+    textAlign: 'right',
+    marginTop: 2,
+    lineHeight: 13,
   },
 });

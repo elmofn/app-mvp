@@ -1,11 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { EyeIcon, EyeSlashIcon } from 'phosphor-react-native';
+import { EyeIcon, EyeSlashIcon, XIcon } from 'phosphor-react-native';
 import React, { useState } from 'react';
 import {
-  Alert,
+  ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -16,29 +18,176 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DismissKeyboard } from '@/src/components/DismissKeyboard';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
+import { useAlert } from '@/src/contexts/AlertContext';
+import { useAuth } from '@/src/contexts/AuthContext';
+import { useT } from '@/src/i18n';
+import {
+  sendPasswordRecoveryToken,
+  setNewPassword,
+  validateCode,
+  ValidateCodeError,
+} from '@/src/services/account';
+import { formatResendCountdown, useExpiryTimer, useResendTimer } from '@/src/hooks/useResendTimer';
+import { getDeviceLanguage } from '@/src/services/locale';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
 export default function LoginFormScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { signIn, isSigningIn } = useAuth();
+  const resendTimer = useResendTimer();
+  // Janela de validade do codigo de recuperacao (15min).
+  const codeExpiry = useExpiryTimer();
+  const showAlert = useAlert();
+  const { t } = useT();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  const handleSignIn = () => {
-    router.replace('/(tabs)/home');
+  // Fluxo de recuperacao de senha (modal) - 3 estagios sequenciais.
+  // O accountId vem do ValidateCode no estagio 2 e eh usado no SetNewPassword
+  // do estagio 3, evitando ter que pedir o email duas vezes.
+  type RecoveryStage = 'enterEmail' | 'verifyCode' | 'newPin';
+  const [recoveryVisible, setRecoveryVisible] = useState(false);
+  const [recoveryStage, setRecoveryStage] = useState<RecoveryStage>('enterEmail');
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [recoveryCode, setRecoveryCode] = useState('');
+  const [recoveryPin, setRecoveryPin] = useState('');
+  const [recoveryAccountId, setRecoveryAccountId] = useState('');
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [isSendingRecovery, setIsSendingRecovery] = useState(false);
+  const [isVerifyingRecovery, setIsVerifyingRecovery] = useState(false);
+  const [isResendingRecovery, setIsResendingRecovery] = useState(false);
+  const [isSavingRecoveryPin, setIsSavingRecoveryPin] = useState(false);
+
+  const recoveryLang = getDeviceLanguage();
+
+  const handleSignIn = async () => {
+    const login = email.trim();
+    if (!login || !password) {
+      showAlert(t('login.missingInfoTitle'), t('login.missingInfoMessage'));
+      return;
+    }
+
+    try {
+      const response = await signIn(login, password);
+      if (response.success && response.token) {
+        router.replace('/(tabs)/home');
+      } else {
+        showAlert(
+          t('login.loginFailedTitle'),
+          response.errorMessage || response.message || t('login.invalidCredentials'),
+        );
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('login.unexpectedError');
+      showAlert(t('login.loginFailedTitle'), message);
+    }
+  };
+
+  const resetRecoveryState = () => {
+    setRecoveryStage('enterEmail');
+    setRecoveryCode('');
+    setRecoveryPin('');
+    setRecoveryAccountId('');
+    setRecoveryError(null);
+    resendTimer.reset();
+    codeExpiry.reset();
+  };
+
+  const closeRecoveryModal = () => {
+    if (isSendingRecovery || isVerifyingRecovery || isSavingRecoveryPin) return;
+    setRecoveryVisible(false);
+    resetRecoveryState();
   };
 
   const handleForgotPassword = () => {
-    Alert.alert(
-      'Forgot password?',
-      'Enter the e-mail associated with your account and we will send you a reset link.',
-      [{ text: 'OK' }],
-    );
+    resetRecoveryState();
+    // Se o usuario ja escreveu o email na tela de login, pre-preenchemos
+    // o campo de recuperacao - poupar digitacao em um momento de friccao.
+    setRecoveryEmail(email.trim());
+    setRecoveryVisible(true);
+  };
+
+  const handleSendRecoveryCode = async () => {
+    const target = recoveryEmail.trim().toLowerCase();
+    if (!target) {
+      setRecoveryError(t('login.recoveryEnterEmailError'));
+      return;
+    }
+    setIsSendingRecovery(true);
+    setRecoveryError(null);
+    try {
+      await sendPasswordRecoveryToken(target, recoveryLang);
+      resendTimer.start();
+      codeExpiry.start();
+      setRecoveryEmail(target);
+      setRecoveryStage('verifyCode');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('login.recoverySendCodeError');
+      setRecoveryError(message);
+    } finally {
+      setIsSendingRecovery(false);
+    }
+  };
+
+  const handleVerifyRecoveryCode = async () => {
+    if (recoveryCode.length < 4) return;
+    setIsVerifyingRecovery(true);
+    setRecoveryError(null);
+    try {
+      const { accountId } = await validateCode(recoveryEmail, recoveryCode, recoveryLang);
+      setRecoveryAccountId(accountId);
+      setRecoveryStage('newPin');
+    } catch (err) {
+      if (err instanceof ValidateCodeError) {
+        setRecoveryError(err.message);
+      } else {
+        const message = err instanceof Error ? err.message : t('login.recoveryValidateCodeError');
+        setRecoveryError(message);
+      }
+    } finally {
+      setIsVerifyingRecovery(false);
+    }
+  };
+
+  const handleResendRecoveryCode = async () => {
+    if (isResendingRecovery || !resendTimer.canResend) return;
+    setIsResendingRecovery(true);
+    setRecoveryError(null);
+    setRecoveryCode('');
+    try {
+      await sendPasswordRecoveryToken(recoveryEmail, recoveryLang);
+      resendTimer.start();
+      codeExpiry.start();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('login.recoverySendCodeError');
+      setRecoveryError(message);
+    } finally {
+      setIsResendingRecovery(false);
+    }
+  };
+
+  const handleConfirmRecoveryPin = async () => {
+    if (recoveryPin.length !== 4) return;
+    setIsSavingRecoveryPin(true);
+    setRecoveryError(null);
+    try {
+      await setNewPassword(recoveryAccountId, recoveryPin, recoveryLang);
+      setRecoveryVisible(false);
+      resetRecoveryState();
+      showAlert(t('login.passwordUpdatedTitle'), t('login.passwordUpdatedMessage'));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('login.recoverySavePinError');
+      setRecoveryError(message);
+    } finally {
+      setIsSavingRecoveryPin(false);
+    }
   };
 
   const handleSignUp = () => {
@@ -46,6 +195,7 @@ export default function LoginFormScreen() {
   };
 
   return (
+    <DismissKeyboard>
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <StatusBar style="light" />
 
@@ -67,28 +217,27 @@ export default function LoginFormScreen() {
           >
             <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
 
-            <ScreenHeader title="Login" dark={true} />
+            <ScreenHeader title={t('login.header')} dark={true} />
 
             <View style={styles.headerBody}>
               <Text style={styles.mainTitle}>
-                Welcome <Text style={styles.mainTitleAccent}>Back</Text>
+                {t('login.welcomeTitle')}{' '}
+                <Text style={styles.mainTitleAccent}>{t('login.welcomeTitleAccent')}</Text>
               </Text>
-              <Text style={styles.pageDescription}>
-                Enter your credentials to access your TravelBACK account.
-              </Text>
+              <Text style={styles.pageDescription}>{t('login.description')}</Text>
             </View>
           </LinearGradient>
 
           <View style={styles.formContainer}>
             <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>E-mail</Text>
+              <Text style={styles.inputLabel}>{t('login.emailLabel')}</Text>
               <TextInput
                 style={[styles.inputField, focusedField === 'email' && styles.inputFieldFocused]}
                 value={email}
                 onChangeText={setEmail}
                 onFocus={() => setFocusedField('email')}
                 onBlur={() => setFocusedField(null)}
-                placeholder="you@email.com"
+                placeholder={t('login.emailPlaceholder')}
                 placeholderTextColor="#B5B5BD"
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -98,7 +247,7 @@ export default function LoginFormScreen() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>Password</Text>
+              <Text style={styles.inputLabel}>{t('login.passwordLabel')}</Text>
               <View
                 style={[
                   styles.passwordRow,
@@ -108,15 +257,17 @@ export default function LoginFormScreen() {
                 <TextInput
                   style={styles.passwordInput}
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(val) => setPassword(val.replace(/\D/g, ''))}
                   onFocus={() => setFocusedField('password')}
                   onBlur={() => setFocusedField(null)}
-                  placeholder="Your password"
+                  placeholder={t('login.passwordPlaceholder')}
                   placeholderTextColor="#B5B5BD"
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   autoCorrect={false}
                   autoComplete="password"
+                  keyboardType="number-pad"
+                  maxLength={4}
                 />
                 <TouchableOpacity
                   style={styles.eyeButton}
@@ -137,28 +288,248 @@ export default function LoginFormScreen() {
                 onPress={handleForgotPassword}
                 activeOpacity={0.6}
               >
-                <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
+                <Text style={styles.forgotPasswordText}>{t('login.forgotPassword')}</Text>
               </TouchableOpacity>
             </View>
 
             <TouchableOpacity
-              style={styles.primaryButton}
+              style={[styles.primaryButton, isSigningIn && styles.primaryButtonDisabled]}
               onPress={handleSignIn}
               activeOpacity={0.85}
+              disabled={isSigningIn}
             >
-              <Text style={styles.primaryButtonText}>Sign In</Text>
+              {isSigningIn ? (
+                <ActivityIndicator color={colors.text.light} />
+              ) : (
+                <Text style={styles.primaryButtonText}>{t('login.signIn')}</Text>
+              )}
             </TouchableOpacity>
 
             <View style={styles.signupRow}>
-              <Text style={styles.signupText}>Don&apos;t have an account?</Text>
+              <Text style={styles.signupText}>{t('login.noAccount')}</Text>
               <TouchableOpacity onPress={handleSignUp} activeOpacity={0.6} hitSlop={8}>
-                <Text style={styles.signupLink}>Sign up</Text>
+                <Text style={styles.signupLink}>{t('login.signUpLink')}</Text>
               </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={recoveryVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeRecoveryModal}
+      >
+        <DismissKeyboard>
+        <KeyboardAvoidingView
+          style={styles.recoveryOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.recoveryCard}>
+            <TouchableOpacity
+              style={styles.recoveryClose}
+              onPress={closeRecoveryModal}
+              hitSlop={10}
+            >
+              <XIcon size={18} color={colors.text.muted} weight="bold" />
+            </TouchableOpacity>
+
+            {recoveryStage === 'enterEmail' ? (
+              <>
+                <Text style={styles.recoveryEyebrow}>{t('login.recoveryEyebrow')}</Text>
+                <Text style={styles.recoveryTitle}>
+                  {t('login.recoveryEnterEmailTitle')}{' '}
+                  <Text style={styles.recoveryTitleAccent}>
+                    {t('login.recoveryEnterEmailTitleAccent')}
+                  </Text>
+                </Text>
+                <Text style={styles.recoveryDescription}>
+                  {t('login.recoveryEnterEmailDescription')}
+                </Text>
+
+                <TextInput
+                  style={[
+                    styles.recoveryInput,
+                    recoveryError ? styles.recoveryInputError : null,
+                  ]}
+                  placeholder={t('login.recoveryEmailPlaceholder')}
+                  placeholderTextColor="#B5B5BD"
+                  value={recoveryEmail}
+                  onChangeText={(val) => {
+                    if (recoveryError) setRecoveryError(null);
+                    setRecoveryEmail(val);
+                  }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="email"
+                />
+
+                {recoveryError ? (
+                  <Text style={styles.recoveryErrorText}>{recoveryError}</Text>
+                ) : null}
+
+                <TouchableOpacity
+                  style={[
+                    styles.recoveryButton,
+                    (isSendingRecovery || !recoveryEmail.trim()) && styles.recoveryButtonDisabled,
+                  ]}
+                  onPress={handleSendRecoveryCode}
+                  activeOpacity={0.85}
+                  disabled={isSendingRecovery || !recoveryEmail.trim()}
+                >
+                  {isSendingRecovery ? (
+                    <ActivityIndicator color={colors.text.light} />
+                  ) : (
+                    <Text style={styles.recoveryButtonText}>{t('login.recoverySendCode')}</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            ) : recoveryStage === 'verifyCode' ? (
+              <>
+                <Text style={styles.recoveryEyebrow}>{t('login.recoveryEyebrow')}</Text>
+                <Text style={styles.recoveryTitle}>
+                  {t('login.recoveryVerifyCodeTitle')}{' '}
+                  <Text style={styles.recoveryTitleAccent}>
+                    {t('login.recoveryVerifyCodeTitleAccent')}
+                  </Text>
+                </Text>
+                <Text style={styles.recoveryDescription}>
+                  {t('login.recoveryVerifyCodeDescription', { email: recoveryEmail })}
+                </Text>
+
+                <TextInput
+                  style={[
+                    styles.recoveryInput,
+                    recoveryError ? styles.recoveryInputError : null,
+                  ]}
+                  placeholder={t('login.recoveryCodePlaceholder')}
+                  placeholderTextColor="#B5B5BD"
+                  value={recoveryCode}
+                  onChangeText={(val) => {
+                    if (recoveryError) setRecoveryError(null);
+                    const digits = val.replace(/\D/g, '');
+                    setRecoveryCode(digits);
+                    // Codigo completo (6 digitos): fecha o teclado.
+                    if (digits.length >= 6) Keyboard.dismiss();
+                  }}
+                  keyboardType="number-pad"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                />
+
+                {recoveryError ? (
+                  <Text style={styles.recoveryErrorText}>{recoveryError}</Text>
+                ) : null}
+
+                {codeExpiry.started ? (
+                  <Text style={styles.recoveryExpiryText}>
+                    {codeExpiry.expired
+                      ? t('common.codeExpired')
+                      : t('common.codeExpiresIn', {
+                          time: formatResendCountdown(codeExpiry.secondsLeft),
+                        })}
+                  </Text>
+                ) : null}
+
+                <TouchableOpacity
+                  onPress={handleResendRecoveryCode}
+                  activeOpacity={0.7}
+                  disabled={isResendingRecovery || !resendTimer.canResend}
+                  style={styles.recoveryResend}
+                >
+                  <Text
+                    style={[
+                      styles.recoveryResendText,
+                      (isResendingRecovery || !resendTimer.canResend) &&
+                        styles.recoveryResendTextDisabled,
+                    ]}
+                  >
+                    {isResendingRecovery
+                      ? t('login.recoverySendingCode')
+                      : !resendTimer.canResend
+                        ? t('login.recoveryResendIn', {
+                            countdown: formatResendCountdown(resendTimer.secondsLeft),
+                          })
+                        : t('login.recoveryResendCode')}
+                  </Text>
+                </TouchableOpacity>
+
+                <Text style={styles.recoveryHelpNotice}>{t('login.recoveryHelpNotice')}</Text>
+
+                <TouchableOpacity
+                  style={[
+                    styles.recoveryButton,
+                    (recoveryCode.length < 4 || isVerifyingRecovery) && styles.recoveryButtonDisabled,
+                  ]}
+                  onPress={handleVerifyRecoveryCode}
+                  activeOpacity={0.85}
+                  disabled={recoveryCode.length < 4 || isVerifyingRecovery}
+                >
+                  {isVerifyingRecovery ? (
+                    <ActivityIndicator color={colors.text.light} />
+                  ) : (
+                    <Text style={styles.recoveryButtonText}>{t('login.recoveryVerify')}</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.recoveryEyebrow}>FORGOT PASSWORD</Text>
+                <Text style={styles.recoveryTitle}>
+                  New <Text style={styles.recoveryTitleAccent}>PIN</Text>
+                </Text>
+                <Text style={styles.recoveryDescription}>
+                  Choose a new 4-digit PIN to protect your account.
+                </Text>
+
+                <TextInput
+                  style={[
+                    styles.recoveryInput,
+                    styles.recoveryPinInput,
+                    recoveryError ? styles.recoveryInputError : null,
+                  ]}
+                  placeholder="0 0 0 0"
+                  placeholderTextColor="#B5B5BD"
+                  value={recoveryPin}
+                  onChangeText={(val) => {
+                    if (recoveryError) setRecoveryError(null);
+                    setRecoveryPin(val.replace(/\D/g, ''));
+                  }}
+                  keyboardType="number-pad"
+                  secureTextEntry
+                  autoComplete="password-new"
+                  maxLength={4}
+                />
+
+                {recoveryError ? (
+                  <Text style={styles.recoveryErrorText}>{recoveryError}</Text>
+                ) : null}
+
+                <TouchableOpacity
+                  style={[
+                    styles.recoveryButton,
+                    (recoveryPin.length !== 4 || isSavingRecoveryPin) && styles.recoveryButtonDisabled,
+                  ]}
+                  onPress={handleConfirmRecoveryPin}
+                  activeOpacity={0.85}
+                  disabled={recoveryPin.length !== 4 || isSavingRecoveryPin}
+                >
+                  {isSavingRecoveryPin ? (
+                    <ActivityIndicator color={colors.text.light} />
+                  ) : (
+                    <Text style={styles.recoveryButtonText}>Save New PIN</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </KeyboardAvoidingView>
+        </DismissKeyboard>
+      </Modal>
     </SafeAreaView>
+    </DismissKeyboard>
   );
 }
 
@@ -211,6 +582,9 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E5E5',
     fontSize: 17,
     fontFamily: fonts.regular,
+    // letterSpacing explicito evita o bug do iOS que espaca o placeholder
+    // quando ha fontFamily customizada sem letterSpacing definido.
+    letterSpacing: 0,
     color: colors.text.dark,
     paddingVertical: 10,
   },
@@ -257,6 +631,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 24,
   },
+  primaryButtonDisabled: { opacity: 0.6 },
   primaryButtonText: {
     color: colors.text.light,
     fontSize: 15,
@@ -281,5 +656,123 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     color: colors.text.dark,
     textDecorationLine: 'underline',
+  },
+
+  // --- RECOVERY MODAL (forgot password) ---
+  recoveryOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15,2,45,0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  recoveryCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+  },
+  recoveryClose: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    padding: 4,
+    zIndex: 1,
+  },
+  recoveryEyebrow: {
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    color: colors.text.muted,
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
+  recoveryTitle: {
+    fontSize: 28,
+    fontFamily: fonts.bold,
+    color: colors.text.dark,
+    letterSpacing: -1,
+    marginBottom: 12,
+  },
+  recoveryTitleAccent: {
+    color: '#f07167',
+    fontFamily: fonts.italic,
+  },
+  recoveryDescription: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: colors.text.muted,
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  recoveryInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    fontSize: 17,
+    fontFamily: fonts.regular,
+    letterSpacing: 0,
+    color: colors.text.dark,
+  },
+  recoveryInputError: {
+    borderColor: '#f07167',
+  },
+  recoveryPinInput: {
+    letterSpacing: 14,
+    textAlign: 'center',
+  },
+  recoveryErrorText: {
+    marginTop: 8,
+    fontSize: 12,
+    fontFamily: fonts.medium,
+    color: '#f07167',
+  },
+  recoveryExpiryText: {
+    marginTop: 10,
+    fontSize: 12,
+    fontFamily: fonts.medium,
+    color: colors.text.muted,
+  },
+  recoveryResend: {
+    alignSelf: 'flex-start',
+    marginTop: 12,
+    paddingVertical: 4,
+  },
+  recoveryResendText: {
+    fontSize: 13,
+    fontFamily: fonts.bold,
+    color: colors.brand.primary,
+    letterSpacing: 0.4,
+    textDecorationLine: 'underline',
+  },
+  recoveryResendTextDisabled: {
+    color: colors.text.muted,
+  },
+  recoveryHelpNotice: {
+    marginTop: 16,
+    fontSize: 12,
+    fontFamily: fonts.regular,
+    color: colors.text.muted,
+    lineHeight: 16,
+  },
+  recoveryButton: {
+    backgroundColor: colors.brand.primary,
+    borderRadius: 10,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 24,
+  },
+  recoveryButtonDisabled: {
+    opacity: 0.5,
+  },
+  recoveryButtonText: {
+    color: colors.text.light,
+    fontSize: 15,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.5,
   },
 });

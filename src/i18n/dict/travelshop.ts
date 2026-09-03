@@ -1,0 +1,62 @@
+import type { SupportedLang } from '@/src/services/locale';
+
+// Namespace: travelshop — chrome estatico da tela TravelShop.
+export const travelshop: Record<SupportedLang, Record<string, any>> = {
+  'en-US': {
+    headerLabel: 'TRAVELSHOP',
+    mainTitle: 'Everything for Your',
+    mainTitleAccent: 'Trip',
+    pageDescription:
+      'Discover over 1.4 million hotels, 250 airlines, and many other travel products.',
+    searchButton: 'Search Hotels',
+    searchFlightsButton: 'Search Flights',
+    myTripsButton: 'My trips',
+    marketplaceUnavailable: "Couldn't open the marketplace right now.",
+    balanceTitle: 'Balance',
+    balanceDesc: 'Manage your Travel Credits.',
+    recommendedTitle: 'Hotels',
+    recommendedTitleAccent: 'Recommended',
+    nearbyTitle: 'Hotels',
+    nearbyTitleAccent: 'Nearby',
+    reviewCount: '{count} reviews',
+    priceCaption: '1 room x 1 night including taxes',
+  },
+  'pt-BR': {
+    headerLabel: 'TRAVELSHOP',
+    mainTitle: 'Tudo para sua',
+    mainTitleAccent: 'Viagem',
+    pageDescription:
+      'Encontre mais de 1.4 milhão de hotéis, 250 companhias aéreas e muitos outros produtos de viagem.',
+    searchButton: 'Buscar Hotéis',
+    searchFlightsButton: 'Buscar Passagens Aéreas',
+    myTripsButton: 'Minhas viagens',
+    marketplaceUnavailable: 'Não foi possível abrir o marketplace agora.',
+    balanceTitle: 'Balance',
+    balanceDesc: 'Gerencie seus Travel Credits.',
+    recommendedTitle: 'Hotéis',
+    recommendedTitleAccent: 'Recomendados',
+    nearbyTitle: 'Hotéis',
+    nearbyTitleAccent: 'Próximos',
+    reviewCount: '{count} avaliações',
+    priceCaption: '1 quarto x 1 noite incluindo impostos',
+  },
+  'es-ES': {
+    headerLabel: 'TRAVELSHOP',
+    mainTitle: 'Todo para tu',
+    mainTitleAccent: 'Viaje',
+    pageDescription:
+      'Encuentra más de 1.4 millones de hoteles, 250 aerolíneas y muchos otros productos de viaje.',
+    searchButton: 'Buscar Hoteles',
+    searchFlightsButton: 'Buscar Vuelos',
+    myTripsButton: 'Mis viajes',
+    marketplaceUnavailable: 'No se pudo abrir el marketplace ahora.',
+    balanceTitle: 'Balance',
+    balanceDesc: 'Gestiona tus Travel Credits.',
+    recommendedTitle: 'Hoteles',
+    recommendedTitleAccent: 'Recomendados',
+    nearbyTitle: 'Hoteles',
+    nearbyTitleAccent: 'Cercanos',
+    reviewCount: '{count} reseñas',
+    priceCaption: '1 habitación x 1 noche con impuestos incluidos',
+  },
+};

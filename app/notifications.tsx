@@ -1,215 +1,375 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useState } from 'react';
 import {
-  AirplaneTilt,
-  CircleIcon,
-  ShieldCheck,
-  Tag
-} from 'phosphor-react-native';
-import React from 'react';
-import {
+  ActivityIndicator,
+  LayoutAnimation,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  UIManager,
+  useWindowDimensions,
+  View,
 } from 'react-native';
+import RenderHTML, { MixedStyleDeclaration } from 'react-native-render-html';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/src/components/ScreenHeader';
+import { useAuth } from '@/src/contexts/AuthContext';
+import { useT, type Translator } from '@/src/i18n';
+import { type AlertItem, confirmRead, getAlerts } from '@/src/services/alerts';
+import { getUserLanguage } from '@/src/services/locale';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
-const NOTIFICATIONS = [
-  {
-    id: 1,
-    type: 'cashback',
-    title: 'Cashback Recebido!',
-    description: 'Você recebeu R$ 42,50 de cashback pela sua última compra na TravelShop.',
-    time: 'Há 2 min',
-    unread: true,
-    icon: <Tag size={24} color={colors.brand.primary} weight="duotone" />
-  },
-  {
-    id: 2,
-    type: 'security',
-    title: 'Login Detectado',
-    description: 'Um novo acesso foi realizado na sua conta a partir de um dispositivo Android em Porto Alegre.',
-    time: 'Há 1 hora',
-    unread: true,
-    icon: <ShieldCheck size={24} color="#FF9500" weight="duotone" />
-  },
-  {
-    id: 3,
-    type: 'travel',
-    title: 'Check-in Disponível',
-    description: 'O check-in para o seu voo G3 1234 já está disponível. Acesse seus documentos.',
-    time: 'Há 3 horas',
-    unread: false,
-    icon: <AirplaneTilt size={24} color={colors.text.dark} weight="duotone" />
-  },
-  {
-    id: 4,
-    type: 'promo',
-    title: 'Oferta Exclusiva',
-    description: 'Ganhe 15% de desconto em hotéis no Rio de Janeiro usando o saldo da sua wallet.',
-    time: 'Ontem',
-    unread: false,
-    icon: <Tag size={24} color={colors.brand.primary} weight="duotone" />
-  }
-];
+// Mesmo motivo do FAQSection: o LayoutAnimation precisa ser habilitado
+// manualmente no Android pra que o accordion abra/feche suave.
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const HTML_BASE_STYLE: MixedStyleDeclaration = {
+  color: colors.text.dark,
+  fontFamily: fonts.regular,
+  fontSize: 14,
+  lineHeight: 22,
+};
+
+const HTML_TAG_STYLES: Record<string, MixedStyleDeclaration> = {
+  p: { fontSize: 14, lineHeight: 22, marginBottom: 8 },
+  strong: { fontFamily: fonts.bold },
+  em: { fontFamily: fonts.italic },
+  a: { color: '#0F022D', textDecorationLine: 'underline' },
+  ul: { marginBottom: 8, paddingLeft: 18 },
+  ol: { marginBottom: 8, paddingLeft: 18 },
+  li: { marginBottom: 2 },
+  span: { fontSize: 14, lineHeight: 22 },
+};
+
+function formatPublishDate(raw: string | undefined, t: Translator['t']): string {
+  if (!raw) return '';
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return '';
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+  const oneMin = 60 * 1000;
+  const oneHour = 60 * oneMin;
+  const oneDay = 24 * oneHour;
+  if (diffMs < oneMin) return t('notifications.time.justNow');
+  if (diffMs < oneHour)
+    return t('notifications.time.minutesAgo', { count: Math.floor(diffMs / oneMin) });
+  if (diffMs < oneDay)
+    return t('notifications.time.hoursAgo', { count: Math.floor(diffMs / oneHour) });
+  if (diffMs < 2 * oneDay) return t('notifications.time.yesterday');
+  if (diffMs < 7 * oneDay)
+    return t('notifications.time.daysAgo', { count: Math.floor(diffMs / oneDay) });
+  return date.toLocaleDateString(undefined, {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+}
 
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const { account } = useAuth();
+  const { t } = useT();
+  const lang = getUserLanguage(account);
+  const accountId = account?.account?.id ?? '';
+
+  const [items, setItems] = useState<AlertItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Marcacao otimista de leitura: a UI atualiza imediatamente e o
+  // ConfirmRead vai em paralelo. Se a chamada falhar, mantemos o estado
+  // local da sessao (proximo GetAlerts traz a verdade do servidor).
+  const [readLocal, setReadLocal] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!accountId) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setExpandedId(null);
+    getAlerts(accountId, lang)
+      .then((data) => {
+        if (!cancelled) setItems(data);
+      })
+      .catch((err) => {
+        console.warn('[alerts] fetch failed:', err);
+        if (!cancelled) setError(t('notifications.error'));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accountId, lang]);
+
+  const isUnread = (it: AlertItem) => !it.readed && !readLocal.has(it.contentId);
+  const hasUnread = items.some(isUnread);
+
+  const toggle = (id: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedId((curr) => (curr === id ? null : id));
+
+    const alreadyRead = readLocal.has(id) || items.find((it) => it.contentId === id)?.readed;
+    if (alreadyRead || !accountId) return;
+
+    setReadLocal((curr) => {
+      const next = new Set(curr);
+      next.add(id);
+      return next;
+    });
+    confirmRead(id, accountId).catch((err) => {
+      console.warn('[alerts] confirmRead failed:', err);
+    });
+  };
+
+  const markAllRead = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    const unreadIds = items.filter(isUnread).map((it) => it.contentId);
+    setReadLocal((curr) => {
+      const next = new Set(curr);
+      unreadIds.forEach((id) => next.add(id));
+      return next;
+    });
+    if (!accountId) return;
+    unreadIds.forEach((id) => {
+      confirmRead(id, accountId).catch((err) => {
+        console.warn('[alerts] confirmRead failed:', err);
+      });
+    });
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <StatusBar style="light" />
-      
-      {/* 1. Header de Navegação Fixo */}
-      <View style={[styles.fixedHeader, { paddingTop: insets.top }]}>
-        <ScreenHeader title="CENTRAL DE AVISOS" dark={true} />
-      </View>
 
-      <ScrollView 
-        showsVerticalScrollIndicator={false} 
-        contentContainerStyle={styles.scrollContent}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
       >
-        {/* 2. Título e Descrição rolam com a página */}
-        <View style={styles.headerScrollExtension}>
-          <Text style={styles.mainTitle}>Alertas</Text>
-          <Text style={styles.pageDescription}>
-            Fique por dentro das movimentações da sua conta e novidades da sua próxima viagem.
-          </Text>
-        </View>
+        <LinearGradient
+          colors={['#6444DA', '#4D2ACC', '#1B0F4A']}
+          start={{ x: 0.1, y: 0.1 }}
+          end={{ x: 0.8, y: 1.2 }}
+          locations={[0, 0.2, 0.7]}
+          style={[styles.headerGradient, { paddingTop: insets.top }]}
+        >
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
+          <ScreenHeader title={t('notifications.headerTitle')} dark={true} />
 
-        <View style={styles.listContainer}>
-          {NOTIFICATIONS.map((item) => (
-            <TouchableOpacity 
-              key={item.id} 
-              style={[styles.notificationCard, item.unread && styles.unreadCard]}
-              activeOpacity={0.7}
-            >
-              <View style={styles.iconContainer}>
-                {item.icon}
+          <View style={styles.headerBody}>
+            <Text style={styles.headerLabel}>{t('notifications.label')}</Text>
+            <Text style={styles.mainTitle}>
+              {t('notifications.titleBase')} <Text style={styles.mainTitleAccent}>{t('notifications.titleAccent')}</Text>
+            </Text>
+            <Text style={styles.pageDescription}>
+              {t('notifications.pageDescription')}
+            </Text>
+          </View>
+        </LinearGradient>
+
+        <View style={styles.body}>
+          {loading ? (
+            <View style={styles.stateBox}>
+              <ActivityIndicator color={colors.text.dark} />
+            </View>
+          ) : error ? (
+            <View style={styles.stateBox}>
+              <Text style={styles.stateText}>{error}</Text>
+            </View>
+          ) : items.length === 0 ? (
+            <View style={styles.stateBox}>
+              <Text style={styles.stateText}>{t('notifications.empty')}</Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.list}>
+                {items.map((alert) => {
+                  const open = expandedId === alert.contentId;
+                  const unread = isUnread(alert);
+                  // O backend frequentemente repete title em description -
+                  // nesses casos nao faz sentido mostrar o mesmo texto duas
+                  // vezes. Tambem evita expandir um card vazio quando nao
+                  // ha richText nem description extra.
+                  const showDescription =
+                    alert.description.trim().length > 0 &&
+                    alert.description.trim() !== alert.title.trim();
+                  const hasRichBody = !!alert.richText && alert.richText.trim().length > 0;
+                  const expandable = hasRichBody || showDescription;
+                  return (
+                    <TouchableOpacity
+                      key={alert.contentId}
+                      style={[styles.card, unread ? styles.cardUnread : styles.cardRead]}
+                      activeOpacity={0.85}
+                      onPress={() => toggle(alert.contentId)}
+                    >
+                      <View style={styles.cardHeader}>
+                        <Text style={styles.cardTitle}>{alert.title}</Text>
+                        {unread ? <View style={styles.unreadDot} /> : null}
+                      </View>
+                      {showDescription ? (
+                        <Text
+                          style={styles.cardDescription}
+                          numberOfLines={open || !expandable ? undefined : 2}
+                        >
+                          {alert.description}
+                        </Text>
+                      ) : null}
+                      {open && hasRichBody ? (
+                        <View style={styles.richBody}>
+                          <RenderHTML
+                            contentWidth={width - 96}
+                            source={{ html: alert.richText ?? '' }}
+                            baseStyle={HTML_BASE_STYLE}
+                            tagsStyles={HTML_TAG_STYLES}
+                            enableExperimentalMarginCollapsing
+                          />
+                        </View>
+                      ) : null}
+                      {alert.publishDate ? (
+                        <Text style={styles.cardTime}>{formatPublishDate(alert.publishDate, t)}</Text>
+                      ) : null}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
-              <View style={styles.textContainer}>
-                <View style={styles.cardHeader}>
-                  <Text style={styles.cardTitle}>{item.title}</Text>
-                  {item.unread && <CircleIcon size={8} color={colors.brand.primary} weight="fill" />}
-                </View>
-                <Text style={styles.cardDescription} numberOfLines={2}>
-                  {item.description}
-                </Text>
-                <Text style={styles.cardTime}>{item.time}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+              {hasUnread ? (
+                <TouchableOpacity
+                  style={styles.markAllButton}
+                  activeOpacity={0.7}
+                  onPress={markAllRead}
+                >
+                  <Text style={styles.markAllText}>{t('notifications.markAllAsRead')}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </>
+          )}
         </View>
-
-        <TouchableOpacity style={styles.clearButton}>
-          <Text style={styles.clearButtonText}>MARCAR TODAS COMO LIDAS</Text>
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.light,
-  },
-  fixedHeader: {
-    backgroundColor: colors.background.dark,
-  },
-  headerScrollExtension: {
-    backgroundColor: colors.background.dark,
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
+
+  headerGradient: { paddingBottom: 32 },
+  headerBody: {
     paddingHorizontal: 24,
-    paddingBottom: 32,
-    marginTop: -20, // Ajuste para colar no header fixo
+    marginTop: -8,
+  },
+  headerLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    letterSpacing: 2,
+    marginBottom: 8,
   },
   mainTitle: {
-    fontSize: 48,
+    fontSize: 50,
     fontFamily: fonts.bold,
     color: colors.text.light,
-    letterSpacing: -1.5,
-    marginBottom: 8,
+    letterSpacing: -2,
+    lineHeight: 52,
+    marginBottom: 12,
+  },
+  mainTitleAccent: {
+    color: '#85EDD3',
+    fontFamily: fonts.bold_italic,
   },
   pageDescription: {
     fontSize: 14,
     fontFamily: fonts.regular,
-    color: '#aaaaaa',
+    color: 'rgba(255,255,255,0.7)',
     lineHeight: 20,
-    maxWidth: '85%',
+    maxWidth: '90%',
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 40,
-  },
-  listContainer: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    gap: 16,
-  },
-  notificationCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    gap: 16,
-  },
-  unreadCard: {
-    borderColor: colors.brand.primary + '30',
-    backgroundColor: colors.brand.primary + '05',
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F4F4F5',
-    justifyContent: 'center',
+
+  body: { padding: 24, paddingTop: 32 },
+
+  stateBox: {
+    paddingVertical: 48,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  textContainer: {
-    flex: 1,
+  stateText: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: colors.text.muted,
+    textAlign: 'center',
+  },
+
+  list: { gap: 10 },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+  },
+  cardUnread: {
+    borderColor: colors.brand.details,
+  },
+  cardRead: {
+    borderColor: colors.background.cardDark,
   },
   cardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
+    gap: 8,
   },
   cardTitle: {
+    flex: 1,
     fontSize: 16,
     fontFamily: fonts.bold,
     color: colors.text.dark,
+    lineHeight: 20,
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.brand.details,
   },
   cardDescription: {
     fontSize: 14,
     fontFamily: fonts.regular,
     color: colors.text.muted,
     lineHeight: 20,
-    marginBottom: 8,
   },
+  richBody: { marginTop: 10 },
   cardTime: {
+    marginTop: 10,
     fontSize: 11,
     fontFamily: fonts.bold,
     color: '#BBBBBB',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  clearButton: {
-    marginTop: 40,
+
+  markAllButton: {
+    marginTop: 32,
     alignSelf: 'center',
-    padding: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
-  clearButtonText: {
+  markAllText: {
     fontSize: 12,
     fontFamily: fonts.bold,
-    color: colors.brand.primary,
+    color: '#f07167',
     letterSpacing: 1,
     textDecorationLine: 'underline',
   },

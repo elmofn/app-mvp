@@ -7,14 +7,13 @@ import {
   CoinsIcon,
   EyeIcon,
   EyeSlashIcon,
+  InfoIcon,
   ListIcon,
-  QuestionMarkIcon,
-  SparkleIcon,
   SuitcaseRollingIcon,
   UserIcon
 } from 'phosphor-react-native';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { BackHandler, Image, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -25,61 +24,86 @@ import Animated, {
   useSharedValue,
   withTiming
 } from 'react-native-reanimated';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { fetchHomeData, HomeData } from '@/src/services/api';
+import { ActivityHighlights } from '@/src/components/ActivityHighlights';
+import { BannersCarousel } from '@/src/components/BannersCarousel';
+import { NextTrips } from '@/src/components/NextTrips';
+import { useAlert } from '@/src/contexts/AlertContext';
+import { useAuth } from '@/src/contexts/AuthContext';
+import { useT } from '@/src/i18n';
+import { getAlerts } from '@/src/services/alerts';
+import { getUserLanguage } from '@/src/services/locale';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
+import { getLocalCurrency } from '@/src/utils/balance';
+import { formatCurrency } from '@/src/utils/format';
 
-const FEATURED_EXPERIENCES = [
-  { id: '1', title: 'Louvre Privé', tag: 'ARTE', image: 'https://images.unsplash.com/photo-1543332164-6e82f355badc?auto=format&fit=crop&w=600&q=80' },
-  { id: '2', title: 'Safari Serengeti', tag: 'AVENTURA', image: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=600&q=80' },
-  { id: '3', title: 'Ryokan Kyoto', tag: 'RELAX', image: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=600&q=80' },
-];
-
-const STATIC_TRIPS = [
-  {
-    id: 'trip_1',
-    title: 'Gramado',
-    tag: 'ATÉ 400KM',
-    description: 'Famosa pelo clima serrano, arquitetura europeia, chocolates artesanais e o charme das hortênsias. Um refúgio perfeito na Serra Gaúcha.',
-    imageUrl: 'https://www.melhoresdestinos.com.br/wp-content/uploads/2022/09/onde-fica-gramado-capa.jpeg'
-  },
-  {
-    id: 'trip_2',
-    title: 'Curitiba',
-    tag: 'ATÉ 1000KM',
-    description: 'Capital paranaense com belos parques, o famoso Jardim Botânico, museus icônicos e uma infraestrutura urbana que encanta os visitantes.',
-    imageUrl: 'https://media-cdn.tripadvisor.com/media/attractions-splice-spp-674x446/12/3a/cb/39.jpg'
-  },
-  {
-    id: 'trip_3',
-    title: 'Buenos Aires',
-    tag: 'INTERNACIONAL',
-    description: 'A vibrante capital argentina oferece tango, arquitetura clássica, rica gastronomia, museus e os charmosos cafés do bairro da Recoleta.',
-    imageUrl: 'https://viagensforadocomum.com.br/blog/wp-content/uploads/2025/07/Tudo-sobre-Buenos-Aires-capa-840x400.jpg'
-  }
-];
-
-export default function HomeScreen() { 
+export default function HomeScreen() {
   const router = useRouter();
-  const [data, setData] = useState<HomeData | null>(null);
-  
+  const { account, refreshAccount } = useAuth();
+  const showAlert = useAlert();
+  const { t } = useT();
+
+  // Pull-to-refresh: re-busca o snapshot da conta + banners + nextTrips
+  // (via GetAccount/GetBanners/GetNextTrips) para refletir mudancas sem
+  // o usuario precisar relogar.
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshAccount();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('home.refreshFailedBody');
+      showAlert(t('home.refreshFailedTitle'), message);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refreshAccount, showAlert, t]);
+
+  const firstName = account?.accountDetails.name?.trim().split(/\s+/)[0] ?? '';
+  // available vem sempre em USD; convertemos para a moeda local
+  // multiplicando pelo currentExchangeRate (cotacao da moeda do usuario
+  // por 1 USD). symbol/code/rate vem do helper para refletir trocas
+  // feitas em settings sem precisar re-login.
+  const local = getLocalCurrency(account);
+  const balanceUSD = account ? formatCurrency(account.balance.available) : '0,00';
+  const balanceLocal = account ? formatCurrency(account.balance.available * local.rate) : '0,00';
+
   // Controle de Saldo
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
-  
+
   // Controle do Menu Suspenso
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Indicador de notificacoes nao lidas no botao de menu. Consultamos os
+  // alertas (mesma fonte da tela de notificacoes) a cada foco da home, para
+  // que o badge reflita leituras feitas na tela de notificacoes assim que o
+  // usuario volta. Falha silenciosa: sem badge e melhor do que derrubar a home.
+  const [hasUnreadAlerts, setHasUnreadAlerts] = useState(false);
+  const lang = getUserLanguage(account);
+  const accountId = account?.account?.id ?? '';
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!accountId) return;
+      let cancelled = false;
+      getAlerts(accountId, lang)
+        .then((data) => {
+          if (!cancelled) setHasUnreadAlerts(data.some((it) => !it.readed));
+        })
+        .catch((err) => {
+          console.warn('[alerts] unread check failed:', err);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [accountId, lang]),
+  );
 
   const scrollY = useSharedValue(0);
   const scrollViewRef = useRef<Animated.ScrollView>(null);
   const isForcingAnimation = useSharedValue(false);
-
-  useEffect(() => {
-    fetchHomeData().then((response) => {
-      setData(response);
-    });
-  }, []);
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -97,7 +121,7 @@ export default function HomeScreen() {
       if (scrollY.value > 0) {
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
       } else {
-        isForcingAnimation.value = true; 
+        isForcingAnimation.value = true;
         scrollY.value = 150;
         setTimeout(() => {
           scrollY.value = withTiming(0, { duration: 450 }, () => {
@@ -108,26 +132,55 @@ export default function HomeScreen() {
     }, [])
   );
 
-  if (!data) {
-    return (
-      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]} edges={['left', 'right']}>
-        <StatusBar style="light" />
-        <ActivityIndicator size="large" color="#5b32e0" />
-      </SafeAreaView>
-    );
-  }
+  // Intercepta o botao de voltar do Android na home: em vez de tentar
+  // popar a stack (sem destino, leva a tela branca), abre um alert
+  // confirmando saida do app. Cancelar mantem o usuario na home;
+  // confirmar chama BackHandler.exitApp(). No iOS o evento nunca dispara.
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        showAlert(
+          t('home.exitTitle'),
+          t('home.exitBody'),
+          [
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('home.exit'), style: 'destructive', onPress: () => BackHandler.exitApp() },
+          ],
+        );
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [showAlert, t]),
+  );
 
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      
-      <Animated.ScrollView 
+
+      <Animated.ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingBottom: tabBarHeight + 24 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor="#FFFFFF"
+            colors={['#4D2ACC']}
+          />
+        }
       >
+        {/* Backdrop do overscroll: fica ACIMA do topo do conteudo (top
+            negativo) e rola junto, entao so aparece na faixa que o iOS
+            estica no pull-to-refresh - nunca atras dos cards. Pintado com a
+            cor de topo do header (#6444DA) para o puxao parecer o header
+            esticando, com o loader branco descendo sobre ela. */}
+        <View pointerEvents="none" style={styles.overscrollBackdrop} />
+
         {/* --- HEADER SECTION --- */}
         <LinearGradient 
           colors={['#6444DA', '#4D2ACC', '#1B0F4A']} 
@@ -145,28 +198,44 @@ export default function HomeScreen() {
     <View style={styles.headerIcons}>
       <TouchableOpacity style={styles.iconBtn} onPress={() => setIsMenuOpen(true)}>
         <ListIcon size={20} color="#FFF" weight="bold" />
+        {hasUnreadAlerts ? <View style={styles.iconBadge} /> : null}
       </TouchableOpacity>
     </View>
   </Animated.View>
 
   {/* Greeting: cai de cima */}
   <Animated.Text entering={FadeInDown.delay(100).duration(500)} style={styles.greeting}>
-    Hello, <Text style={styles.firstName}>{data.user.firstName}</Text>
+    {t('home.greeting')} <Text style={styles.firstName}>{firstName}</Text>
   </Animated.Text>
 
   {/* Balance: entra da esquerda com delay */}
   <Animated.View entering={FadeInLeft.delay(200).duration(500)} style={styles.balanceSection}>
     <View>
-      <Text style={styles.balanceLabel}>Available Balance</Text>
+      <Text style={styles.balanceLabel}>{t('home.availableBalance')}</Text>
       <View style={styles.balanceValueContainer}>
-        <Text style={styles.currency}>R$</Text>
+        <Text style={styles.currency}>{local.symbol}</Text>
         <Text style={styles.balanceValue}>
-          {isBalanceVisible ? data.user.balanceBRL : '****'}
+          {isBalanceVisible ? balanceLocal : '****'}
         </Text>
       </View>
-      <Text style={styles.balanceUsd}>
-        US$ {isBalanceVisible ? data.user.balanceUSD : '****'}
-      </Text>
+      <View style={styles.balanceUsdRow}>
+        <Text style={styles.balanceUsd}>
+          US$ {isBalanceVisible ? balanceUSD : '****'}
+        </Text>
+        <TouchableOpacity
+          onPress={() =>
+            showAlert(
+              t('home.walletDollarizedTitle'),
+              t('home.walletDollarizedBody'),
+            )
+          }
+          activeOpacity={0.7}
+          hitSlop={10}
+          style={styles.balanceInfoBtn}
+        >
+          <InfoIcon size={15} color="rgba(255,255,255,0.6)" weight="bold" />
+        </TouchableOpacity>
+      </View>
     </View>
     <View style={styles.rightActions}>
       <TouchableOpacity onPress={() => setIsBalanceVisible(!isBalanceVisible)} activeOpacity={0.7} style={styles.eyeButton}>
@@ -176,25 +245,13 @@ export default function HomeScreen() {
         }
       </TouchableOpacity>
       <TouchableOpacity style={styles.statementBtn} onPress={() => router.push('/statement')}>
-        <Text style={styles.statementBtnText}>STATEMENT</Text>
+        <Text style={styles.statementBtnText}>{t('home.statement').toUpperCase()}</Text>
       </TouchableOpacity>
     </View>
   </Animated.View>
 
-  {/* Activity: cai de baixo com delay maior */}
-  <Animated.View entering={FadeInDown.delay(350).duration(500)}>
-    <Text style={styles.activityTitle}>Account Activity Highlights</Text>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.activityScroll}>
-      {data.recentTransactions.map((tx) => (
-        <View key={tx.id} style={styles.activityCard}>
-          <Text style={styles.activityCardTitle}>{tx.title}</Text>
-          <Text style={styles.activityCardSub}>{tx.dateLabel}</Text>
-          <Text style={styles.activityCardVal}>{tx.amount}</Text>
-        </View>
-      ))}
-      <View style={{ width: 20 }} />
-    </ScrollView>
-  </Animated.View>
+  {/* Activity Highlights: nao renderiza se a conta nao tem transacoes */}
+  <ActivityHighlights statements={account?.statements} />
 </LinearGradient>
 
 {/* --- QUICK ACTIONS: cada card com delay e lado alternado --- */}
@@ -210,7 +267,7 @@ export default function HomeScreen() {
       >
         <View style={styles.actionInfo}>
           <Text style={styles.actionTitlePurple}>TravelShop</Text>
-          <Text style={styles.actionDescPurple}>Explore destinos incríveis.</Text>
+          <Text style={styles.actionDescPurple}>{t('home.travelshopDesc')}</Text>
         </View>
         <View style={styles.actionIconWrapper}>
           <SuitcaseRollingIcon size={32} color="#85EDD3" weight="regular" />
@@ -223,8 +280,8 @@ export default function HomeScreen() {
   <Animated.View entering={FadeInRight.delay(550).duration(500)}>
     <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/statement')} activeOpacity={0.8}>
       <View style={styles.actionInfo}>
-        <Text style={styles.actionTitle}>Balance</Text>
-        <Text style={styles.actionDesc}>Gerencie seus Travel Credits.</Text>
+        <Text style={styles.actionTitle}>{t('home.statement')}</Text>
+        <Text style={styles.actionDesc}>{t('home.statementDesc')}</Text>
       </View>
       <View style={styles.actionIconWrapper}>
         <CoinsIcon size={32} color="#0F022D" weight="regular" />
@@ -233,83 +290,26 @@ export default function HomeScreen() {
   </Animated.View>
 
   {/* AI Assistant: entra da esquerda */}
+   {/*
   <Animated.View entering={FadeInLeft.delay(650).duration(500)}>
     <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/assistant')} activeOpacity={0.8}>
       <View style={styles.actionInfo}>
-        <Text style={styles.actionTitle}>CashIA</Text>
-        <Text style={styles.actionDesc}>Planeje sua próxima jornada.</Text>
+        <Text style={styles.actionTitle}>TravelBACK IA</Text>
+        <Text style={styles.actionDesc}>{t('home.assistantDesc')}</Text>
       </View>
       <View style={styles.actionIconWrapper}>
         <SparkleIcon size={32} color="#0F022D" weight="regular" />
       </View>
     </TouchableOpacity>
   </Animated.View>
+  */}
 </View>
 
-{/* --- NEXT TRIP IDEAS --- */}
-<View style={styles.tripsSection}>
-  {/* Header da seção: cai de cima */}
-  <Animated.View entering={FadeInDown.delay(750).duration(500)} style={styles.sectionHeader}>
-    <Text style={styles.sectionTitle}>Next Trip</Text>
-    <Text style={styles.sectionTitleItalic}>Ideas<Text style={styles.sectionTitle}>.</Text></Text>
-    <Text style={styles.sectionSubtitle}>BOOK YOUR TRIP</Text>
-  </Animated.View>
+{/* --- NEXT TRIP IDEAS: via payload do SignIn --- */}
+<NextTrips trips={account?.nextTrips} />
 
-  {/* Trip cards: alternando esquerda/direita com delay crescente */}
-  {STATIC_TRIPS.map((trip, index) => (
-    <React.Fragment key={trip.id}>
-      <Animated.View
-        entering={
-          index % 2 === 0
-            ? FadeInLeft.delay(850 + index * 100).duration(500)
-            : FadeInRight.delay(850 + index * 100).duration(500)
-        }
-      >
-        <TouchableOpacity style={styles.tripCard} activeOpacity={0.9}>
-          <View style={styles.tripImgBox}>
-            <Image source={{ uri: trip.imageUrl }} style={styles.tripImg} resizeMode="cover" />
-            <View style={styles.tripTag}>
-              <View style={styles.tripTagDot} />
-              <Text style={styles.tripTagText}>{trip.tag}</Text>
-            </View>
-          </View>
-          <View style={styles.tripInfo}>
-            <Text style={styles.tripInfoTitle}>{trip.title}</Text>
-            <Text style={styles.tripInfoDesc} numberOfLines={2}>{trip.description}</Text>
-          </View>
-        </TouchableOpacity>
-      </Animated.View>
-      {index < STATIC_TRIPS.length - 1 && <View style={styles.tripDivider} />}
-    </React.Fragment>
-  ))}
-</View>
-
-        {/* --- BANNERS SECTION --- */}
-        <Animated.View entering={FadeInRight.delay(1100).duration(600)}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bannersSection}>
-          <View style={styles.bannerPurple}>
-            <Text style={styles.bannerPurpleTitle}>Cashback that{'\n'}takes you places</Text>
-            <Image 
-              source={{ uri: 'https://images.unsplash.com/photo-1565026057447-bc90a3dceeee?auto=format&fit=crop&w=300&q=80' }} 
-              style={styles.bannerPurpleImg} 
-              resizeMode="contain"
-            />
-            <Text style={styles.bannerPurpleFoot}>TravelBACK</Text>
-          </View>
-
-          <View style={styles.bannerPhoto}>
-            <Image 
-              source={{ uri: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=300&q=80' }} 
-              style={styles.bannerPhotoImg} 
-              resizeMode="cover"
-            />
-            <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.bannerPhotoOverlay}>
-              <Text style={styles.bannerPhotoText}>Travel more.{'\n'}Get more BACK.</Text>
-            </LinearGradient>
-          </View>
-          <View style={{ width: 20 }} />
-        </ScrollView>
-        </Animated.View>
+        {/* --- HOME BANNERS: via payload do SignIn (category=Home) --- */}
+        <BannersCarousel banners={account?.banners} category="Home" />
       </Animated.ScrollView>
 
       {/* --- MENU OVERLAY --- */}
@@ -335,7 +335,7 @@ export default function HomeScreen() {
                 <View style={styles.menuIconContainer}>
                   <UserIcon size={18} color="#0F022D" weight="bold" />
                 </View>
-                <Text style={styles.menuItemText}>My Profile</Text>
+                <Text style={styles.menuItemText}>{t('home.profile')}</Text>
               </TouchableOpacity>
               
               <View style={styles.menuDivider} />
@@ -344,18 +344,9 @@ export default function HomeScreen() {
               <TouchableOpacity style={styles.menuItem} onPress={() => { setIsMenuOpen(false); router.push('/notifications'); }}>
                 <View style={styles.menuIconContainer}>
                   <BellIcon size={18} color="#0F022D" weight="bold" />
+                  {hasUnreadAlerts ? <View style={styles.menuItemBadge} /> : null}
                 </View>
-                <Text style={styles.menuItemText}>Notifications</Text>
-              </TouchableOpacity>
-
-              <View style={styles.menuDivider} />
-
-              {/* Item 3: Support */}
-              <TouchableOpacity style={styles.menuItem} onPress={() => { setIsMenuOpen(false); router.push('/support'); }}>
-                <View style={styles.menuIconContainer}>
-                  <QuestionMarkIcon size={18} color="#0F022D" weight="bold" />
-                </View>
-                <Text style={styles.menuItemText}>Help & Support</Text>
+                <Text style={styles.menuItemText}>{t('home.notifications')}</Text>
               </TouchableOpacity>
 
             </Animated.View>
@@ -371,6 +362,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
+  },
+  // Faixa acima do conteudo (top negativo) que rola junto do scroll:
+  // preenche a area esticada no overscroll do iOS com a cor de topo do
+  // header. Fora do overscroll fica fora da tela, entao nao afeta o fundo
+  // atras dos cards.
+  overscrollBackdrop: {
+    position: 'absolute',
+    top: -600,
+    left: 0,
+    right: 0,
+    height: 600,
+    backgroundColor: '#6444DA',
   },
   
   // --- HEADER ---
@@ -402,6 +405,20 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  // Badge de nao lidas: circulo mint (mesmo indicador dos cards da tela de
+  // notificacoes) no canto do botao. A borda escura o separa do icone e casa
+  // com o fundo do header.
+  iconBadge: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: colors.brand.details,
+    borderWidth: 1.5,
+    borderColor: '#1B0F4A',
   },
   greeting: {
     fontSize: 20,
@@ -449,14 +466,22 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
     lineHeight: 50, 
   },
+  balanceUsdRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: -4,
+  },
   balanceUsd: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.5)',
     fontFamily: fonts.bold,
     letterSpacing: -0.7,
-    marginTop: -4, 
   },
-  
+  balanceInfoBtn: {
+    padding: 1,
+  },
+
   // (Ícone do Olho e Botão Statement)
   rightActions: {
     alignItems: 'flex-end',
@@ -476,52 +501,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     letterSpacing: 0.9,
     color: '#85EDD3',
-  },
-
-  // --- ACTIVITY ---
-  activityTitle: {
-    fontSize: 12,
-    fontFamily: fonts.bold,
-    color: 'rgba(255,255,255,0.5)',
-    marginBottom: 7,
-    letterSpacing: 0.5,
-    zIndex: 2,
-  },
-  activityScroll: {
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
-    overflow: 'visible',
-    zIndex: 2,
-  },
-  activityCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
-    padding: 12,
-    paddingHorizontal: 16,
-    minWidth: 180,
-    marginRight: 12,
-    marginBottom: 8,
-  },
-  activityCardTitle: {
-    fontSize: 12,
-    fontFamily: fonts.bold,
-    color: '#FFF',
-    marginBottom: 1,
-  },
-  activityCardSub: {
-    fontSize: 8,
-    fontFamily: fonts.medium,
-    color: 'rgba(255,255,255,0.5)',
-    marginBottom: 12,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  activityCardVal: {
-    fontSize: 14,
-    fontFamily: fonts.bold_italic,
-    color: '#FFF',
   },
 
   // --- QUICK ACTIONS ---
@@ -575,159 +554,6 @@ const styles = StyleSheet.create({
     marginLeft: 16,
   },
 
-  // --- TRIPS SECTION ---
-  tripsSection: {
-    padding: 20,
-    paddingTop: 72,
-  },
-  sectionHeader: {
-    marginBottom: 42,
-  },
-  sectionTitle: {
-    fontSize: 45,
-    fontFamily: fonts.bold,
-    color: '#1a1a1a',
-    lineHeight: 36,
-  },
-  sectionTitleItalic: {
-    fontSize: 45,
-    fontFamily: fonts.italic, 
-    color: '#f07167',
-    lineHeight: 36,
-  },
-  sectionSubtitle: {
-    fontSize: 15,
-    fontFamily: fonts.italic,
-    color: '#6c757d',
-    marginTop: 4,
-    letterSpacing: 1,
-  },
-  tripCard: {
-    marginBottom: 24, 
-  },
-  tripImgBox: {
-    width: '100%',
-    height: 200,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 16,
-    backgroundColor: '#CCC',
-  },
-  tripImg: {
-    width: '100%',
-    height: '100%',
-  },
-  tripTag: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    backgroundColor: 'rgba(20, 10, 50, 0.9)',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  tripTagDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#85EDD3',
-  },
-  tripTagText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontFamily: fonts.bold,
-  },
-  tripInfo: {
-    marginBottom: 4,
-  },
-  tripInfoTitle: {
-    fontSize: 26,
-    fontFamily: fonts.bold,
-    color: '#1a1a1a',
-    marginBottom: 6,
-    letterSpacing: -0.6,
-  },
-  tripInfoDesc: {
-    fontSize: 14,
-    fontFamily: fonts.regular,
-    color: '#6c757d',
-    lineHeight: 18,
-    marginBottom: 8,
-  },
-  tripDivider: {
-    height: 2,
-    width: 60,
-    backgroundColor: '#7D7BFE',
-    marginBottom: 40,
-  },
-
-  // --- BANNERS SECTION ---
-  bannersSection: {
-    paddingLeft: 20,
-    marginBottom: 20,
-  },
-  bannerPurple: {
-    width: 200,
-    height: 260,
-    borderRadius: 12,
-    backgroundColor: '#5b32e0',
-    padding: 20,
-    marginRight: 16,
-    justifyContent: 'space-between',
-    overflow: 'hidden',
-  },
-  bannerPurpleTitle: {
-    color: '#FFF',
-    fontSize: 16,
-    fontFamily: fonts.bold,
-    lineHeight: 20,
-    zIndex: 2,
-  },
-  bannerPurpleImg: {
-    position: 'absolute',
-    bottom: 0,
-    left: '10%',
-    width: '80%',
-    height: '60%',
-    opacity: 0.8,
-  },
-  bannerPurpleFoot: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 10,
-    fontFamily: fonts.bold,
-    zIndex: 2,
-  },
-  bannerPhoto: {
-    width: 200,
-    height: 260,
-    borderRadius: 12,
-    marginRight: 16,
-    overflow: 'hidden',
-    backgroundColor: '#333',
-  },
-  bannerPhotoImg: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-  },
-  bannerPhotoOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
-    paddingTop: 40,
-  },
-  bannerPhotoText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontFamily: fonts.bold,
-    lineHeight: 18,
-  },
-
   // --- MENU OVERLAY ESTILOS ---
   menuOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -757,6 +583,19 @@ const styles = StyleSheet.create({
   menuIconContainer: {
     width: 28,
     alignItems: 'center',
+  },
+  // Mesmo badge, posicionado sobre o sino do item de notificacoes. Borda
+  // branca para separar do fundo do dropdown.
+  menuItemBadge: {
+    position: 'absolute',
+    top: -2,
+    right: 1,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: colors.brand.details,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
   },
   menuItemText: {
     fontSize: 14,

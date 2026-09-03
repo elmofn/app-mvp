@@ -1,12 +1,17 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { CaretDownIcon } from 'phosphor-react-native';
-import React, { useState } from 'react';
 import {
-  Alert,
+  CaretDownIcon,
+  CheckCircleIcon,
+  WarningCircleIcon,
+  XIcon,
+} from 'phosphor-react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
+  Keyboard,
   Modal,
   Platform,
   ScrollView,
@@ -18,94 +23,527 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AuthCodeModal } from '@/src/components/AuthCodeModal';
+import { DismissKeyboard } from '@/src/components/DismissKeyboard';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
+import { useAlert } from '@/src/contexts/AlertContext';
+import { useAuth } from '@/src/contexts/AuthContext';
+import { formatResendCountdown, useExpiryTimer, useResendTimer } from '@/src/hooks/useResendTimer';
+import { translate, useT } from '@/src/i18n';
+import {
+  LANGUAGE_COUNTRY_IDS,
+  removeAccount,
+  requestValidationCode,
+  setNewPassword,
+  updateAccount,
+  validateCode,
+  ValidateCodeError,
+} from '@/src/services/account';
+import { CurrencyOption, getCurrencies } from '@/src/services/financial';
+import { getUserLanguage, SupportedLang } from '@/src/services/locale';
+import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/src/services/location';
+import { toE164Phone } from '@/src/services/search';
+import { captureHandledError } from '@/src/services/telemetry';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
-const CURRENCIES = [
-  { label: 'US Dollar', value: 'USD' },
-  { label: 'Brazilian Real', value: 'BRL' },
-  { label: 'Euro', value: 'EUR' },
-];
+function formatPhone(raw: string): string {
+  if (!raw) return '';
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 13 && digits.startsWith('55')) {
+    return `+55 ${digits.slice(2, 4)} ${digits.slice(4, 9)}-${digits.slice(9)}`;
+  }
+  if (digits.length === 11) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  }
+  return raw;
+}
 
-const LANGUAGES = [
+const LANGUAGES: { label: string; value: SupportedLang }[] = [
   { label: 'English - US', value: 'en-US' },
   { label: 'Português - BR', value: 'pt-BR' },
   { label: 'Español', value: 'es-ES' },
 ];
 
+// Badge inline que indica se o contato (email/telefone) esta verificado.
+// Le validEmail/validPhoneNumber que ja vem em accountDetails no SignIn/GetAccount.
+function VerificationBadge({ verified }: { verified: boolean }) {
+  const { t } = useT();
+  return verified ? (
+    <View style={styles.badge}>
+      <CheckCircleIcon size={13} color="#0E9F6E" weight="fill" />
+      <Text style={[styles.badgeText, { color: '#0E9F6E' }]}>{t('settings.verified')}</Text>
+    </View>
+  ) : (
+    <View style={styles.badge}>
+      <WarningCircleIcon size={13} color="#C77700" weight="fill" />
+      <Text style={[styles.badgeText, { color: '#C77700' }]}>{t('settings.notVerified')}</Text>
+    </View>
+  );
+}
+
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { account, signOut, updateAccountDetails, refreshAccount } = useAuth();
+  const showAlert = useAlert();
+  const { t } = useT();
 
-  const [name, setName] = useState('João Silva');
-  const [phone, setPhone] = useState('+55 11 99999-9999');
-  const [email, setEmail] = useState('joao.silva@email.com');
+  // Idioma usado nas chamadas localizadas (mensagens de erro). Pode mudar
+  // localmente no formulario, mas as APIs ainda devolvem mensagens baseadas
+  // no idioma salvo no servidor - usamos o local pra coerencia da UI.
+  const lang = getUserLanguage(account);
+
+  const original = useMemo(
+    () => ({
+      name: account?.accountDetails.name ?? '',
+      email: account?.accountDetails.email ?? '',
+      phoneDigits: (account?.accountDetails.phoneNumber ?? '').replace(/\D/g, ''),
+      lang: (account?.setups.lang ?? 'en-US') as SupportedLang,
+      currencyId: account?.setups.currency.id ?? '',
+    }),
+    [
+      account?.accountDetails.name,
+      account?.accountDetails.email,
+      account?.accountDetails.phoneNumber,
+      account?.setups.lang,
+      account?.setups.currency.id,
+    ],
+  );
+
+  const [name, setName] = useState(original.name);
+  const [phone, setPhone] = useState(formatPhone(account?.accountDetails.phoneNumber ?? ''));
+  const [email, setEmail] = useState(original.email);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  const [currency, setCurrency] = useState(CURRENCIES[0]);
-  const [language, setLanguage] = useState(LANGUAGES[0]);
+  // O currency selecionado segue o shape de SignInCurrency (id + code +
+  // name + symbol + rate) para que possamos refletir a mudanca direto
+  // no AuthContext sem precisar refetchar a conta.
+  const [currency, setCurrency] = useState<CurrencyOption | null>(() => {
+    const c = account?.setups.currency;
+    return c ? { id: c.id, code: c.code, name: c.name, symbol: c.symbol, currentExchangeRate: c.currentExchangeRate } : null;
+  });
+  // Lista vinda de GetCurrency - carregada uma unica vez ao abrir o
+  // picker pela primeira vez. Mantemos a busca client-side, ja que a
+  // API devolve a lista inteira (~173 itens) num so payload.
+  const [currencies, setCurrencies] = useState<CurrencyOption[]>([]);
+  const [currenciesLoading, setCurrenciesLoading] = useState(false);
+  const [currenciesError, setCurrenciesError] = useState<string | null>(null);
+  const [currencySearch, setCurrencySearch] = useState('');
+
+  const [language, setLanguage] = useState(
+    LANGUAGES.find((l) => l.value === original.lang) ?? LANGUAGES[0],
+  );
   const [modalVisible, setModalVisible] = useState<{ type: 'currency' | 'language' | null }>({ type: null });
+  const [authCodeVisible, setAuthCodeVisible] = useState(false);
+
+  // Save / verification state
+  const [isSaving, setIsSaving] = useState(false);
+  const [verifyVisible, setVerifyVisible] = useState(false);
+  const [verifyCode, setVerifyCode] = useState('');
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const resendTimer = useResendTimer();
+  // Janela de validade do codigo de verificacao (15min).
+  const codeExpiry = useExpiryTimer();
+
+  // O mesmo modal serve tres fluxos (atualizar perfil, trocar PIN e
+  // deletar conta); pendingAction guarda qual deles esta em curso e
+  // modalStage controla qual passo o modal mostra (verificacao -> novo
+  // PIN, no caso de senha; verificacao -> RemoveAccount, no de delete).
+  type PendingAction = 'updateProfile' | 'changePassword' | 'deleteAccount';
+  type ModalStage = 'verify' | 'newPin';
+  const [pendingAction, setPendingAction] = useState<PendingAction>('updateProfile');
+  const [modalStage, setModalStage] = useState<ModalStage>('verify');
+  const [newPin, setNewPin] = useState('');
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [isSavingPin, setIsSavingPin] = useState(false);
+  // Captura a escolha do usuario no alerta antes de iniciar o fluxo de
+  // delete - blockAccount tambem trava o e-mail para futuras recriacoes
+  // automaticas (vide comentario do RemoveAccount).
+  const [deleteBlockAccount, setDeleteBlockAccount] = useState(false);
+
+  // Diff em digitos pra phone, lowercased pra email, trim pra name.
+  const phoneDigits = phone.replace(/\D/g, '');
+  const nextName = name.trim();
+  const nextEmail = email.trim().toLowerCase();
+
+  const nameDirty = nextName !== original.name.trim();
+  const emailDirty = nextEmail !== original.email.trim().toLowerCase();
+  const phoneDirty = phoneDigits !== original.phoneDigits;
+  const langDirty = language.value !== original.lang;
+  const currencyDirty = (currency?.id ?? '') !== original.currencyId;
+  const profileDirty = nameDirty || emailDirty || phoneDirty || langDirty;
+  const isDirty = profileDirty || currencyDirty;
+  const requiresVerification = emailDirty || phoneDirty;
+
+  // Executa a PUT do save e propaga o novo estado para o AuthContext (que
+  // persiste no storage). APPUpdateAccount cobre profile + currency + country
+  // numa unica chamada, entao basta enviar todos os campos atuais quando
+  // qualquer um deles estiver dirty.
+  const performUpdate = async () => {
+    if (!account) return;
+    setIsSaving(true);
+    try {
+      if (isDirty) {
+        let coords = getCachedLocation();
+        if (!coords) coords = await getCurrentLocation();
+        const geolocation = formatLocationPayload(coords);
+
+        await updateAccount(
+          {
+            accountId: account.accountDetails.accountId,
+            name: nextName,
+            email: nextEmail,
+            // Envia com "+" (E.164) - determinante para validacao/envio de mensagens.
+            phoneNumber: toE164Phone(phoneDigits),
+            currencyId: (currency ?? account.setups.currency).id,
+            countryId: LANGUAGE_COUNTRY_IDS[language.value],
+            geolocation,
+          },
+          lang,
+        );
+      }
+
+      await updateAccountDetails({
+        ...(profileDirty
+          ? {
+              name: nextName,
+              email: nextEmail,
+              phoneNumber: phoneDigits,
+              lang: language.value,
+              countryId: LANGUAGE_COUNTRY_IDS[language.value],
+            }
+          : {}),
+        ...(currencyDirty && currency
+          ? {
+              currency: {
+                id: currency.id,
+                code: currency.code,
+                name: currency.name,
+                symbol: currency.symbol ?? account.setups.currency.symbol,
+                currentExchangeRate:
+                  currency.currentExchangeRate ?? account.setups.currency.currentExchangeRate,
+              },
+            }
+          : {}),
+      });
+
+      // Trocar idioma/moeda muda o conteudo localizado servido pelo backend
+      // (banners da home e do shop, nextTrips, FAQ, etc.). Rodamos o mesmo
+      // GetAccount do pull-to-refresh, ja no idioma-alvo, para repopular tudo.
+      // Resiliente: uma falha aqui nao invalida o save ja concluido no backend.
+      if (langDirty || currencyDirty) {
+        try {
+          await refreshAccount(language.value);
+        } catch (err) {
+          captureHandledError(err, { scope: 'settings.refreshAfterPrefs' });
+          console.warn('[settings] refresh after prefs change failed:', err);
+        }
+      }
+
+      // Usa o idioma-alvo (o que acabou de ser salvo), nao o `t` do render
+      // anterior: apos updateAccountDetails a conta ja mudou de idioma, mas o
+      // closure de `t` aqui ainda aponta pro idioma antigo.
+      showAlert(
+        translate(language.value, 'settings.profileUpdatedTitle'),
+        translate(language.value, 'settings.profileUpdatedMessage'),
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('settings.updateFailedMessage');
+      showAlert(t('settings.updateFailedTitle'), message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Limpa todos os campos do modal e o estagio - chamado no close e quando
+  // um fluxo termina com sucesso, para que a proxima abertura sempre comece
+  // limpa, do estagio 'verify'.
+  const resetModalState = () => {
+    setModalStage('verify');
+    setVerifyCode('');
+    setVerifyError(null);
+    setNewPin('');
+    setPinError(null);
+    resendTimer.reset();
+    codeExpiry.reset();
+  };
+
+  const closeVerifyModal = () => {
+    if (isVerifying || isSavingPin) return;
+    setVerifyVisible(false);
+    resetModalState();
+  };
+
+  const handleSave = async () => {
+    if (!account || !isDirty || isSaving) return;
+    if (!requiresVerification) {
+      await performUpdate();
+      return;
+    }
+    // Mudancas em email ou phone exigem verificacao via email - mesmo
+    // identifier (o email atual) eh quem recebe o codigo.
+    resetModalState();
+    setPendingAction('updateProfile');
+    setVerifyVisible(true);
+    try {
+      await requestValidationCode(account.accountDetails.accountId, 'email', lang);
+      resendTimer.start();
+      codeExpiry.start();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('settings.sendCodeFailedMessage');
+      showAlert(t('common.verification'), message);
+    }
+  };
+
+  // Inicia o fluxo de troca de PIN: envia o codigo por email e abre o modal
+  // no estagio de verificacao. Apos o codigo bater, transicionamos para o
+  // estagio 'newPin' onde o usuario define a nova senha.
+  const handleChangePassword = async () => {
+    if (!account) return;
+    resetModalState();
+    setPendingAction('changePassword');
+    setVerifyVisible(true);
+    try {
+      await requestValidationCode(account.accountDetails.accountId, 'email', lang);
+      resendTimer.start();
+      codeExpiry.start();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('settings.sendCodeFailedMessage');
+      showAlert(t('common.verification'), message);
+    }
+  };
+
+  // Inicia o fluxo de remocao: registra a escolha de blockAccount feita
+  // no alerta, abre o modal de verificacao e dispara o codigo por email.
+  const startDeleteFlow = async (blockAccount: boolean) => {
+    if (!account) return;
+    resetModalState();
+    setDeleteBlockAccount(blockAccount);
+    setPendingAction('deleteAccount');
+    setVerifyVisible(true);
+    try {
+      await requestValidationCode(account.accountDetails.accountId, 'email', lang);
+      resendTimer.start();
+      codeExpiry.start();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('settings.sendCodeFailedMessage');
+      showAlert(t('common.verification'), message);
+    }
+  };
+
+  // Chamado apos o codigo bater - mantemos o modal aberto durante a PUT
+  // (spinner do botao de verify cobre o estado), e no sucesso navegamos
+  // para a raiz, o que desmonta a tela. Em erro, fechamos e alertamos.
+  const performDelete = async () => {
+    if (!account) return;
+    try {
+      await removeAccount(account.accountDetails.accountId, deleteBlockAccount, lang);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('settings.deleteFailedMessage');
+      setVerifyVisible(false);
+      resetModalState();
+      showAlert(t('settings.deleteFailedTitle'), message);
+      return;
+    }
+    await signOut();
+    router.replace('/');
+  };
+
+  const handleVerifyCode = async () => {
+    if (!account) return;
+    if (verifyCode.length < 4) return;
+    setIsVerifying(true);
+    setVerifyError(null);
+    try {
+      // Identifier do ValidateCode: o email atual (cadastrado), que eh quem
+      // recebeu o codigo - nao o email novo.
+      await validateCode(original.email, verifyCode, lang);
+      if (pendingAction === 'updateProfile') {
+        setVerifyVisible(false);
+        resetModalState();
+        await performUpdate();
+      } else if (pendingAction === 'deleteAccount') {
+        // Mantemos o modal aberto durante o RemoveAccount - o spinner do
+        // botao de verify segue indicando progresso. Em sucesso, o
+        // signOut + replace('/') desmonta a tela inteira.
+        await performDelete();
+      } else {
+        // changePassword: codigo valido, abre o estagio 'newPin' no mesmo
+        // modal. Nao fechamos - o usuario continua o fluxo na sequencia.
+        setModalStage('newPin');
+      }
+    } catch (err) {
+      if (err instanceof ValidateCodeError) {
+        setVerifyError(err.message);
+      } else {
+        const message = err instanceof Error ? err.message : t('settings.validateCodeFailedMessage');
+        showAlert(t('common.verification'), message);
+      }
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleConfirmNewPin = async () => {
+    if (!account) return;
+    if (newPin.length !== 4) return;
+    setIsSavingPin(true);
+    setPinError(null);
+    try {
+      await setNewPassword(account.accountDetails.accountId, newPin, lang);
+      setVerifyVisible(false);
+      resetModalState();
+      showAlert(t('settings.passwordUpdatedTitle'), t('settings.passwordUpdatedMessage'));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('settings.saveNewPinFailedMessage');
+      setPinError(message);
+    } finally {
+      setIsSavingPin(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (!account || isResending || !resendTimer.canResend) return;
+    setIsResending(true);
+    setVerifyError(null);
+    setVerifyCode('');
+    try {
+      // Todos os fluxos restantes usam o canal de email.
+      await requestValidationCode(account.accountDetails.accountId, 'email', lang);
+      resendTimer.start();
+      codeExpiry.start();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('settings.sendCodeFailedMessage');
+      showAlert(t('common.verification'), message);
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Do you want to end your TravelCash session?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: () => router.replace('/') },
+    showAlert(t('settings.logoutTitle'), t('settings.logoutMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('settings.logOut'),
+        style: 'destructive',
+        onPress: () => {
+          signOut();
+          router.replace('/');
+        },
+      },
     ]);
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'This action is irreversible. All your data will be permanently removed.',
+    showAlert(
+      t('settings.deleteAccountTitle'),
+      t('settings.deleteAccountMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => {} },
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('settings.deleteOnlyAccount'),
+          style: 'destructive',
+          onPress: () => startDeleteFlow(false),
+        },
+        {
+          text: t('settings.deleteAndBlockEmail'),
+          style: 'destructive',
+          onPress: () => startDeleteFlow(true),
+        },
       ],
     );
   };
 
   const openPicker = (type: 'currency' | 'language') => {
     setModalVisible({ type });
+    if (type === 'currency') {
+      setCurrencySearch('');
+      // Lazy fetch: a primeira abertura puxa a lista completa; nas
+      // proximas reusamos o cache em memoria. Se a chamada anterior
+      // falhou, tentamos de novo.
+      if (currencies.length === 0 || currenciesError) {
+        setCurrenciesLoading(true);
+        setCurrenciesError(null);
+        getCurrencies(lang)
+          .then((list) => setCurrencies(list))
+          .catch((err) => {
+            const message = err instanceof Error ? err.message : t('settings.currenciesError');
+            setCurrenciesError(message);
+          })
+          .finally(() => setCurrenciesLoading(false));
+      }
+    }
   };
 
+  // Posicionamento manual da sticky bar: ouvimos os eventos do Keyboard e
+  // colocamos a barra com bottom = altura do teclado. KAV em padding eh
+  // flaky com sticky footers nessa combinacao (SafeAreaView + ScrollView),
+  // entao tiramos ele e cuidamos do offset diretamente.
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const stickyBarBottom = keyboardHeight > 0 ? keyboardHeight : 0;
+  const stickyBarPaddingBottom = keyboardHeight > 0 ? 12 : insets.bottom + 12;
+  // Reserva espaco no fim do scroll para que o ultimo botao nao fique
+  // atras da sticky bar (quando dirty) ou colado no home indicator (quando
+  // limpo). Tambem reserva espaco do teclado quando aberto.
+  const scrollBottomPadding =
+    (isDirty ? 84 : 0) + (keyboardHeight > 0 ? keyboardHeight : insets.bottom) + 16;
+
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+    <DismissKeyboard>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <StatusBar style="light" />
 
-      <LinearGradient
-        colors={['#6444DA', '#4D2ACC', '#1B0F4A']}
-        start={{ x: 0.1, y: 0.1 }}
-        end={{ x: 0.8, y: 1.2 }}
-        locations={[0.1, 0.2, 0.7]}
-        style={[styles.headerGradient, { paddingTop: insets.top }]}
-      >
-        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
-
-        <ScreenHeader title="User Data" dark={true} />
-
-        <View style={styles.headerBody}>
-          <Text style={styles.mainTitle}>
-            User <Text style={styles.mainTitleAccent}>Profile</Text>
-          </Text>
-          <Text style={styles.pageDescription}>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque sed sapien mauris.
-          </Text>
-        </View>
-      </LinearGradient>
-
-      <KeyboardAvoidingView
+      <ScrollView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: scrollBottomPadding },
+        ]}
+        keyboardShouldPersistTaps="handled"
       >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
+          <LinearGradient
+            colors={['#6444DA', '#4D2ACC', '#1B0F4A']}
+            start={{ x: 0.1, y: 0.1 }}
+            end={{ x: 0.8, y: 1.2 }}
+            locations={[0.1, 0.2, 0.7]}
+            style={[styles.headerGradient, { paddingTop: insets.top }]}
+          >
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
+
+            <ScreenHeader title={t('settings.headerTitle')} dark={true} />
+
+            <View style={styles.headerBody}>
+              <Text style={styles.mainTitle}>
+                {t('settings.titleLine1')} <Text style={styles.mainTitleAccent}>{t('settings.titleAccent')}</Text>
+              </Text>
+              <Text style={styles.pageDescription}>
+                {t('settings.pageDescription')}
+              </Text>
+            </View>
+          </LinearGradient>
+
           <View style={styles.formContainer}>
             <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>Name</Text>
+              <Text style={styles.inputLabel}>{t('settings.nameLabel')}</Text>
               <TextInput
                 style={[styles.inputField, focusedField === 'name' && styles.inputFieldFocused]}
                 value={name}
@@ -116,7 +554,9 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>Phone Number</Text>
+              {/* Verificacao de telefone desativada para a 1.0: sem badge de
+                  status nem link de "Verificar" - apenas o campo editavel. */}
+              <Text style={styles.inputLabel}>{t('settings.phoneLabel')}</Text>
               <TextInput
                 style={[styles.inputField, focusedField === 'phone' && styles.inputFieldFocused]}
                 value={phone}
@@ -128,7 +568,10 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>E-mail</Text>
+              <View style={styles.labelRow}>
+                <Text style={styles.inputLabel}>{t('settings.emailLabel')}</Text>
+                <VerificationBadge verified={!!account?.accountDetails.validEmail} />
+              </View>
               <TextInput
                 style={[styles.inputField, focusedField === 'email' && styles.inputFieldFocused]}
                 value={email}
@@ -145,9 +588,11 @@ export default function SettingsScreen() {
               onPress={() => openPicker('currency')}
               activeOpacity={0.7}
             >
-              <Text style={styles.inputLabel}>Currency</Text>
+              <Text style={styles.inputLabel}>{t('settings.currencyLabel')}</Text>
               <View style={styles.selectField}>
-                <Text style={styles.selectValue}>{currency.label}</Text>
+                <Text style={styles.selectValue}>
+                  {currency ? `${currency.name} (${currency.code})` : t('settings.selectCurrency')}
+                </Text>
                 <CaretDownIcon size={16} color={colors.text.muted} />
               </View>
             </TouchableOpacity>
@@ -157,7 +602,7 @@ export default function SettingsScreen() {
               onPress={() => openPicker('language')}
               activeOpacity={0.7}
             >
-              <Text style={styles.inputLabel}>Language</Text>
+              <Text style={styles.inputLabel}>{t('settings.languageLabel')}</Text>
               <View style={styles.selectField}>
                 <Text style={styles.selectValue}>{language.label}</Text>
                 <CaretDownIcon size={16} color={colors.text.muted} />
@@ -165,12 +610,24 @@ export default function SettingsScreen() {
             </TouchableOpacity>
 
             <View style={styles.buttonGroup}>
-              <TouchableOpacity style={styles.buttonFilled} onPress={handleLogout} activeOpacity={0.8}>
-                <Text style={styles.buttonFilledText}>Logout</Text>
+              <TouchableOpacity
+                style={styles.buttonFilled}
+                onPress={() => setAuthCodeVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.buttonFilledText}>{t('settings.authCodeButton')}</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.buttonFilled} activeOpacity={0.8}>
-                <Text style={styles.buttonFilledText}>Change Password</Text>
+              <TouchableOpacity style={styles.buttonFilled} onPress={handleLogout} activeOpacity={0.8}>
+                <Text style={styles.buttonFilledText}>{t('settings.logOut')}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.buttonFilled}
+                onPress={handleChangePassword}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.buttonFilledText}>{t('settings.changePassword')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -178,12 +635,38 @@ export default function SettingsScreen() {
                 onPress={handleDeleteAccount}
                 activeOpacity={0.8}
               >
-                <Text style={styles.buttonOutlinedText}>Delete Account</Text>
+                <Text style={styles.buttonOutlinedText}>{t('settings.deleteAccount')}</Text>
               </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+
+        {isDirty ? (
+          <View
+            style={[
+              styles.stickyBar,
+              {
+                bottom: stickyBarBottom,
+                paddingBottom: stickyBarPaddingBottom,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={[styles.buttonPrimary, isSaving && styles.buttonPrimaryDisabled]}
+              onPress={handleSave}
+              activeOpacity={0.85}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <ActivityIndicator color={colors.text.light} />
+              ) : (
+                <Text style={styles.buttonPrimaryText}>{t('settings.saveChanges')}</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+      <AuthCodeModal visible={authCodeVisible} onClose={() => setAuthCodeVisible(false)} />
 
       <Modal
         visible={modalVisible.type !== null}
@@ -195,38 +678,281 @@ export default function SettingsScreen() {
           activeOpacity={1}
           onPress={() => setModalVisible({ type: null })}
         >
-          <View style={styles.modalContent}>
+          <TouchableOpacity
+            style={styles.modalContent}
+            activeOpacity={1}
+            onPress={() => undefined}
+          >
             <Text style={styles.modalTitle}>
-              {modalVisible.type === 'currency' ? 'SELECT CURRENCY' : 'SELECT LANGUAGE'}
+              {modalVisible.type === 'currency'
+                ? t('settings.selectCurrencyTitle')
+                : t('settings.selectLanguageTitle')}
             </Text>
-            <FlatList
-              data={modalVisible.type === 'currency' ? CURRENCIES : LANGUAGES}
-              keyExtractor={(item) => item.value}
-              renderItem={({ item }) => {
-                const isActive =
-                  modalVisible.type === 'currency'
-                    ? currency.value === item.value
-                    : language.value === item.value;
-                return (
-                  <TouchableOpacity
-                    style={styles.modalOption}
-                    onPress={() => {
-                      if (modalVisible.type === 'currency') setCurrency(item);
-                      else setLanguage(item);
-                      setModalVisible({ type: null });
+
+            {modalVisible.type === 'currency' ? (
+              <>
+                <TextInput
+                  style={styles.modalSearch}
+                  placeholder={t('settings.currencySearchPlaceholder')}
+                  placeholderTextColor="#B5B5BD"
+                  value={currencySearch}
+                  onChangeText={setCurrencySearch}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+
+                {currenciesLoading ? (
+                  <View style={styles.modalStateBox}>
+                    <ActivityIndicator color={colors.text.dark} />
+                  </View>
+                ) : currenciesError ? (
+                  <View style={styles.modalStateBox}>
+                    <Text style={styles.modalStateText}>{currenciesError}</Text>
+                  </View>
+                ) : (
+                  <FlatList
+                    data={currencies.filter((c) => {
+                      const q = currencySearch.trim().toLowerCase();
+                      if (!q) return true;
+                      return (
+                        c.code.toLowerCase().includes(q) ||
+                        c.name.toLowerCase().includes(q)
+                      );
+                    })}
+                    keyExtractor={(item) => item.id}
+                    keyboardShouldPersistTaps="handled"
+                    renderItem={({ item }) => {
+                      const isActive = currency?.id === item.id;
+                      return (
+                        <TouchableOpacity
+                          style={styles.modalOption}
+                          onPress={() => {
+                            setCurrency(item);
+                            setModalVisible({ type: null });
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.modalOptionText,
+                              isActive && styles.modalOptionActive,
+                            ]}
+                          >
+                            {item.name} ({item.code})
+                          </Text>
+                        </TouchableOpacity>
+                      );
                     }}
-                  >
-                    <Text style={[styles.modalOptionText, isActive && styles.modalOptionActive]}>
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }}
-            />
-          </View>
+                    ListEmptyComponent={
+                      <Text style={styles.modalStateText}>{t('settings.currenciesEmpty')}</Text>
+                    }
+                  />
+                )}
+              </>
+            ) : (
+              <FlatList
+                data={LANGUAGES}
+                keyExtractor={(item) => item.value}
+                renderItem={({ item }) => {
+                  const isActive = language.value === item.value;
+                  return (
+                    <TouchableOpacity
+                      style={styles.modalOption}
+                      onPress={() => {
+                        setLanguage(item);
+                        setModalVisible({ type: null });
+                      }}
+                    >
+                      <Text style={[styles.modalOptionText, isActive && styles.modalOptionActive]}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            )}
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      <Modal
+        visible={verifyVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeVerifyModal}
+      >
+        <DismissKeyboard>
+        <View style={styles.verifyOverlay}>
+          <View style={styles.verifyCard}>
+            <TouchableOpacity
+              style={styles.verifyClose}
+              onPress={closeVerifyModal}
+              hitSlop={10}
+            >
+              <XIcon size={18} color={colors.text.muted} weight="bold" />
+            </TouchableOpacity>
+
+            {modalStage === 'verify' ? (
+              <>
+                <Text style={styles.verifyEyebrow}>
+                  {pendingAction === 'changePassword'
+                    ? t('settings.eyebrowChangePassword')
+                    : pendingAction === 'deleteAccount'
+                    ? t('settings.eyebrowDeleteAccount')
+                    : t('settings.eyebrowVerifyIdentity')}
+                </Text>
+                <Text style={styles.verifyTitle}>
+                  {pendingAction === 'changePassword' ? (
+                    <>
+                      {t('settings.verifyTitleBase')} <Text style={styles.verifyTitleAccent}>{t('settings.verifyTitleAccent')}</Text>
+                    </>
+                  ) : pendingAction === 'deleteAccount' ? (
+                    <>
+                      {t('settings.deleteTitleBase')} <Text style={styles.verifyTitleAccent}>{t('settings.deleteTitleAccent')}</Text>
+                    </>
+                  ) : (
+                    <>
+                      {t('settings.confirmTitleBase')} <Text style={styles.verifyTitleAccent}>{t('settings.confirmTitleAccent')}</Text>
+                    </>
+                  )}
+                </Text>
+                <Text style={styles.verifyDescription}>
+                  {t('settings.verifyDescription', { email: original.email })}
+                </Text>
+
+                <TextInput
+                  style={[
+                    styles.verifyInput,
+                    verifyError ? styles.verifyInputError : null,
+                  ]}
+                  placeholder={t('settings.codePlaceholder')}
+                  placeholderTextColor="#B5B5BD"
+                  value={verifyCode}
+                  onChangeText={(val) => {
+                    if (verifyError) setVerifyError(null);
+                    const digits = val.replace(/\D/g, '');
+                    setVerifyCode(digits);
+                    // Codigo completo (6 digitos): fecha o teclado.
+                    if (digits.length >= 6) Keyboard.dismiss();
+                  }}
+                  keyboardType="number-pad"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                />
+
+                {verifyError ? <Text style={styles.verifyErrorText}>{verifyError}</Text> : null}
+
+                {codeExpiry.started ? (
+                  <Text style={styles.verifyExpiryText}>
+                    {codeExpiry.expired
+                      ? t('common.codeExpired')
+                      : t('common.codeExpiresIn', {
+                          time: formatResendCountdown(codeExpiry.secondsLeft),
+                        })}
+                  </Text>
+                ) : null}
+
+                <TouchableOpacity
+                  onPress={handleResendCode}
+                  activeOpacity={0.7}
+                  disabled={isResending || !resendTimer.canResend}
+                  style={styles.resendButton}
+                >
+                  <Text
+                    style={[
+                      styles.resendButtonText,
+                      (isResending || !resendTimer.canResend) && styles.resendButtonTextDisabled,
+                    ]}
+                  >
+                    {isResending
+                      ? t('settings.resendSending')
+                      : !resendTimer.canResend
+                        ? t('settings.resendIn', { time: formatResendCountdown(resendTimer.secondsLeft) })
+                        : t('settings.resendCode')}
+                  </Text>
+                </TouchableOpacity>
+
+                <Text style={styles.verifyHelpNotice}>
+                  {t('settings.helpNotice')}
+                </Text>
+
+                <TouchableOpacity
+                  style={[
+                    styles.buttonPrimary,
+                    styles.verifyButton,
+                    (verifyCode.length < 4 || isVerifying) && styles.buttonPrimaryDisabled,
+                  ]}
+                  onPress={handleVerifyCode}
+                  activeOpacity={0.85}
+                  disabled={verifyCode.length < 4 || isVerifying}
+                >
+                  {isVerifying ? (
+                    <ActivityIndicator color={colors.text.light} />
+                  ) : (
+                    <Text style={styles.buttonPrimaryText}>
+                      {pendingAction === 'changePassword'
+                        ? t('settings.verify')
+                        : pendingAction === 'deleteAccount'
+                        ? t('settings.verifyAndDelete')
+                        : t('settings.verifyAndSave')}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.verifyEyebrow}>{t('settings.newPinEyebrow')}</Text>
+                <Text style={styles.verifyTitle}>
+                  {t('settings.newPinTitleBase')} <Text style={styles.verifyTitleAccent}>{t('settings.newPinTitleAccent')}</Text>
+                </Text>
+                <Text style={styles.verifyDescription}>
+                  {t('settings.newPinDescription')}
+                </Text>
+
+                <TextInput
+                  style={[
+                    styles.verifyInput,
+                    styles.pinInput,
+                    pinError ? styles.verifyInputError : null,
+                  ]}
+                  placeholder={t('settings.newPinPlaceholder')}
+                  placeholderTextColor="#B5B5BD"
+                  value={newPin}
+                  onChangeText={(val) => {
+                    if (pinError) setPinError(null);
+                    setNewPin(val.replace(/\D/g, ''));
+                  }}
+                  keyboardType="number-pad"
+                  secureTextEntry
+                  autoComplete="password-new"
+                  maxLength={4}
+                />
+
+                {pinError ? <Text style={styles.verifyErrorText}>{pinError}</Text> : null}
+
+                <TouchableOpacity
+                  style={[
+                    styles.buttonPrimary,
+                    styles.verifyButton,
+                    (newPin.length !== 4 || isSavingPin) && styles.buttonPrimaryDisabled,
+                  ]}
+                  onPress={handleConfirmNewPin}
+                  activeOpacity={0.85}
+                  disabled={newPin.length !== 4 || isSavingPin}
+                >
+                  {isSavingPin ? (
+                    <ActivityIndicator color={colors.text.light} />
+                  ) : (
+                    <Text style={styles.buttonPrimaryText}>{t('settings.saveNewPin')}</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+        </DismissKeyboard>
+      </Modal>
     </SafeAreaView>
+    </DismissKeyboard>
   );
 }
 
@@ -264,11 +990,27 @@ const styles = StyleSheet.create({
   formContainer: { padding: 24, paddingTop: 28 },
 
   formGroup: { marginBottom: 22 },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   inputLabel: {
     fontSize: 12,
     fontFamily: fonts.bold,
     color: colors.text.dark,
     marginBottom: 6,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 6,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.2,
   },
   inputField: {
     width: '100%',
@@ -276,6 +1018,9 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E5E5',
     fontSize: 17,
     fontFamily: fonts.regular,
+    // letterSpacing explicito evita o bug do iOS que espaca o placeholder
+    // quando ha fontFamily customizada sem letterSpacing definido.
+    letterSpacing: 0,
     color: colors.text.dark,
     paddingVertical: 8,
   },
@@ -300,6 +1045,31 @@ const styles = StyleSheet.create({
   buttonGroup: {
     marginTop: 32,
     gap: 12,
+  },
+  stickyBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#EDEDF2',
+  },
+  buttonPrimary: {
+    backgroundColor: colors.brand.primary,
+    paddingVertical: 18,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  buttonPrimaryDisabled: {
+    opacity: 0.4,
+  },
+  buttonPrimaryText: {
+    color: colors.text.light,
+    fontSize: 14,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.5,
   },
   buttonFilled: {
     backgroundColor: '#EDEDF2',
@@ -338,7 +1108,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 8,
     padding: 24,
-    maxHeight: '50%',
+    maxHeight: '75%',
   },
   modalTitle: {
     fontSize: 12,
@@ -360,5 +1130,130 @@ const styles = StyleSheet.create({
   modalOptionActive: {
     color: colors.brand.primary,
     fontFamily: fonts.bold,
+  },
+  modalSearch: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: colors.text.dark,
+    marginBottom: 8,
+  },
+  modalStateBox: {
+    paddingVertical: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalStateText: {
+    fontSize: 13,
+    fontFamily: fonts.regular,
+    color: colors.text.muted,
+    textAlign: 'center',
+    paddingVertical: 24,
+  },
+
+  verifyOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  verifyCard: {
+    width: '100%',
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 28,
+    paddingTop: 36,
+  },
+  verifyClose: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    padding: 6,
+  },
+  verifyEyebrow: {
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    color: colors.text.muted,
+    letterSpacing: 1.5,
+    marginBottom: 8,
+  },
+  verifyTitle: {
+    fontSize: 32,
+    fontFamily: fonts.bold,
+    color: colors.text.dark,
+    letterSpacing: -1.2,
+    marginBottom: 12,
+  },
+  verifyTitleAccent: {
+    color: colors.brand.primary,
+    fontFamily: fonts.italic,
+  },
+  verifyDescription: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: colors.text.muted,
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  verifyInput: {
+    width: '100%',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+    fontSize: 22,
+    fontFamily: fonts.bold,
+    color: colors.text.dark,
+    paddingVertical: 10,
+    letterSpacing: 8,
+  },
+  pinInput: {
+    letterSpacing: 14,
+  },
+  verifyInputError: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#f07167',
+  },
+  verifyErrorText: {
+    marginTop: 8,
+    fontSize: 12,
+    fontFamily: fonts.medium,
+    color: '#f07167',
+  },
+  verifyExpiryText: {
+    marginTop: 10,
+    fontSize: 12,
+    fontFamily: fonts.medium,
+    color: colors.text.muted,
+  },
+  resendButton: {
+    alignSelf: 'flex-start',
+    marginTop: 12,
+    paddingVertical: 4,
+  },
+  resendButtonText: {
+    fontSize: 13,
+    fontFamily: fonts.bold,
+    color: colors.brand.primary,
+    letterSpacing: 0.4,
+    textDecorationLine: 'underline',
+  },
+  verifyHelpNotice: {
+    marginTop: 16,
+    fontSize: 12,
+    fontFamily: fonts.regular,
+    color: colors.text.muted,
+    lineHeight: 16,
+  },
+  resendButtonTextDisabled: {
+    color: colors.text.muted,
+    textDecorationLine: 'none',
+  },
+  verifyButton: {
+    marginTop: 24,
   },
 });

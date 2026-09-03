@@ -85,6 +85,11 @@ export const SignInPolicySchema = z.object({
   contentId: z.string(),
   title: z.string(),
   richText: z.string(),
+  // Aceite da politica por conta - vem no payload de SignIn e de GetAccount.
+  // true = a conta ja aceitou esta versao; false = aceite pendente (usuario
+  // migrado de base antiga ou politica atualizada). Opcional para tolerar
+  // caches antigos e payloads sem o campo, tratados como nao-pendentes.
+  readed: z.boolean().optional(),
 });
 
 // Banners home e shop agora chegam num unico array, separados pelo campo

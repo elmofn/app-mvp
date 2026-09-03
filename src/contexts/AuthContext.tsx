@@ -2,6 +2,7 @@ import React, { createContext, ReactNode, useCallback, useContext, useEffect, us
 import { AppState, AppStateStatus } from 'react-native';
 
 import { getAccount, LANGUAGE_COUNTRY_IDS } from '@/src/services/account';
+import { confirmRead } from '@/src/services/alerts';
 import { authenticateWithBiometric, getBiometricStatus } from '@/src/services/biometric';
 import { getBanners, getGeoNextTrips } from '@/src/services/content';
 import { captureHandledError } from '@/src/services/telemetry';
@@ -37,6 +38,10 @@ type AuthContextValue = AuthState & {
   isSigningIn: boolean;
   isLocked: boolean;
   biometricAvailable: boolean;
+  // true quando a conta logada tem alguma politica com readed=false, ou seja,
+  // precisa aceitar os termos vigentes antes de usar o app (gate geral). Vide
+  // TermsGate. Usuarios migrados e atualizacoes de termos caem aqui.
+  termsPending: boolean;
   faq: FAQState;
   signIn: (login: string, password: string) => Promise<SignInResponse>;
   refreshSession: () => Promise<string | null>;
@@ -46,6 +51,10 @@ type AuthContextValue = AuthState & {
   updateAccountDetails: (patch: AccountPatch) => Promise<void>;
   refreshAccount: (langOverride?: SupportedLang) => Promise<void>;
   reloadFAQ: (langOverride?: SupportedLang) => Promise<void>;
+  // Registra o aceite (ConfirmRead) de todas as politicas pendentes da conta
+  // e marca-as como lidas em memoria/cache. Usado pelo TermsGate. Lanca se o
+  // registro no backend falhar, para o gate reexibir o erro e nao liberar.
+  acceptPolicies: () => Promise<void>;
 };
 
 export type AccountPatch = {
@@ -317,6 +326,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await reloadFAQ(lang);
   }, [reloadFAQ]);
 
+  // Aceite dos termos (gate geral): confirma no backend (ConfirmRead) cada
+  // politica ainda nao lida e marca todas como readed=true em memoria + cache,
+  // dissolvendo o termsPending. Exige que TODAS as confirmacoes pendentes
+  // deem certo - se qualquer uma falhar, propaga o erro para o TermsGate
+  // reexibir a mensagem e manter o gate (nao liberamos aceite parcial).
+  const acceptPolicies = useCallback(async () => {
+    const current = stateRef.current;
+    if (!current.account || !current.token) return;
+    const accountId = current.account.accountDetails.accountId;
+    const polices = current.account.polices ?? [];
+    const pending = polices.filter((p) => p.readed !== true);
+    if (pending.length > 0) {
+      await Promise.all(pending.map((p) => confirmRead(p.contentId, accountId)));
+    }
+    const next: SignInAccountDetails = {
+      ...current.account,
+      polices: polices.map((p) => ({ ...p, readed: true })),
+    };
+    setState({ account: next, token: current.token });
+    await saveSession(current.token, next);
+  }, []);
+
+  // Pendencia de aceite: alguma politica veio explicitamente com readed=false.
+  // readed ausente (cache antigo/payload sem o campo) NAO conta como pendente,
+  // para nao gatear indevidamente enquanto o proximo SignIn/refresh nao traz
+  // o flag atualizado.
+  const termsPending = (state.account?.polices ?? []).some((p) => p.readed === false);
+
   return (
     <AuthContext.Provider
       value={{
@@ -325,6 +362,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isSigningIn,
         isLocked,
         biometricAvailable,
+        termsPending,
         faq,
         signIn,
         refreshSession,
@@ -334,6 +372,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateAccountDetails,
         refreshAccount,
         reloadFAQ,
+        acceptPolicies,
       }}
     >
       {children}

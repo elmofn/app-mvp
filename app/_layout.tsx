@@ -16,6 +16,7 @@ import { APP_ENV } from '@/src/config/env';
 import { BiometricGate } from '@/src/components/BiometricGate';
 import { LoadingScreen } from '@/src/components/LoadingScreen';
 import { OfflineGate } from '@/src/components/OfflineGate';
+import { TermsGate } from '@/src/components/TermsGate';
 import { AlertProvider } from '@/src/contexts/AlertContext';
 import { AuthProvider, useAuth } from '@/src/contexts/AuthContext';
 import * as Sentry from '@sentry/react-native';
@@ -119,6 +120,11 @@ function AppShell() {
         <Stack.Screen name="settings" />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
+      {/* Gate de aceite dos termos: cobre o app quando a conta logada tem
+          politica pendente (readed=false). Vem ANTES do BiometricGate para
+          que a trava de biometria pinte por cima e o gate de termos so
+          apareca depois do unlock (a propria condicao checa !isLocked). */}
+      <TermsGate />
       <BiometricGate />
       {/* Trava de conectividade por cima de tudo: se o device esta sem internet,
           bloqueia o app inteiro (evita uso so com cache). Some quando reconecta. */}

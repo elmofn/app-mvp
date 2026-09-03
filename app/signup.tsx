@@ -48,6 +48,7 @@ import {
   validateCode,
   ValidateCodeError,
 } from '@/src/services/account';
+import { confirmRead } from '@/src/services/alerts';
 import { getDeviceLanguage } from '@/src/services/locale';
 import { formatLocationPayload, getCachedLocation, getCurrentLocation } from '@/src/services/location';
 import { EditFieldKind, EditReviewFieldModal } from '@/src/components/EditReviewFieldModal';
@@ -519,6 +520,19 @@ export default function SignupScreen() {
     setIsSubmitting(true);
     try {
       await setNewPassword(accountId, formData.password, deviceLang);
+      // Registra o aceite das politicas (ConfirmRead) para a conta ja nascer
+      // com os termos aceitos (readed=true) e nao cair no gate de termos no
+      // primeiro login. Best-effort: falha de uma vira warning e nao bloqueia
+      // a conclusao - o gate cobre como fallback no proximo login.
+      if (polices.length > 0) {
+        await Promise.all(
+          polices.map((p) =>
+            confirmRead(p.contentId, accountId).catch((err) => {
+              console.warn('[signup] confirmRead failed for', p.contentId, err);
+            }),
+          ),
+        );
+      }
       const response = await signIn(normalizeEmail(formData.email), formData.password);
       if (response.success && response.token && response.accountDetails) {
         router.replace('/(tabs)/home');

@@ -12,6 +12,7 @@ import { statement } from './dict/statement';
 import { subscriptions } from './dict/subscriptions';
 import { support } from './dict/support';
 import { terms } from './dict/terms';
+import { termsGate } from './dict/termsGate';
 import { transaction } from './dict/transaction';
 import { travelshop } from './dict/travelshop';
 import { welcome } from './dict/welcome';
@@ -35,6 +36,7 @@ const NAMESPACES: Record<string, NamespaceDict> = {
   subscriptions,
   support,
   terms,
+  termsGate,
   notifications,
   assistant,
 };

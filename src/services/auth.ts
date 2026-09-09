@@ -208,6 +208,20 @@ export async function signIn(
     devInfo,
   };
 
+  // DEBUG (__DEV__): inspeciona exatamente o que vai no corpo do SignIn.
+  // Cobre tanto o login pela tela quanto o re-signin silencioso do refresh
+  // (ambos passam por aqui). A senha vai mascarada e o bloco NAO roda em
+  // build de release, para nao vazar PII/geo/JWT no Sentry (vide go-live).
+  if (__DEV__) {
+    console.log('[signIn] corpo enviado →', {
+      login,
+      password: '•'.repeat(password.length),
+      timeoutInMinutes: 0,
+      geolocation: geolocation || '(vazio — sem permissão de localização)',
+      devInfo,
+    });
+  }
+
   const url = `${API_BASE_URL}/api/Security/SignIn`;
   const response = await fetch(url, {
     method: 'POST',

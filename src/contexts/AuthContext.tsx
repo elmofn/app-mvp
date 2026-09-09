@@ -139,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!coords) coords = await getCurrentLocation();
       const geolocation = formatLocationPayload(coords);
 
+      if (__DEV__) console.log('[auth] origem do envio → TELA DE LOGIN');
       const response = await apiSignIn(login, password, geolocation);
       if (response.success && response.token && response.accountDetails) {
         // Banners e nextTrips agora vem de endpoints de conteudo dedicados
@@ -188,6 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let coords = getCachedLocation();
       if (!coords) coords = await getCurrentLocation();
       const geolocation = formatLocationPayload(coords);
+      if (__DEV__) console.log('[auth] origem do envio → REFRESH DE SESSÃO (token expirado)');
       const response = await apiSignIn(creds.login, creds.password, geolocation);
       if (response.success && response.token) {
         const current = stateRef.current;
@@ -214,6 +216,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const unlock = useCallback(async () => {
     const result = await authenticateWithBiometric('Unlock TravelBACK');
     if (result.success) {
+      // Desbloqueio 100% local: nao ha chamada de rede aqui - nenhuma
+      // geolocalizacao/devInfo/credencial sai do device no unlock biometrico.
+      if (__DEV__) console.log('[auth] desbloqueio por biometria → nenhum dado enviado (unlock local)');
       setIsLocked(false);
       return true;
     }

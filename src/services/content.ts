@@ -101,10 +101,12 @@ export async function getNextTrips(lang: SupportedLang): Promise<SignInNextTrip[
 //   2. Medio      - uma cidade na faixa ~500-1000 km.
 //   3. Internacional - a cidade mais proxima num pais diferente do device.
 //
-// Estrategia: a API limita o raio de busca a 300km, entao nao da para alcancar
+// Estrategia: a API limita o raio de busca a 500km, entao nao da para alcancar
 // os tiers distantes com uma busca so. Fazemos um LEQUE de buscas: uma no proprio
-// device (tier perto) + varias em pontos-sonda projetados a ~700km em 8 rumos ao
-// redor (destinationPoint). Agregamos e deduplicamos todas as cidades, calculamos
+// device (tier perto) + varias em pontos-sonda projetados a ~1000km em 8 rumos ao
+// redor (destinationPoint). Com raio de 500km, device (0-500km) e sondas
+// (500-1500km) se tocam: cobertura continua ate ~1500km, sem buraco. Agregamos
+// e deduplicamos todas as cidades, calculamos
 // a distancia real de cada uma (haversine) e bucketizamos. Rumos que caem no mar
 // voltam vazios - tudo bem. O pais do device e inferido da cidade mais proxima;
 // "internacional" = cidade mais proxima cujo pais difere desse.
@@ -116,8 +118,8 @@ export async function getNextTrips(lang: SupportedLang): Promise<SignInNextTrip[
 // nao renderizam - a home nao quebra.
 // ----------------------------------------------------------------------------
 
-const MAX_RADIUS_KM = 300; // teto imposto pela API da TripEdge
-const PROBE_DISTANCE_KM = 700; // distancia dos pontos-sonda ao device
+const MAX_RADIUS_KM = 500; // teto imposto pela API da TripEdge (ampliado de 300 -> 500)
+const PROBE_DISTANCE_KM = 1000; // distancia dos pontos-sonda ao device (raio 500 -> cobertura continua ate ~1500km)
 const PROBE_BEARINGS = [0, 45, 90, 135, 180, 225, 270, 315]; // 8 rumos (N, NE, ...)
 const NEARBY_MAX_KM = 100; // acima disso ja nao conta como "perto"
 const MID_MIN_KM = 500;

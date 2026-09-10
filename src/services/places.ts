@@ -171,7 +171,7 @@ export function distanceKm(a: LocationCoords, b: LocationCoords): number {
 
 // Ponto de destino a `dist` km e rumo `bearingDeg` (0=N, 90=L) a partir de
 // `origin` - formula do "destination point" da geodesia esferica. Usado para
-// projetar pontos-sonda longe do device (a API limita o raio de busca a 300km,
+// projetar pontos-sonda longe do device (a API limita o raio de busca a 500km,
 // entao alcancamos tiers distantes buscando em torno destes pontos).
 export function destinationPoint(
   origin: LocationCoords,

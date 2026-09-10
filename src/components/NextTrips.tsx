@@ -122,7 +122,7 @@ export function NextTrips({ trips, loading }: Props) {
         </View>
       ) : null}
 
-      {list.map((trip, index) => (
+      {!loading && list.map((trip, index) => (
         <React.Fragment key={trip.id}>
           <Animated.View
             entering={

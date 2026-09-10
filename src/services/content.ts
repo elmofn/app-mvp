@@ -384,15 +384,15 @@ export async function getGeoNextTrips(
     if (intlTrip) trips.push(intlTrip);
 
     // Card extra: destino dos sonhos (perfil). Sem place_id => inspiracional (nao
-    // clicavel). Mantido mesmo sem foto - e um desejo explicito do usuario, nao
-    // uma recomendacao algoritmica (por isso escapa do photo-gate).
-    if (dream) {
+    // clicavel). Photo-gate tambem se aplica: so entra se houver foto no
+    // Wikimedia (mesma regra dos demais cards).
+    if (dream && dreamPhoto) {
       trips.push({
         id: `dream:${dream}`,
         title: dream,
         tag: translate(lang, 'home.tripTagDream'),
         description: translate(lang, 'home.tripDreamDesc'),
-        imageUrl: dreamPhoto ?? '',
+        imageUrl: dreamPhoto,
       });
     }
 

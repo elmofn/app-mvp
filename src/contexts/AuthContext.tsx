@@ -40,6 +40,9 @@ type AuthContextValue = AuthState & {
   isSigningIn: boolean;
   isLocked: boolean;
   biometricAvailable: boolean;
+  // true enquanto os "Proximos Destinos" carregam em background (pos login/
+  // refresh). A home usa para mostrar o loading na secao ate popular.
+  nextTripsLoading: boolean;
   // true quando a conta logada tem alguma politica com readed=false, ou seja,
   // precisa aceitar os termos vigentes antes de usar o app (gate geral). Vide
   // TermsGate. Usuarios migrados e atualizacoes de termos caem aqui.
@@ -105,6 +108,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  // Carregamento dos "Proximos Destinos" (nextTrips). Como a curadoria depende
+  // do Gemini (lenta), o nextTrips carrega em BACKGROUND depois do login/refresh
+  // - a home renderiza na hora e a secao mostra o loading ate popular, sem
+  // travar a tela. true enquanto essa busca em background esta rodando.
+  const [nextTripsLoading, setNextTripsLoading] = useState(false);
   // Comeca em loading para o primeiro render do FAQSection ja mostrar o
   // spinner (em vez de piscar o estado vazio antes do fetch inicial).
   const [faq, setFaq] = useState<FAQState>({ items: [], loading: true, error: false });
@@ -151,6 +159,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.remove();
   }, []);
 
+  // Carrega os "Proximos Destinos" em BACKGROUND e faz merge no account atual +
+  // cache. A parte lenta (Gemini) fica fora do caminho do login/refresh: a home
+  // ja renderiza e a secao mostra o loading ate isto popular. Resiliente - falha
+  // aqui nao derruba nada (nextTrips fica como estava).
+  const loadNextTrips = useCallback(
+    async (accountForCtx: SignInAccountDetails, lang: SupportedLang) => {
+      setNextTripsLoading(true);
+      try {
+        let coords = getCachedLocation();
+        if (!coords) coords = await getCurrentLocation();
+        const travelerCtx = await travelerContextFor(accountForCtx);
+        const nextTrips = await getGeoNextTrips(coords, lang, travelerCtx);
+        const current = stateRef.current;
+        if (!current.account || !current.token) return;
+        const next: SignInAccountDetails = { ...current.account, nextTrips };
+        setState({ account: next, token: current.token });
+        await saveSession(current.token, next);
+      } catch (err) {
+        captureHandledError(err, { scope: 'loadNextTrips' });
+        console.warn('[auth] nextTrips background load failed:', err);
+      } finally {
+        setNextTripsLoading(false);
+      }
+    },
+    [],
+  );
+
   const signIn = useCallback(async (login: string, password: string) => {
     setIsSigningIn(true);
     try {
@@ -168,26 +203,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // aqui nao deve barrar o login - caimos no que o payload de SignIn
         // tiver trazido.
         const lang = getUserLanguage(response.accountDetails);
-        let { banners, nextTrips } = response.accountDetails;
+        let { banners } = response.accountDetails;
         try {
-          // nextTrips agora vem da geolocalizacao (TripEdge), com fallback ao
-          // backend dentro de getNextTripsNearby. coords ja foi resolvido acima.
-          const travelerCtx = await travelerContextFor(response.accountDetails);
-          [banners, nextTrips] = await Promise.all([
-            getBanners(lang),
-            getGeoNextTrips(coords, lang, travelerCtx),
-          ]);
+          // Banners sao leves (GetBanners) - seguem no caminho do login. Falha
+          // aqui nao barra o login: caimos no que o payload trouxe.
+          banners = await getBanners(lang);
         } catch (err) {
-          captureHandledError(err, { scope: 'signIn.contentFetch' });
-          console.warn('[auth] content fetch on signIn failed, using payload:', err);
+          captureHandledError(err, { scope: 'signIn.bannersFetch' });
+          console.warn('[auth] banners fetch on signIn failed, using payload:', err);
         }
-        const account: SignInAccountDetails = { ...response.accountDetails, banners, nextTrips };
+        // nextTrips comeca vazio e carrega em BACKGROUND (parte lenta - Gemini):
+        // a home renderiza na hora e a secao mostra o loading ate popular.
+        const account: SignInAccountDetails = { ...response.accountDetails, banners, nextTrips: [] };
         setState({ account, token: response.token });
         await saveSession(response.token, account);
         // Guarda as credenciais (cifradas) para permitir re-signin silencioso
         // quando o token expirar - vide refreshSession.
         await saveCredentials(login, password);
         setIsLocked(false);
+        loadNextTrips(account, lang);
       }
       return response;
     } finally {
@@ -323,16 +357,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const accountId = current.account.accountDetails.accountId;
     const lang = langOverride ?? getUserLanguage(current.account);
 
-    // Coords para o nextTrips por geolocalizacao (TripEdge). Usa o cache e so
-    // busca se ainda nao temos - mesmo padrao do signIn.
-    let coords = getCachedLocation();
-    if (!coords) coords = await getCurrentLocation();
-
-    const travelerCtx = await travelerContextFor(current.account);
-    const [snapshot, banners, nextTrips] = await Promise.all([
+    // snapshot + banners seguem no caminho do refresh (leves). O nextTrips
+    // (parte lenta - Gemini) carrega em BACKGROUND depois, com o loading na
+    // secao: preservamos os nextTrips atuais ate a nova lista popular.
+    const [snapshot, banners] = await Promise.all([
       getAccount(accountId, lang),
       getBanners(lang),
-      getGeoNextTrips(coords, lang, travelerCtx),
     ]);
 
     // O idioma do app e uma preferencia do usuario (countryId/setups.lang, o
@@ -347,7 +377,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const next: SignInAccountDetails = {
       ...snapshot,
       banners,
-      nextTrips,
+      nextTrips: current.account.nextTrips,
       account: { ...snapshot.account, countryId: preservedCountryId },
       setups: { ...snapshot.setups, lang: preservedLang },
     };
@@ -357,7 +387,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Junto com o resto do conteudo, repopula a FAQ no mesmo idioma. Resiliente
     // (reloadFAQ trata o proprio erro), entao nao compromete o refresh.
     await reloadFAQ(lang);
-  }, [reloadFAQ]);
+
+    // nextTrips em background (no idioma-alvo), com o loading na secao.
+    loadNextTrips(next, lang);
+  }, [reloadFAQ, loadNextTrips]);
 
   // Aceite dos termos (gate geral): confirma no backend (ConfirmRead) cada
   // politica ainda nao lida e marca todas como readed=true em memoria + cache,
@@ -395,6 +428,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isSigningIn,
         isLocked,
         biometricAvailable,
+        nextTripsLoading,
         termsPending,
         faq,
         signIn,

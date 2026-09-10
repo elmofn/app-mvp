@@ -41,7 +41,7 @@ import { formatCurrency } from '@/src/utils/format';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { account, refreshAccount } = useAuth();
+  const { account, refreshAccount, nextTripsLoading } = useAuth();
   const showAlert = useAlert();
   const { t } = useT();
 
@@ -306,7 +306,7 @@ export default function HomeScreen() {
 </View>
 
 {/* --- NEXT TRIP IDEAS: via payload do SignIn --- */}
-<NextTrips trips={account?.nextTrips} loading={isRefreshing} />
+<NextTrips trips={account?.nextTrips} loading={nextTripsLoading || isRefreshing} />
 
         {/* --- HOME BANNERS: via payload do SignIn (category=Home) --- */}
         <BannersCarousel banners={account?.banners} category="Home" />

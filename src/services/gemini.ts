@@ -163,8 +163,10 @@ export type RankTierResult = {
   picks: RankPick[];
 };
 
-// Teto da shortlist por tier: o suficiente para variar sem inflar tokens/latencia.
-const MAX_PICKS_PER_TIER = 4;
+// Teto da shortlist por tier. Maior (8) de proposito: o app SORTEIA dentro da
+// shortlist a cada refresh (vide content.ts), entao uma lista mais longa =
+// mais variedade de cidades mostradas, em vez de repetir sempre as 2-3 do topo.
+const MAX_PICKS_PER_TIER = 8;
 const RANK_CATEGORIES: RankCategory[] = ['capital', 'coastal', 'touristic'];
 
 const LANG_LABEL: Record<SupportedLang, string> = {
@@ -233,8 +235,9 @@ export async function rankDestinations(
     'cities and well-known touristic destinations; AVOID dull inland towns with no tourism.',
     'Rules:',
     '- Use ONLY placeId values from the list. Never invent a city or a placeId.',
-    `- For each tier present, return "picks": up to ${MAX_PICKS_PER_TIER} cities ordered best-first.`,
-    '  Include only genuinely appealing cities; fewer is fine if only a few stand out.',
+    `- For each tier present, return "picks": a DIVERSE shortlist of up to ${MAX_PICKS_PER_TIER} genuinely`,
+    '  appealing cities, ordered best-first. Offer SEVERAL strong options per tier (not just the single',
+    '  best) so the app can vary which one it shows; still exclude dull towns with no tourism.',
     '- Only include tiers that appear in the list.',
     ...(hint
       ? ['- Favor cities that best match the user travel preferences, and bias each hook to those tastes.']

@@ -206,8 +206,7 @@ const CATEGORY_TAG_KEYS: Record<RankCategory, string> = {
   touristic: 'home.tripTagTouristic',
 };
 
-const TIER_ORDER: RankTier[] = ['nearby', 'regional', 'international'];
-const MAX_CANDIDATES_PER_TIER = 8; // teto por faixa enviado ao Gemini (menos tokens = resposta mais rapida, menos timeout)
+const MAX_CANDIDATES_PER_TIER = 10; // teto por faixa enviado ao Gemini (equilibrio entre variedade da shortlist e latencia)
 
 // Sorteia um item da lista (para variar o place mostrado a cada login/refresh).
 function pickRandom<T>(list: T[]): T | null {
@@ -218,9 +217,10 @@ function pickRandom<T>(list: T[]): T | null {
 export async function getGeoNextTrips(
   coords: LocationCoords | null,
   lang: SupportedLang,
-  // Dica de preferencias do Perfil de Viajante (ja formatada), repassada ao
-  // Gemini. Opcional: so chega para usuarios da allowlist com perfil salvo.
-  preferenceHint?: string,
+  // Contexto do Perfil de Viajante (so chega para usuarios da allowlist com
+  // perfil salvo): preferenceHint enviesa a curadoria do Gemini; dreamDestination
+  // adiciona um card extra (inspiracional) do destino dos sonhos do usuario.
+  opts?: { preferenceHint?: string; dreamDestination?: string },
 ): Promise<SignInNextTrip[]> {
   if (!coords) return getNextTrips(lang);
 
@@ -248,10 +248,9 @@ export async function getGeoNextTrips(
     const deviceCountryLabel = placeCountry(ranked[0].place);
     const deviceCity = placeName(ranked[0].place);
 
-    // --- Selecao geometrica (FALLBACK, igual ao comportamento anterior) --------
-    // Um pick por faixa, com dedup sequencial na ordem perto -> medio -> intl.
-    // Serve de rede de seguranca para cada tier que o Gemini nao curar.
-    const nearbyPool = ranked.filter((r) => r.dist <= NEARBY_MAX_KM);
+    // --- Selecao geometrica (FALLBACK para regional/international) --------------
+    // Rede de seguranca de cada tier que o Gemini nao curar. 'nearby' nao precisa
+    // mais: o card 1 e sempre a cidade do device (deterministico, abaixo).
     const midBand = ranked.filter((r) => r.dist >= MID_MIN_KM && r.dist <= MID_MAX_KM);
     const midFallback = ranked.filter((r) => r.dist > NEARBY_MAX_KM);
     const intlPool = ranked.filter((r) => {
@@ -268,7 +267,6 @@ export async function getGeoNextTrips(
         geoByTier[tier] = pick;
       }
     };
-    pickGeo('nearby', nearbyPool.length ? nearbyPool : [ranked[0]]);
     pickGeo('regional', midBand.length ? midBand : midFallback);
     pickGeo('international', intlPool);
 
@@ -287,6 +285,9 @@ export async function getGeoNextTrips(
           : r.dist <= NEARBY_MAX_KM
             ? 'nearby'
             : 'regional';
+      // 'nearby' nao vai para o Gemini: o card 1 e sempre a cidade do device
+      // (deterministico). Curadoria/variedade ficam para regional e intl.
+      if (tier === 'nearby') continue;
       if (perTierCount[tier] >= MAX_CANDIDATES_PER_TIER) continue;
       perTierCount[tier] += 1;
       candidates.push({
@@ -303,7 +304,7 @@ export async function getGeoNextTrips(
       candidates,
       { city: deviceCity, country: deviceCountryLabel },
       lang,
-      preferenceHint,
+      opts?.preferenceHint,
     );
     // Shortlist curada por tier (melhor primeiro). byId resolve placeId -> Place.
     const byId = new Map(ranked.map((r) => [placeId(r.place), r.place] as const));
@@ -318,7 +319,18 @@ export async function getGeoNextTrips(
     // ainda nao foram usados. Assim varia o place mantendo a curadoria.
     const chosen: { place: Place; tagKey: string; description?: string }[] = [];
     const usedIds = new Set<string>();
-    for (const tier of TIER_ORDER) {
+
+    // Card 1: a propria cidade do device (deterministico e estavel - o usuario
+    // ja espera isso no topo). Tira a variabilidade "boa" do caminho e deixa a
+    // randomizacao aparecer nos cards seguintes.
+    const deviceCityPlace = ranked[0].place;
+    usedIds.add(placeId(deviceCityPlace));
+    chosen.push({ place: deviceCityPlace, tagKey: TIER_TAG_KEYS.nearby });
+
+    // Cards 2+: regional e internacional. SORTEIA dentro da shortlist curada do
+    // Gemini (maior agora) para variar a cada refresh; cai no geometrico quando
+    // o Gemini nao curou aquele tier.
+    for (const tier of ['regional', 'international'] as RankTier[]) {
       const picks = aiByTier.get(tier);
       if (picks?.length) {
         const available = picks.filter((p) => byId.has(p.placeId) && !usedIds.has(p.placeId));
@@ -345,12 +357,34 @@ export async function getGeoNextTrips(
     // timeout curto para nao atrasar o sign-in. Hoje getCityPhoto retorna null =>
     // imageUrl '' => NextTrips renderiza o generico bonito. Quando houver fonte, a
     // URL persiste junto no nextTrips e o boot por biometria ja vem com a foto.
-    const trips = await Promise.all(
-      chosen.map(async ({ place, tagKey, description }) => {
-        const photo = await withTimeout(getCityPhoto(place), PHOTO_TIMEOUT_MS, null);
-        return placeToTrip(place, tagKey, lang, photo ?? '', description);
-      }),
-    );
+    // Foto do destino dos sonhos (texto livre): buscada por NOME na Wikipedia
+    // (getCityPhoto usa o nome), em PARALELO com as demais para nao somar
+    // latencia. Sem place_id na TripEdge => o card fica inspiracional (nao
+    // clicavel), mesmo padrao dos trips do backend sem placeId.
+    const dream = opts?.dreamDestination?.trim();
+    const [trips, dreamPhoto] = await Promise.all([
+      Promise.all(
+        chosen.map(async ({ place, tagKey, description }) => {
+          const photo = await withTimeout(getCityPhoto(place), PHOTO_TIMEOUT_MS, null);
+          return placeToTrip(place, tagKey, lang, photo ?? '', description);
+        }),
+      ),
+      dream
+        ? withTimeout(getCityPhoto({ display_name: dream } as Place), PHOTO_TIMEOUT_MS, null)
+        : Promise.resolve(null),
+    ]);
+
+    if (dream) {
+      trips.push({
+        id: `dream:${dream}`,
+        // sem placeId: a TripEdge nao tem busca por nome, entao o card nao abre
+        // o marketplace (fica como inspiracao do destino dos sonhos).
+        title: dream,
+        tag: translate(lang, 'home.tripTagDream'),
+        description: translate(lang, 'home.tripDreamDesc'),
+        imageUrl: dreamPhoto ?? '',
+      });
+    }
 
     // Log conciso para conferir no teste (e ver se a API rendeu os tiers longes).
     // So em dev: em release nao polui os breadcrumbs do Sentry.
@@ -358,7 +392,7 @@ export async function getGeoNextTrips(
       console.log(
         '[content] geo trips:',
         trips.map((t) => `${t.tag}=${t.title}`).join(' | '),
-        `| ${ranked.length} places, deviceCountry=${deviceCountry || '?'}, farthest=${Math.round(ranked[ranked.length - 1].dist)}km, curator=${aiByTier.size ? `gemini(${aiByTier.size})` : 'geometric'}${preferenceHint ? ', prefs=on' : ''}`,
+        `| ${ranked.length} places, deviceCountry=${deviceCountry || '?'}, farthest=${Math.round(ranked[ranked.length - 1].dist)}km, curator=${aiByTier.size ? `gemini(${aiByTier.size})` : 'geometric'}${opts?.preferenceHint ? ', prefs=on' : ''}${dream ? ', dream=on' : ''}`,
       );
     }
 

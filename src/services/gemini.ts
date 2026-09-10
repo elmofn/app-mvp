@@ -232,7 +232,10 @@ export async function rankDestinations(
     ...(hint ? [`User travel preferences: ${hint}`] : []),
     'From the candidate cities below (all real), rank the MOST travel-worthy cities',
     'for EACH tier present (nearby, regional, international). Prefer capitals, coastal/beach',
-    'cities and well-known touristic destinations; AVOID dull inland towns with no tourism.',
+    'cities and well-known touristic destinations; AVOID dull inland towns with no tourism',
+    ...(hint
+      ? ['UNLESS they clearly match the user travel preferences above (e.g. nature, off-the-beaten-path, interior).']
+      : ['(no exceptions - only genuinely appealing, well-known destinations).']),
     'Rules:',
     '- Use ONLY placeId values from the list. Never invent a city or a placeId.',
     `- For each tier present, return "picks": a DIVERSE shortlist of up to ${MAX_PICKS_PER_TIER} genuinely`,

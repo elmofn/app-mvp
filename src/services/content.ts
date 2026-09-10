@@ -125,6 +125,7 @@ const NEARBY_MAX_KM = 100; // acima disso ja nao conta como "perto"
 const MID_MIN_KM = 500;
 const MID_MAX_KM = 1000;
 const PHOTO_TIMEOUT_MS = 4000; // teto por busca de foto (fonte a definir; nao atrasar o sign-in)
+const PHOTO_LOOKUP_CAP = 6; // fotos consultadas por tier no photo-gate (cacheadas + paralelas)
 
 type RankedPlace = { place: Place; dist: number };
 
@@ -216,6 +217,39 @@ function pickRandom<T>(list: T[]): T | null {
   return list[Math.floor(Math.random() * list.length)];
 }
 
+type TripCandidate = { place: Place; tagKey: string; description?: string };
+
+// PHOTO-GATE: escolhe UM card de um tier ENTRE os candidatos que tem foto no
+// Wikimedia (getCityPhoto != null). Isso filtra "cidades mortas do interior"
+// (sem foto de destaque na Wikipedia = sinal forte de baixa relevancia) e
+// atende a regra de so mostrar places com foto. Consulta ate PHOTO_LOOKUP_CAP
+// fotos por tier (cacheadas + em paralelo). preferFirst=true mantem o primeiro
+// candidato (a cidade do device) quando ele tem foto; senao sorteia entre os
+// que tem (variedade). Retorna null se nenhum candidato do tier tiver foto.
+// Os tiers sao disjuntos (por distancia/pais), entao nao ha risco de repetir um
+// place entre eles - por isso nao precisamos de dedup cross-tier aqui.
+async function pickTripWithPhoto(
+  candidates: TripCandidate[],
+  lang: SupportedLang,
+  preferFirst: boolean,
+): Promise<SignInNextTrip | null> {
+  let pool = candidates;
+  if (!preferFirst) pool = [...pool].sort(() => Math.random() - 0.5);
+  pool = pool.slice(0, PHOTO_LOOKUP_CAP);
+  if (pool.length === 0) return null;
+
+  const photos = await Promise.all(
+    pool.map((c) => withTimeout(getCityPhoto(c.place), PHOTO_TIMEOUT_MS, null)),
+  );
+  const withPhoto = pool
+    .map((c, i) => ({ c, photo: photos[i] }))
+    .filter((x): x is { c: TripCandidate; photo: string } => !!x.photo);
+  if (withPhoto.length === 0) return null;
+
+  const entry = preferFirst ? withPhoto[0] : (pickRandom(withPhoto) ?? withPhoto[0]);
+  return placeToTrip(entry.c.place, entry.c.tagKey, lang, entry.photo, entry.c.description);
+}
+
 export async function getGeoNextTrips(
   coords: LocationCoords | null,
   lang: SupportedLang,
@@ -250,9 +284,9 @@ export async function getGeoNextTrips(
     const deviceCountryLabel = placeCountry(ranked[0].place);
     const deviceCity = placeName(ranked[0].place);
 
-    // --- Selecao geometrica (FALLBACK para regional/international) --------------
-    // Rede de seguranca de cada tier que o Gemini nao curar. 'nearby' nao precisa
-    // mais: o card 1 e sempre a cidade do device (deterministico, abaixo).
+    // Pools geometricos por faixa - fallback quando o Gemini nao curar um tier.
+    // A relevancia nesse caminho vem do PHOTO-GATE (cidade sem foto no Wikimedia
+    // = provavel cidade morta do interior -> nao entra).
     const midBand = ranked.filter((r) => r.dist >= MID_MIN_KM && r.dist <= MID_MAX_KM);
     const midFallback = ranked.filter((r) => r.dist > NEARBY_MAX_KM);
     const intlPool = ranked.filter((r) => {
@@ -260,23 +294,11 @@ export async function getGeoNextTrips(
       return c && deviceCountry && c !== deviceCountry;
     });
 
-    const usedGeo = new Set<string>();
-    const geoByTier: Partial<Record<RankTier, RankedPlace>> = {};
-    const pickGeo = (tier: RankTier, pool: RankedPlace[]) => {
-      const pick = pickRandom(pool.filter((r) => !usedGeo.has(placeId(r.place))));
-      if (pick) {
-        usedGeo.add(placeId(pick.place));
-        geoByTier[tier] = pick;
-      }
-    };
-    pickGeo('regional', midBand.length ? midBand : midFallback);
-    pickGeo('international', intlPool);
-
     // --- Curadoria pelo Gemini (preferida) -------------------------------------
     // Monta candidatas reais (com placeId) rotuladas por faixa, com teto por
-    // tier, e pede ao Gemini uma shortlist ranqueada das mais turisticas de cada
-    // faixa. Qualquer falha/timeout retorna null e mantemos so a selecao
-    // geometrica acima.
+    // tier, e pede ao Gemini uma shortlist das mais turisticas/relevantes de cada
+    // faixa (evita cidades sem apelo, salvo se as preferencias pedirem). Qualquer
+    // falha/timeout retorna null e caimos no pool geometrico + photo-gate.
     const candidates: RankCandidate[] = [];
     const perTierCount: Record<RankTier, number> = { nearby: 0, regional: 0, international: 0 };
     for (const r of ranked) {
@@ -315,72 +337,58 @@ export async function getGeoNextTrips(
       for (const res of aiResults) aiByTier.set(res.tier, res.picks);
     }
 
-    // --- Montagem final: Gemini por tier, caindo no geometrico onde faltar -----
-    // Em vez de fixar o "melhor" (o Gemini ordena sempre igual -> mesmo place a
-    // cada refresh), SORTEIA dentro da shortlist curada do tier, entre os que
-    // ainda nao foram usados. Assim varia o place mantendo a curadoria.
-    const chosen: { place: Place; tagKey: string; description?: string }[] = [];
-    const usedIds = new Set<string>();
-
-    // Card 1: a propria cidade do device (deterministico e estavel - o usuario
-    // ja espera isso no topo). Tira a variabilidade "boa" do caminho e deixa a
-    // randomizacao aparecer nos cards seguintes.
-    const deviceCityPlace = ranked[0].place;
-    usedIds.add(placeId(deviceCityPlace));
-    chosen.push({ place: deviceCityPlace, tagKey: TIER_TAG_KEYS.nearby });
-
-    // Cards 2+: regional e internacional. SORTEIA dentro da shortlist curada do
-    // Gemini (maior agora) para variar a cada refresh; cai no geometrico quando
-    // o Gemini nao curou aquele tier.
-    for (const tier of ['regional', 'international'] as RankTier[]) {
+    // Lista de candidatos de um tier: shortlist do Gemini (relevante) ou, se
+    // faltar, o pool geometrico ordenado por distancia (filtrado pelo photo-gate).
+    const tierCandidates = (tier: 'regional' | 'international'): TripCandidate[] => {
       const picks = aiByTier.get(tier);
       if (picks?.length) {
-        const available = picks.filter((p) => byId.has(p.placeId) && !usedIds.has(p.placeId));
-        const pick = pickRandom(available);
-        if (pick) {
-          const place = byId.get(pick.placeId)!;
-          usedIds.add(pick.placeId);
-          chosen.push({
-            place,
-            tagKey: CATEGORY_TAG_KEYS[pick.category] ?? TIER_TAG_KEYS[tier],
-            description: pick.description,
-          });
-          continue;
-        }
+        return picks
+          .filter((p) => byId.has(p.placeId))
+          .map((p) => ({
+            place: byId.get(p.placeId)!,
+            tagKey: CATEGORY_TAG_KEYS[p.category] ?? TIER_TAG_KEYS[tier],
+            description: p.description,
+          }));
       }
-      const geo = geoByTier[tier];
-      if (geo && !usedIds.has(placeId(geo.place))) {
-        usedIds.add(placeId(geo.place));
-        chosen.push({ place: geo.place, tagKey: TIER_TAG_KEYS[tier] });
-      }
-    }
+      const pool = tier === 'regional' ? (midBand.length ? midBand : midFallback) : intlPool;
+      return pool.map((r) => ({ place: r.place, tagKey: TIER_TAG_KEYS[tier] }));
+    };
 
-    // Enriquece cada tier com a foto real da cidade (fonte a definir), em paralelo e com
-    // timeout curto para nao atrasar o sign-in. Hoje getCityPhoto retorna null =>
-    // imageUrl '' => NextTrips renderiza o generico bonito. Quando houver fonte, a
-    // URL persiste junto no nextTrips e o boot por biometria ja vem com a foto.
-    // Foto do destino dos sonhos (texto livre): buscada por NOME na Wikipedia
-    // (getCityPhoto usa o nome), em PARALELO com as demais para nao somar
-    // latencia. Sem place_id na TripEdge => o card fica inspiracional (nao
-    // clicavel), mesmo padrao dos trips do backend sem placeId.
+    // --- Montagem final com PHOTO-GATE -----------------------------------------
+    // Por tier, escolhemos um place ENTRE os que tem foto no Wikimedia. Tier sem
+    // nenhum place com foto simplesmente nao renderiza (sem card generico). Os 3
+    // tiers (+ foto do destino dos sonhos) rodam em PARALELO: sao disjuntos, entao
+    // nao ha dedup entre eles, e o photo-gate nao vira gargalo no login.
+    const deviceCityPlace = ranked[0].place;
+    const nearbyCandidates: TripCandidate[] = [
+      { place: deviceCityPlace, tagKey: TIER_TAG_KEYS.nearby },
+      ...ranked
+        .filter((r) => r.dist <= NEARBY_MAX_KM && placeId(r.place) !== placeId(deviceCityPlace))
+        .map((r) => ({ place: r.place, tagKey: TIER_TAG_KEYS.nearby })),
+    ];
     const dream = opts?.dreamDestination?.trim();
-    const [trips, dreamPhoto] = await Promise.all([
-      Promise.all(
-        chosen.map(async ({ place, tagKey, description }) => {
-          const photo = await withTimeout(getCityPhoto(place), PHOTO_TIMEOUT_MS, null);
-          return placeToTrip(place, tagKey, lang, photo ?? '', description);
-        }),
-      ),
+
+    const [nearbyTrip, regionalTrip, intlTrip, dreamPhoto] = await Promise.all([
+      // nearby: prefere a cidade do device no topo (card 1 estavel).
+      pickTripWithPhoto(nearbyCandidates, lang, true),
+      pickTripWithPhoto(tierCandidates('regional'), lang, false),
+      pickTripWithPhoto(tierCandidates('international'), lang, false),
       dream
         ? withTimeout(getCityPhoto({ display_name: dream } as Place), PHOTO_TIMEOUT_MS, null)
         : Promise.resolve(null),
     ]);
 
+    const trips: SignInNextTrip[] = [];
+    if (nearbyTrip) trips.push(nearbyTrip);
+    if (regionalTrip) trips.push(regionalTrip);
+    if (intlTrip) trips.push(intlTrip);
+
+    // Card extra: destino dos sonhos (perfil). Sem place_id => inspiracional (nao
+    // clicavel). Mantido mesmo sem foto - e um desejo explicito do usuario, nao
+    // uma recomendacao algoritmica (por isso escapa do photo-gate).
     if (dream) {
       trips.push({
         id: `dream:${dream}`,
-        // sem placeId: a TripEdge nao tem busca por nome, entao o card nao abre
-        // o marketplace (fica como inspiracao do destino dos sonhos).
         title: dream,
         tag: translate(lang, 'home.tripTagDream'),
         description: translate(lang, 'home.tripDreamDesc'),

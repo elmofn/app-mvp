@@ -37,7 +37,7 @@ export async function authenticateWithBiometric(
       promptMessage,
       cancelLabel: 'Cancel',
     });
-    console.log('[biometric] authenticateAsync result:', result);
+    if (__DEV__) console.log('[biometric] authenticateAsync result:', result);
     if (result.success) {
       return { success: true };
     }

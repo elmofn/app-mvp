@@ -37,15 +37,15 @@ const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? '';
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 // Modelo barato o suficiente para uma curadoria de ~1 chamada por login.
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
-// Teto por tentativa. Subimos de 4s -> 8s: 4s abortava cedo demais em rede
-// movel (AbortError) e caia no fallback geometrico com frequencia, deixando a
-// curadoria inconsistente. Com 8s + 1 retry (vide MAX_ATTEMPTS) a taxa de
-// sucesso sobe bastante. Custo: a call esta no caminho do login, entao no
-// pior caso o usuario espera um pouco mais antes de ver os "Proximos Destinos".
-const GEMINI_TIMEOUT_MS = 8000;
-// Tentativas totais (1 original + 1 retry) para falhas TRANSITORIAS (timeout,
-// 429, 5xx, resposta malformada). Erros permanentes (4xx de chave/modelo/
-// schema) nao sao re-tentados - nao adianta repetir.
+// Teto por tentativa. 12s: em rede movel a curadoria (saida estruturada) as
+// vezes passa de 8s e abortava, caindo no fallback geometrico. Custo: a call
+// esta no caminho do login, entao no pior caso o usuario espera ate ~12s antes
+// de ver os "Proximos Destinos" (raro - o comum responde em 1-3s).
+const GEMINI_TIMEOUT_MS = 12000;
+// Tentativas totais (1 original + 1 retry). O retry cobre apenas falhas
+// TRANSITORIAS de servidor (429, 5xx) ou resposta malformada. NAO re-tentamos
+// em timeout (AbortError): repetir com o mesmo teto quase nunca ajuda e so
+// dobra a espera no caminho do login. Erros permanentes (4xx) tambem nao.
 const GEMINI_MAX_ATTEMPTS = 2;
 
 // ----------------------------------------------------------------------------
@@ -108,12 +108,13 @@ async function callGemini<T>(
       return JSON.parse(textPart) as T;
     } catch (err) {
       // Timeout proprio (controller.abort) => AbortError: condicao ESPERADA em
-      // rede movel. Nao vira evento no Sentry. Outros erros ficam guardados
-      // para reporte unico no fim.
+      // rede movel. Nao vira evento no Sentry E nao e re-tentado (repetir com o
+      // mesmo teto so dobra a espera). Caimos direto no fallback geometrico.
       const isAbort = (err as { name?: string })?.name === 'AbortError';
-      if (!isAbort) lastUnexpectedErr = err;
       console.warn(`[gemini] call failed (tentativa ${attempt}/${maxAttempts}):`, err);
-      // segue para a proxima tentativa (se houver)
+      if (isAbort) break;
+      lastUnexpectedErr = err;
+      // erro inesperado de rede: segue para a proxima tentativa (se houver)
     } finally {
       clearTimeout(timer);
     }

@@ -207,7 +207,7 @@ const CATEGORY_TAG_KEYS: Record<RankCategory, string> = {
 };
 
 const TIER_ORDER: RankTier[] = ['nearby', 'regional', 'international'];
-const MAX_CANDIDATES_PER_TIER = 12; // teto por faixa enviado ao Gemini (economiza tokens)
+const MAX_CANDIDATES_PER_TIER = 8; // teto por faixa enviado ao Gemini (menos tokens = resposta mais rapida, menos timeout)
 
 // Sorteia um item da lista (para variar o place mostrado a cada login/refresh).
 function pickRandom<T>(list: T[]): T | null {

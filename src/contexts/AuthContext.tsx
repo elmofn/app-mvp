@@ -206,7 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let coords = getCachedLocation();
       if (!coords) coords = await getCurrentLocation();
       const geolocation = formatLocationPayload(coords);
-      if (__DEV__) console.log('[auth] origem do envio → REFRESH DE SESSÃO (token expirado)');
+      if (__DEV__) console.log('[auth] origem do envio → REFRESH DE SESSÃO (re-signin silencioso: token expirado ou desbloqueio)');
       const response = await apiSignIn(creds.login, creds.password, geolocation);
       if (response.success && response.token) {
         const current = stateRef.current;
@@ -233,15 +233,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const unlock = useCallback(async () => {
     const result = await authenticateWithBiometric('Unlock TravelBACK');
     if (result.success) {
-      // Desbloqueio 100% local: nao ha chamada de rede aqui - nenhuma
-      // geolocalizacao/devInfo/credencial sai do device no unlock biometrico.
-      if (__DEV__) console.log('[auth] desbloqueio por biometria → nenhum dado enviado (unlock local)');
       setIsLocked(false);
+      // Avisa o backend que o usuario voltou a ficar ativo: re-signin silencioso
+      // com as credenciais guardadas, enviando geolocation + devInfo atualizados
+      // (mesmo payload do login) e renovando o token. Fire-and-forget: nao
+      // atrasa o desbloqueio e falha de rede nao trava o app.
+      if (__DEV__) console.log('[auth] desbloqueio por biometria → re-signin em background (geolocation + devInfo)');
+      refreshSession().catch((err) => {
+        console.warn('[auth] re-signin pos-biometria falhou:', err);
+      });
       return true;
     }
     console.warn('[auth] unlock failed:', result.error, result.warning);
     return false;
-  }, []);
+  }, [refreshSession]);
 
   const lock = useCallback(() => {
     if (stateRef.current.token) setIsLocked(true);

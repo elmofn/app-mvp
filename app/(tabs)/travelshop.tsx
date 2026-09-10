@@ -192,6 +192,7 @@ export default function TravelShopScreen() {
             {recommended === null ? (
               <View style={styles.carouselLoading}>
                 <ActivityIndicator color={colors.brand.primary} />
+                <Text style={styles.carouselLoadingText}>{t('travelshop.loadingHotels')}</Text>
               </View>
             ) : (
               <ScrollView
@@ -226,6 +227,7 @@ export default function TravelShopScreen() {
             {nearby === null ? (
               <View style={styles.carouselLoading}>
                 <ActivityIndicator color={colors.brand.primary} />
+                <Text style={styles.carouselLoadingText}>{t('travelshop.loadingHotels')}</Text>
               </View>
             ) : (
               <ScrollView
@@ -405,6 +407,13 @@ const styles = StyleSheet.create({
     height: 120,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 12,
+  },
+  carouselLoadingText: {
+    fontSize: 14,
+    fontFamily: fonts.medium,
+    color: colors.text.muted,
+    letterSpacing: 0.2,
   },
 
   card: {

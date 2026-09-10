@@ -37,11 +37,12 @@ const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? '';
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 // Modelo barato o suficiente para uma curadoria de ~1 chamada por login.
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
-// Teto por tentativa. 12s: em rede movel a curadoria (saida estruturada) as
-// vezes passa de 8s e abortava, caindo no fallback geometrico. Custo: a call
-// esta no caminho do login, entao no pior caso o usuario espera ate ~12s antes
-// de ver os "Proximos Destinos" (raro - o comum responde em 1-3s).
-const GEMINI_TIMEOUT_MS = 12000;
+// Teto por tentativa. 15s: em rede movel a curadoria (saida estruturada) as
+// vezes passa de 8-12s e abortava, caindo no fallback geometrico. Como a espera
+// agora tem contexto (tela/linha de loading com "Carregando suas sugestoes de
+// viagem" enquanto o signIn/refresh resolve), podemos dar mais folga ao modelo.
+// Raro chegar perto disso - o comum responde em 1-3s.
+const GEMINI_TIMEOUT_MS = 15000;
 // Tentativas totais (1 original + 1 retry). O retry cobre apenas falhas
 // TRANSITORIAS de servidor (429, 5xx) ou resposta malformada. NAO re-tentamos
 // em timeout (AbortError): repetir com o mesmo teto quase nunca ajuda e so

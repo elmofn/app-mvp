@@ -10,6 +10,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 
 import { APP_ENV } from '@/src/config/env';
@@ -19,6 +20,7 @@ import { OfflineGate } from '@/src/components/OfflineGate';
 import { TermsGate } from '@/src/components/TermsGate';
 import { AlertProvider } from '@/src/contexts/AlertContext';
 import { AuthProvider, useAuth } from '@/src/contexts/AuthContext';
+import { useT } from '@/src/i18n';
 import * as Sentry from '@sentry/react-native';
 
 Sentry.init({
@@ -98,7 +100,8 @@ export default Sentry.wrap(function RootLayout() {
 });
 
 function AppShell() {
-  const { isRestoring } = useAuth();
+  const { isRestoring, isSigningIn } = useAuth();
+  const { t } = useT();
 
   // 3. As fontes ja carregaram (AppShell so monta depois disso). Escondemos a
   // splash nativa assim que montamos e entregamos para o LoadingScreen enquanto
@@ -130,6 +133,14 @@ function AppShell() {
       {/* Trava de conectividade por cima de tudo: se o device esta sem internet,
           bloqueia o app inteiro (evita uso so com cache). Some quando reconecta. */}
       <OfflineGate />
+      {/* Loading de marca enquanto o signIn resolve (login, conclusao do signup
+          e da ativacao passam por aqui): o conteudo + as sugestoes do Gemini
+          carregam atras desta tela, com a frase dando contexto a espera. */}
+      {isSigningIn ? (
+        <View style={StyleSheet.absoluteFillObject}>
+          <LoadingScreen message={t('home.loadingSuggestions')} />
+        </View>
+      ) : null}
     </>
   );
 }

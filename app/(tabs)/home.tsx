@@ -306,7 +306,7 @@ export default function HomeScreen() {
 </View>
 
 {/* --- NEXT TRIP IDEAS: via payload do SignIn --- */}
-<NextTrips trips={account?.nextTrips} />
+<NextTrips trips={account?.nextTrips} loading={isRefreshing} />
 
         {/* --- HOME BANNERS: via payload do SignIn (category=Home) --- */}
         <BannersCarousel banners={account?.banners} category="Home" />

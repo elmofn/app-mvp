@@ -19,6 +19,7 @@ export const travelshop: Record<SupportedLang, Record<string, any>> = {
     nearbyTitle: 'Hotels',
     nearbyTitleAccent: 'Nearby',
     reviewCount: '{count} reviews',
+    loadingHotels: 'Loading hotels',
     priceCaption: '1 room x 1 night including taxes',
   },
   'pt-BR': {
@@ -38,6 +39,7 @@ export const travelshop: Record<SupportedLang, Record<string, any>> = {
     nearbyTitle: 'Hotéis',
     nearbyTitleAccent: 'Próximos',
     reviewCount: '{count} avaliações',
+    loadingHotels: 'Carregando Hotéis',
     priceCaption: '1 quarto x 1 noite incluindo impostos',
   },
   'es-ES': {
@@ -57,6 +59,7 @@ export const travelshop: Record<SupportedLang, Record<string, any>> = {
     nearbyTitle: 'Hoteles',
     nearbyTitleAccent: 'Cercanos',
     reviewCount: '{count} reseñas',
+    loadingHotels: 'Cargando hoteles',
     priceCaption: '1 habitación x 1 noche con impuestos incluidos',
   },
 };

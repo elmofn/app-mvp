@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { MapPinIcon } from 'phosphor-react-native';
 import React from 'react';
-import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown, FadeInLeft, FadeInRight } from 'react-native-reanimated';
 
 import { useT } from '@/src/i18n';
@@ -11,6 +11,9 @@ import { fonts } from '@/src/theme/typography';
 
 type Props = {
   trips: SignInNextTrip[] | undefined;
+  // true enquanto as sugestoes estao sendo recalculadas (pull-to-refresh): a
+  // secao mostra uma linha de loading com a frase, mantendo os cards atuais.
+  loading?: boolean;
 };
 
 // User-Agent estilo navegador: a Wikimedia (upload.wikimedia.org) devolve 403
@@ -79,11 +82,16 @@ function TripImage({ trip }: { trip: SignInNextTrip }) {
 // Secao "Next Trip Ideas" da home. Renderiza um card por viagem do
 // payload; quando o array vem vazio (conta nova / backend sem conteudo)
 // nao renderiza nada, mesmo padrao do ActivityHighlights.
-export function NextTrips({ trips }: Props) {
+export function NextTrips({ trips, loading }: Props) {
   const { t } = useT();
   const router = useRouter();
 
-  if (!trips || trips.length === 0) return null;
+  // Sem trips e sem loading: nao renderiza (conta nova / backend sem conteudo).
+  // Se esta carregando, segue para mostrar o header + a linha de loading mesmo
+  // que ainda nao haja trips.
+  if ((!trips || trips.length === 0) && !loading) return null;
+
+  const list = trips ?? [];
 
   // Trips gerados por geolocalizacao carregam o place_id da TripEdge: o card
   // abre o marketplace ja na busca daquela cidade. Passamos tambem o nome
@@ -107,7 +115,14 @@ export function NextTrips({ trips }: Props) {
         <Text style={styles.sectionSubtitle}>{t('home.bookYourTrip')}</Text>
       </Animated.View>
 
-      {trips.map((trip, index) => (
+      {loading ? (
+        <View style={styles.loadingRow}>
+          <ActivityIndicator color="#7D7BFE" />
+          <Text style={styles.loadingText}>{t('home.loadingSuggestions')}</Text>
+        </View>
+      ) : null}
+
+      {list.map((trip, index) => (
         <React.Fragment key={trip.id}>
           <Animated.View
             entering={
@@ -137,7 +152,7 @@ export function NextTrips({ trips }: Props) {
               </View>
             </TouchableOpacity>
           </Animated.View>
-          {index < trips.length - 1 && <View style={styles.tripDivider} />}
+          {index < list.length - 1 && <View style={styles.tripDivider} />}
         </React.Fragment>
       ))}
     </View>
@@ -180,6 +195,19 @@ const styles = StyleSheet.create({
     color: '#6c757d',
     marginTop: 4,
     letterSpacing: 1,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: -20,
+    marginBottom: 28,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontFamily: fonts.medium,
+    color: '#6c757d',
+    letterSpacing: 0.2,
   },
   tripCard: {
     marginBottom: 24,

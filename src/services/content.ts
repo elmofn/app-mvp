@@ -218,6 +218,9 @@ function pickRandom<T>(list: T[]): T | null {
 export async function getGeoNextTrips(
   coords: LocationCoords | null,
   lang: SupportedLang,
+  // Dica de preferencias do Perfil de Viajante (ja formatada), repassada ao
+  // Gemini. Opcional: so chega para usuarios da allowlist com perfil salvo.
+  preferenceHint?: string,
 ): Promise<SignInNextTrip[]> {
   if (!coords) return getNextTrips(lang);
 
@@ -300,6 +303,7 @@ export async function getGeoNextTrips(
       candidates,
       { city: deviceCity, country: deviceCountryLabel },
       lang,
+      preferenceHint,
     );
     // Shortlist curada por tier (melhor primeiro). byId resolve placeId -> Place.
     const byId = new Map(ranked.map((r) => [placeId(r.place), r.place] as const));
@@ -349,11 +353,14 @@ export async function getGeoNextTrips(
     );
 
     // Log conciso para conferir no teste (e ver se a API rendeu os tiers longes).
-    console.log(
-      '[content] geo trips:',
-      trips.map((t) => `${t.tag}=${t.title}`).join(' | '),
-      `| ${ranked.length} places, deviceCountry=${deviceCountry || '?'}, farthest=${Math.round(ranked[ranked.length - 1].dist)}km, curator=${aiByTier.size ? `gemini(${aiByTier.size})` : 'geometric'}`,
-    );
+    // So em dev: em release nao polui os breadcrumbs do Sentry.
+    if (__DEV__) {
+      console.log(
+        '[content] geo trips:',
+        trips.map((t) => `${t.tag}=${t.title}`).join(' | '),
+        `| ${ranked.length} places, deviceCountry=${deviceCountry || '?'}, farthest=${Math.round(ranked[ranked.length - 1].dist)}km, curator=${aiByTier.size ? `gemini(${aiByTier.size})` : 'geometric'}${preferenceHint ? ', prefs=on' : ''}`,
+      );
+    }
 
     return trips.length ? trips : getNextTrips(lang);
   } catch (err) {

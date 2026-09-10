@@ -37,7 +37,16 @@ const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? '';
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 // Modelo barato o suficiente para uma curadoria de ~1 chamada por login.
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
-const GEMINI_TIMEOUT_MS = 4000; // teto curto: se demorar, a home usa o fallback
+// Teto por tentativa. Subimos de 4s -> 8s: 4s abortava cedo demais em rede
+// movel (AbortError) e caia no fallback geometrico com frequencia, deixando a
+// curadoria inconsistente. Com 8s + 1 retry (vide MAX_ATTEMPTS) a taxa de
+// sucesso sobe bastante. Custo: a call esta no caminho do login, entao no
+// pior caso o usuario espera um pouco mais antes de ver os "Proximos Destinos".
+const GEMINI_TIMEOUT_MS = 8000;
+// Tentativas totais (1 original + 1 retry) para falhas TRANSITORIAS (timeout,
+// 429, 5xx, resposta malformada). Erros permanentes (4xx de chave/modelo/
+// schema) nao sao re-tentados - nao adianta repetir.
+const GEMINI_MAX_ATTEMPTS = 2;
 
 // ----------------------------------------------------------------------------
 // callGemini: transporte UNICO e trocavel (vide bloco de seguranca acima).
@@ -48,7 +57,7 @@ const GEMINI_TIMEOUT_MS = 4000; // teto curto: se demorar, a home usa o fallback
 async function callGemini<T>(
   prompt: string,
   responseSchema: Record<string, unknown>,
-  opts?: { key?: string; timeoutMs?: number },
+  opts?: { key?: string; timeoutMs?: number; attempts?: number },
 ): Promise<T | null> {
   const key = opts?.key ?? GEMINI_API_KEY;
   if (!key) return null;
@@ -63,40 +72,57 @@ async function callGemini<T>(
     },
   };
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), opts?.timeoutMs ?? GEMINI_TIMEOUT_MS);
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-    if (!response.ok) {
-      const text = await response.text().catch(() => '');
-      console.warn('[gemini] HTTP', response.status, text.slice(0, 200));
-      return null;
+  const timeoutMs = opts?.timeoutMs ?? GEMINI_TIMEOUT_MS;
+  const maxAttempts = opts?.attempts ?? GEMINI_MAX_ATTEMPTS;
+
+  // Ultimo erro inesperado (nao-abort) visto no loop - so reportamos ao Sentry
+  // uma vez, depois de esgotar as tentativas, para nao duplicar eventos.
+  let lastUnexpectedErr: unknown = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        console.warn('[gemini] HTTP', response.status, `(tentativa ${attempt}/${maxAttempts})`, text.slice(0, 200));
+        // Transitorio (rate-limit / erro de servidor): vale re-tentar. 4xx
+        // permanente (chave/modelo/schema) nao - abortamos o loop.
+        if (response.status === 429 || response.status >= 500) continue;
+        return null;
+      }
+      const raw = await response.json();
+      // Envelope: candidates[0].content.parts[0].text traz o JSON (string) que o
+      // responseSchema garante. Parseamos aqui para o chamador receber T pronto.
+      const textPart: unknown = raw?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (typeof textPart !== 'string') {
+        console.warn('[gemini] resposta sem texto estruturado', `(tentativa ${attempt}/${maxAttempts})`);
+        continue; // resposta malformada: pode ser pontual, re-tenta
+      }
+      return JSON.parse(textPart) as T;
+    } catch (err) {
+      // Timeout proprio (controller.abort) => AbortError: condicao ESPERADA em
+      // rede movel. Nao vira evento no Sentry. Outros erros ficam guardados
+      // para reporte unico no fim.
+      const isAbort = (err as { name?: string })?.name === 'AbortError';
+      if (!isAbort) lastUnexpectedErr = err;
+      console.warn(`[gemini] call failed (tentativa ${attempt}/${maxAttempts}):`, err);
+      // segue para a proxima tentativa (se houver)
+    } finally {
+      clearTimeout(timer);
     }
-    const raw = await response.json();
-    // Envelope: candidates[0].content.parts[0].text traz o JSON (string) que o
-    // responseSchema garante. Parseamos aqui para o chamador receber T pronto.
-    const textPart: unknown = raw?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (typeof textPart !== 'string') return null;
-    return JSON.parse(textPart) as T;
-  } catch (err) {
-    // Timeout proprio (controller.abort) => AbortError: condicao ESPERADA em
-    // rede movel. Ja degradamos para o fallback geometrico (return null), entao
-    // nao e um erro que deva virar evento no Sentry. So reportamos falhas
-    // realmente inesperadas.
-    const isAbort = (err as { name?: string })?.name === 'AbortError';
-    if (!isAbort) {
-      captureHandledError(err, { scope: 'callGemini' });
-    }
-    console.warn('[gemini] call failed:', err);
-    return null;
-  } finally {
-    clearTimeout(timer);
   }
+
+  // Esgotou as tentativas: degradamos para o fallback geometrico (null). So
+  // reportamos ao Sentry se a ultima falha foi realmente inesperada.
+  if (lastUnexpectedErr) captureHandledError(lastUnexpectedErr, { scope: 'callGemini' });
+  return null;
 }
 
 // ----------------------------------------------------------------------------
@@ -178,6 +204,10 @@ export async function rankDestinations(
   candidates: RankCandidate[],
   deviceContext: { city: string; country: string },
   lang: SupportedLang,
+  // Dica de preferencias do usuario (Perfil de Viajante), ja formatada em
+  // ingles (vide formatPreferenceHint). Opcional: so chega preenchida para
+  // usuarios da allowlist que preencheram o perfil; vazio => prompt atual.
+  preferenceHint?: string,
 ): Promise<RankTierResult[] | null> {
   if (candidates.length === 0) return null;
 
@@ -189,9 +219,13 @@ export async function rankDestinations(
     )
     .join('\n');
 
+  const hint = preferenceHint?.trim();
   const prompt = [
     'You are a travel curator for a global travel app.',
     `The user is near ${deviceContext.city || 'unknown'}, ${deviceContext.country || 'unknown'}.`,
+    // Preferencias do usuario (Perfil de Viajante), quando disponiveis: viram
+    // um vies de ranqueamento e de tom das descricoes, sem afrouxar as regras.
+    ...(hint ? [`User travel preferences: ${hint}`] : []),
     'From the candidate cities below (all real), rank the MOST travel-worthy cities',
     'for EACH tier present (nearby, regional, international). Prefer capitals, coastal/beach',
     'cities and well-known touristic destinations; AVOID dull inland towns with no tourism.',
@@ -200,6 +234,9 @@ export async function rankDestinations(
     `- For each tier present, return "picks": up to ${MAX_PICKS_PER_TIER} cities ordered best-first.`,
     '  Include only genuinely appealing cities; fewer is fine if only a few stand out.',
     '- Only include tiers that appear in the list.',
+    ...(hint
+      ? ['- Favor cities that best match the user travel preferences, and bias each hook to those tastes.']
+      : []),
     `- Write each "description" as a short, appealing one-line hook (max ~90 chars) in ${LANG_LABEL[lang]}.`,
     '- "category" must reflect why the city stands out: capital | coastal | touristic.',
     '',

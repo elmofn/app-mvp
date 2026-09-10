@@ -26,6 +26,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AuthCodeModal } from '@/src/components/AuthCodeModal';
 import { DismissKeyboard } from '@/src/components/DismissKeyboard';
 import { ScreenHeader } from '@/src/components/ScreenHeader';
+import { canUseTravelerProfile } from '@/src/config/featureFlags';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { formatResendCountdown, useExpiryTimer, useResendTimer } from '@/src/hooks/useResendTimer';
@@ -610,6 +611,16 @@ export default function SettingsScreen() {
             </TouchableOpacity>
 
             <View style={styles.buttonGroup}>
+              {canUseTravelerProfile(account?.accountDetails.email) ? (
+                <TouchableOpacity
+                  style={styles.buttonFilled}
+                  onPress={() => router.push('/traveler-profile')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.buttonFilledText}>{t('travelerProfile.settingsRow')}</Text>
+                </TouchableOpacity>
+              ) : null}
+
               <TouchableOpacity
                 style={styles.buttonFilled}
                 onPress={() => setAuthCodeVisible(true)}

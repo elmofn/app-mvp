@@ -118,6 +118,7 @@ function AppShell() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="signup" />
         <Stack.Screen name="settings" />
+        <Stack.Screen name="traveler-profile" />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
       {/* Gate de aceite dos termos: cobre o app quando a conta logada tem

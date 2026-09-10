@@ -1,9 +1,11 @@
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 
+import { canUseTravelerProfile } from '@/src/config/featureFlags';
 import { getAccount, LANGUAGE_COUNTRY_IDS } from '@/src/services/account';
 import { confirmRead } from '@/src/services/alerts';
 import { authenticateWithBiometric, getBiometricStatus } from '@/src/services/biometric';
+import { formatPreferenceHint, loadTravelerProfile } from '@/src/services/travelerProfile';
 import { getBanners, getGeoNextTrips } from '@/src/services/content';
 import { captureHandledError } from '@/src/services/telemetry';
 import { getFAQ, type FAQItem } from '@/src/services/faq';
@@ -78,6 +80,20 @@ export type AccountPatch = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+// Dica de preferencias (Perfil de Viajante) para o Gemini, derivada da conta.
+// Vazia (undefined) se o usuario nao esta na allowlist ou nao preencheu o
+// perfil - nesse caso a curadoria segue igual ao comportamento atual. Leitura
+// local barata (AsyncStorage por accountId); futuramente pode vir do backend.
+async function preferenceHintFor(
+  account: SignInAccountDetails | null,
+): Promise<string | undefined> {
+  if (!account) return undefined;
+  if (!canUseTravelerProfile(account.accountDetails.email)) return undefined;
+  const profile = await loadTravelerProfile(account.accountDetails.accountId);
+  const hint = formatPreferenceHint(profile);
+  return hint || undefined;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ account: null, token: null });
   const [isRestoring, setIsRestoring] = useState(true);
@@ -151,9 +167,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           // nextTrips agora vem da geolocalizacao (TripEdge), com fallback ao
           // backend dentro de getNextTripsNearby. coords ja foi resolvido acima.
+          const prefHint = await preferenceHintFor(response.accountDetails);
           [banners, nextTrips] = await Promise.all([
             getBanners(lang),
-            getGeoNextTrips(coords, lang),
+            getGeoNextTrips(coords, lang, prefHint),
           ]);
         } catch (err) {
           captureHandledError(err, { scope: 'signIn.contentFetch' });
@@ -301,10 +318,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let coords = getCachedLocation();
     if (!coords) coords = await getCurrentLocation();
 
+    const prefHint = await preferenceHintFor(current.account);
     const [snapshot, banners, nextTrips] = await Promise.all([
       getAccount(accountId, lang),
       getBanners(lang),
-      getGeoNextTrips(coords, lang),
+      getGeoNextTrips(coords, lang, prefHint),
     ]);
 
     // O idioma do app e uma preferencia do usuario (countryId/setups.lang, o

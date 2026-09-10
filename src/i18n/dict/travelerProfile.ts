@@ -1,0 +1,115 @@
+import type { SupportedLang } from '@/src/services/locale';
+
+// Namespace: travelerProfile — questionario do Perfil de Viajante (tela
+// app/traveler-profile.tsx) e a linha de entrada no settings. As preferencias
+// personalizam a curadoria de destinos da home (injetadas no prompt do Gemini).
+export const travelerProfile: Record<SupportedLang, Record<string, any>> = {
+  'en-US': {
+    settingsRow: 'Traveler profile',
+    screenHeaderTitle: 'Traveler profile',
+    eyebrow: 'PERSONALIZATION',
+    titleFirst: 'Your travel ',
+    titleAccent: 'taste',
+    intro: 'Tell us how you like to travel and we’ll tailor your destination ideas.',
+    stylesTitle: 'What do you enjoy most? (pick any)',
+    companyTitle: 'Who do you usually travel with?',
+    budgetTitle: 'Your usual budget',
+    tripLengthTitle: 'Typical trip length',
+    dreamTitle: 'Dream destination (optional)',
+    dreamPlaceholder: 'e.g. Japan, Patagonia, Lisbon…',
+    save: 'Save profile',
+    saved: 'Profile saved',
+    // Styles
+    style_beach: 'Beaches',
+    style_city: 'Big cities',
+    style_adventure: 'Adventure',
+    style_culture: 'Culture & history',
+    style_gastronomy: 'Food & gastronomy',
+    style_nature: 'Nature',
+    // Company
+    company_solo: 'Solo',
+    company_couple: 'Couple',
+    company_family: 'Family',
+    company_friends: 'Friends',
+    // Budget
+    budget_economy: 'Budget-friendly',
+    budget_moderate: 'Moderate',
+    budget_premium: 'Premium',
+    // Trip length
+    tripLength_dayTrip: 'Day trips',
+    tripLength_weekend: 'Weekend getaways',
+    tripLength_extended: 'A week or more',
+  },
+  'pt-BR': {
+    settingsRow: 'Perfil de viajante',
+    screenHeaderTitle: 'Perfil de viajante',
+    eyebrow: 'PERSONALIZAÇÃO',
+    titleFirst: 'Seu estilo de ',
+    titleAccent: 'viajar',
+    intro: 'Conte como você gosta de viajar e personalizamos suas ideias de destino.',
+    stylesTitle: 'O que você mais curte? (escolha quantos quiser)',
+    companyTitle: 'Com quem você costuma viajar?',
+    budgetTitle: 'Seu orçamento habitual',
+    tripLengthTitle: 'Duração típica da viagem',
+    dreamTitle: 'Destino dos sonhos (opcional)',
+    dreamPlaceholder: 'ex.: Japão, Patagônia, Lisboa…',
+    save: 'Salvar perfil',
+    saved: 'Perfil salvo',
+    // Styles
+    style_beach: 'Praias',
+    style_city: 'Grandes cidades',
+    style_adventure: 'Aventura',
+    style_culture: 'Cultura & história',
+    style_gastronomy: 'Gastronomia',
+    style_nature: 'Natureza',
+    // Company
+    company_solo: 'Sozinho(a)',
+    company_couple: 'Casal',
+    company_family: 'Família',
+    company_friends: 'Amigos',
+    // Budget
+    budget_economy: 'Econômico',
+    budget_moderate: 'Moderado',
+    budget_premium: 'Premium',
+    // Trip length
+    tripLength_dayTrip: 'Bate-volta',
+    tripLength_weekend: 'Fim de semana',
+    tripLength_extended: 'Uma semana ou mais',
+  },
+  'es-ES': {
+    settingsRow: 'Perfil de viajero',
+    screenHeaderTitle: 'Perfil de viajero',
+    eyebrow: 'PERSONALIZACIÓN',
+    titleFirst: 'Tu estilo de ',
+    titleAccent: 'viajar',
+    intro: 'Cuéntanos cómo te gusta viajar y personalizamos tus ideas de destino.',
+    stylesTitle: '¿Qué disfrutas más? (elige los que quieras)',
+    companyTitle: '¿Con quién sueles viajar?',
+    budgetTitle: 'Tu presupuesto habitual',
+    tripLengthTitle: 'Duración típica del viaje',
+    dreamTitle: 'Destino soñado (opcional)',
+    dreamPlaceholder: 'ej.: Japón, Patagonia, Lisboa…',
+    save: 'Guardar perfil',
+    saved: 'Perfil guardado',
+    // Styles
+    style_beach: 'Playas',
+    style_city: 'Grandes ciudades',
+    style_adventure: 'Aventura',
+    style_culture: 'Cultura e historia',
+    style_gastronomy: 'Gastronomía',
+    style_nature: 'Naturaleza',
+    // Company
+    company_solo: 'Solo(a)',
+    company_couple: 'Pareja',
+    company_family: 'Familia',
+    company_friends: 'Amigos',
+    // Budget
+    budget_economy: 'Económico',
+    budget_moderate: 'Moderado',
+    budget_premium: 'Premium',
+    // Trip length
+    tripLength_dayTrip: 'Excursiones de un día',
+    tripLength_weekend: 'Escapadas de fin de semana',
+    tripLength_extended: 'Una semana o más',
+  },
+};

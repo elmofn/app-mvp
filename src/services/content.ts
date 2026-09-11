@@ -218,12 +218,6 @@ const CATEGORY_TAG_KEYS: Record<RankCategory, string> = {
 
 const MAX_CANDIDATES_PER_TIER = 10; // teto por faixa enviado ao Gemini (equilibrio entre variedade da shortlist e latencia)
 
-// Sorteia um item da lista (para variar o place mostrado a cada login/refresh).
-function pickRandom<T>(list: T[]): T | null {
-  if (list.length === 0) return null;
-  return list[Math.floor(Math.random() * list.length)];
-}
-
 type TripCandidate = { place: Place; tagKey: string; description?: string };
 
 // PHOTO-GATE: escolhe UM card de um tier ENTRE os candidatos que tem foto no
@@ -237,11 +231,11 @@ type TripCandidate = { place: Place; tagKey: string; description?: string };
 async function pickTripWithPhoto(
   candidates: TripCandidate[],
   lang: SupportedLang,
-  preferFirst: boolean,
 ): Promise<SignInNextTrip | null> {
-  let pool = candidates;
-  if (!preferFirst) pool = [...pool].sort(() => Math.random() - 0.5);
-  pool = pool.slice(0, PHOTO_LOOKUP_CAP);
+  // PRESERVA a ordem do Gemini (melhor-primeiro = mais aderente a preferencia).
+  // NAO embaralha: embaralhar atropelava o ranqueamento e podia trazer cidades
+  // que nao casam com o perfil. Consulta as fotos das TOP candidatas em ordem.
+  const pool = candidates.slice(0, PHOTO_LOOKUP_CAP);
   if (pool.length === 0) return null;
 
   const photos = await Promise.all(
@@ -252,8 +246,22 @@ async function pickTripWithPhoto(
     .filter((x): x is { c: TripCandidate; photo: string } => !!x.photo);
   if (withPhoto.length === 0) return null;
 
-  const entry = preferFirst ? withPhoto[0] : (pickRandom(withPhoto) ?? withPhoto[0]);
+  // Sorteio PONDERADO favorecendo o topo: mantem a variedade (nao repete sempre
+  // a mesma) sem trair a preferencia/qualidade - o 1o tem peso n, o ultimo 1.
+  const entry = withPhoto[weightedFrontIndex(withPhoto.length)];
   return placeToTrip(entry.c.place, entry.c.tagKey, lang, entry.photo, entry.c.description);
+}
+
+// Indice [0..n) sorteado com peso linear decrescente (peso n no 1o, 1 no ultimo).
+function weightedFrontIndex(n: number): number {
+  if (n <= 1) return 0;
+  const total = (n * (n + 1)) / 2;
+  let r = Math.random() * total;
+  for (let i = 0; i < n; i += 1) {
+    r -= n - i;
+    if (r < 0) return i;
+  }
+  return 0;
 }
 
 export async function getGeoNextTrips(
@@ -360,9 +368,9 @@ export async function getGeoNextTrips(
     // disjuntas por distancia, sem risco de repetir place entre elas).
     const dream = opts?.dreamDestination?.trim();
     const [nearTrip, midTrip, farTrip, dreamPhoto] = await Promise.all([
-      pickTripWithPhoto(bandCandidates('near'), lang, false),
-      pickTripWithPhoto(bandCandidates('mid'), lang, false),
-      pickTripWithPhoto(bandCandidates('far'), lang, false),
+      pickTripWithPhoto(bandCandidates('near'), lang),
+      pickTripWithPhoto(bandCandidates('mid'), lang),
+      pickTripWithPhoto(bandCandidates('far'), lang),
       dream
         ? withTimeout(getCityPhoto({ display_name: dream } as Place), PHOTO_TIMEOUT_MS, null)
         : Promise.resolve(null),
@@ -392,7 +400,7 @@ export async function getGeoNextTrips(
       console.log(
         '[content] geo trips:',
         trips.map((t) => `${t.tag}=${t.title}`).join(' | '),
-        `| ${ranked.length} places, deviceCountry=${deviceCountry || '?'}, farthest=${Math.round(ranked[ranked.length - 1].dist)}km, curator=${aiByBand.size ? `gemini(${aiByBand.size})` : 'geometric'}${opts?.preferenceHint ? ', prefs=on' : ''}${dream ? ', dream=on' : ''}`,
+        `| ${ranked.length} places, deviceCountry=${deviceCountry || '?'}, farthest=${Math.round(ranked[ranked.length - 1].dist)}km, curator=${aiByBand.size ? `gemini(${aiByBand.size})` : 'geometric'}${opts?.preferenceHint ? ` | prefs="${opts.preferenceHint}"` : ' | prefs=off'}${dream ? `, dream="${dream}"` : ''}`,
       );
     }
 

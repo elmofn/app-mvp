@@ -6,22 +6,60 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "environment": "development",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "staging"
+      }
     },
     "preview": {
       "distribution": "internal",
+      "environment": "preview",
       "android": {
         "buildType": "apk"
       },
       "ios": {
         "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "staging"
+      }
+    },
+    "staging": {
+      "autoIncrement": true,
+      "environment": "preview",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "staging"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "environment": "production",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "production"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "staging": {
+      "android": {
+        "track": "internal"
+      },
+      // iOS nao tem "track": o build sobe para o App Store Connect e fica
+      // disponivel no TestFlight (equivalente ao internal testing do Android).
+      // O appleId (e-mail de login) NAO fica aqui - e credencial; o `eas submit`
+      // pergunta interativamente. ascAppId = App ID numerico do App Store Connect;
+      // appleTeamId = Team ID (Membership no developer.apple.com).
+      "ios": {
+        "ascAppId": "6802664762",
+        "appleTeamId": "97B9Z94N86"
+      }
+    },
+    "production": {
+      "ios": {
+        "ascAppId": "6802664762",
+        "appleTeamId": "97B9Z94N86"
+      }
+    }
   }
 }

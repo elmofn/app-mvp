@@ -121,9 +121,12 @@ export async function getNextTrips(lang: SupportedLang): Promise<SignInNextTrip[
 const MAX_RADIUS_KM = 500; // teto imposto pela API da TripEdge (ampliado de 300 -> 500)
 const PROBE_DISTANCE_KM = 1000; // distancia dos pontos-sonda ao device (raio 500 -> cobertura continua ate ~1500km)
 const PROBE_BEARINGS = [0, 45, 90, 135, 180, 225, 270, 315]; // 8 rumos (N, NE, ...)
-const NEARBY_MAX_KM = 100; // acima disso ja nao conta como "perto"
-const MID_MIN_KM = 500;
-const MID_MAX_KM = 1000;
+// Bandas de distancia (ordem de proximidade dos cards): near -> mid -> far.
+// A ordem de prioridade e por proximidade: o mais perto primeiro, depois ~400km,
+// depois ~1000km. Places alem de FAR_MAX_KM sao descartados.
+const NEAR_MAX_KM = 150; // banda "perto"
+const MID_MAX_KM = 450; // banda "~400 km" (150-450)
+const FAR_MAX_KM = 1100; // banda "~1000 km" (450-1100); probes chegam a ~1500, cortamos aqui
 const PHOTO_TIMEOUT_MS = 4000; // teto por busca de foto (fonte a definir; nao atrasar o sign-in)
 const PHOTO_LOOKUP_CAP = 6; // fotos consultadas por tier no photo-gate (cacheadas + paralelas)
 
@@ -178,35 +181,39 @@ function placeToTrip(
   descriptionOverride?: string,
 ): SignInNextTrip {
   const name = placeName(place);
-  const description =
-    descriptionOverride?.trim() ||
-    [placeRegion(place), placeCountry(place)].filter(Boolean).join(', ') ||
-    name;
+  const region = placeRegion(place);
+  const country = placeCountry(place);
+  // Titulo no formato "Cidade, Estado" (ex.: "Gramado, Rio Grande do Sul").
+  // Sem estado/regiao, cai para "Cidade, Pais"; sem nenhum, so a cidade.
+  const title = region ? `${name}, ${region}` : country ? `${name}, ${country}` : name;
   const id = placeId(place);
   return {
     id,
     placeId: id, // usado pelo deep-link do card (busca TripEdge por place_id)
-    title: name,
+    title,
     tag: translate(lang, tagKey),
-    description, // descricao curada pelo Gemini, ou regiao/pais como fallback
-    imageUrl, // foto real da cidade (Google imagens); '' => NextTrips mostra o generico
+    // Hook curado pelo Gemini (a cidade/estado ja vao no titulo). Sem hook
+    // (fallback geometrico), fica vazio - o titulo + a tag ja se sustentam.
+    description: descriptionOverride?.trim() ?? '',
+    imageUrl, // foto real da cidade; '' => NextTrips mostra o generico
   };
 }
 
-// Faixas por distancia usadas tanto na selecao geometrica quanto para rotular as
-// candidatas enviadas ao Gemini.
+// Tag de fallback por banda de distancia (usada so quando o Gemini nao curou a
+// banda e nao ha categoria). O normal e a tag vir da CATEGORIA (abaixo).
 const TIER_TAG_KEYS: Record<RankTier, string> = {
-  nearby: 'home.tripTagNearby',
-  regional: 'home.tripTagRegional',
-  international: 'home.tripTagInternational',
+  near: 'home.tripTagNearby',
+  mid: 'home.tripTagRegional',
+  far: 'home.tripTagFar',
 };
 
 // Categoria escolhida pelo Gemini -> tag exibida no card ("Capital", "Litoral",
-// "Turística"). Melhora a apresentacao em relacao a mera faixa de distancia.
+// "Turística", "Natureza"). Melhora a apresentacao em relacao a mera distancia.
 const CATEGORY_TAG_KEYS: Record<RankCategory, string> = {
   capital: 'home.tripTagCapital',
   coastal: 'home.tripTagCoastal',
   touristic: 'home.tripTagTouristic',
+  nature: 'home.tripTagNature',
 };
 
 const MAX_CANDIDATES_PER_TIER = 10; // teto por faixa enviado ao Gemini (equilibrio entre variedade da shortlist e latencia)
@@ -223,11 +230,10 @@ type TripCandidate = { place: Place; tagKey: string; description?: string };
 // Wikimedia (getCityPhoto != null). Isso filtra "cidades mortas do interior"
 // (sem foto de destaque na Wikipedia = sinal forte de baixa relevancia) e
 // atende a regra de so mostrar places com foto. Consulta ate PHOTO_LOOKUP_CAP
-// fotos por tier (cacheadas + em paralelo). preferFirst=true mantem o primeiro
-// candidato (a cidade do device) quando ele tem foto; senao sorteia entre os
-// que tem (variedade). Retorna null se nenhum candidato do tier tiver foto.
-// Os tiers sao disjuntos (por distancia/pais), entao nao ha risco de repetir um
-// place entre eles - por isso nao precisamos de dedup cross-tier aqui.
+// fotos por banda (cacheadas + em paralelo). preferFirst=true mantem o primeiro
+// candidato (quando ele tem foto); false sorteia entre os que tem (variedade).
+// Retorna null se nenhum candidato da banda tiver foto. As bandas sao disjuntas
+// (por distancia), entao nao ha risco de repetir um place entre elas.
 async function pickTripWithPhoto(
   candidates: TripCandidate[],
   lang: SupportedLang,
@@ -284,43 +290,38 @@ export async function getGeoNextTrips(
     const deviceCountryLabel = placeCountry(ranked[0].place);
     const deviceCity = placeName(ranked[0].place);
 
-    // Pools geometricos por faixa - fallback quando o Gemini nao curar um tier.
-    // A relevancia nesse caminho vem do PHOTO-GATE (cidade sem foto no Wikimedia
-    // = provavel cidade morta do interior -> nao entra).
-    const midBand = ranked.filter((r) => r.dist >= MID_MIN_KM && r.dist <= MID_MAX_KM);
-    const midFallback = ranked.filter((r) => r.dist > NEARBY_MAX_KM);
-    const intlPool = ranked.filter((r) => {
-      const c = placeCountry(r.place).toLowerCase();
-      return c && deviceCountry && c !== deviceCountry;
-    });
+    // Classifica cada place numa banda de distancia (ordem de proximidade dos
+    // cards): near -> mid (~400km) -> far (~1000km). Alem de FAR_MAX_KM, descarta.
+    const bandFor = (dist: number): RankTier | null =>
+      dist <= NEAR_MAX_KM ? 'near' : dist <= MID_MAX_KM ? 'mid' : dist <= FAR_MAX_KM ? 'far' : null;
+
+    // Pools geometricos por banda (ordenados por distancia) - fallback quando o
+    // Gemini nao curar aquela banda. A relevancia nesse caminho vem do PHOTO-GATE.
+    const geoPools: Record<RankTier, RankedPlace[]> = { near: [], mid: [], far: [] };
+    for (const r of ranked) {
+      const band = bandFor(r.dist);
+      if (band) geoPools[band].push(r);
+    }
 
     // --- Curadoria pelo Gemini (preferida) -------------------------------------
-    // Monta candidatas reais (com placeId) rotuladas por faixa, com teto por
-    // tier, e pede ao Gemini uma shortlist das mais turisticas/relevantes de cada
-    // faixa (evita cidades sem apelo, salvo se as preferencias pedirem). Qualquer
-    // falha/timeout retorna null e caimos no pool geometrico + photo-gate.
+    // Candidatas reais por banda (com teto). Inclui a banda 'near': o card 1
+    // agora tambem e CURADO (nao mais a cidade crua do device). Prioridade: o
+    // Perfil de Viajante manda; sem perfil, foco em capitais/praias/turisticas/
+    // natureza (interior so se turistico). Falha/timeout => pool geometrico.
     const candidates: RankCandidate[] = [];
-    const perTierCount: Record<RankTier, number> = { nearby: 0, regional: 0, international: 0 };
+    const perBandCount: Record<RankTier, number> = { near: 0, mid: 0, far: 0 };
     for (const r of ranked) {
-      const country = placeCountry(r.place).toLowerCase();
-      const tier: RankTier =
-        country && deviceCountry && country !== deviceCountry
-          ? 'international'
-          : r.dist <= NEARBY_MAX_KM
-            ? 'nearby'
-            : 'regional';
-      // 'nearby' nao vai para o Gemini: o card 1 e sempre a cidade do device
-      // (deterministico). Curadoria/variedade ficam para regional e intl.
-      if (tier === 'nearby') continue;
-      if (perTierCount[tier] >= MAX_CANDIDATES_PER_TIER) continue;
-      perTierCount[tier] += 1;
+      const band = bandFor(r.dist);
+      if (!band) continue;
+      if (perBandCount[band] >= MAX_CANDIDATES_PER_TIER) continue;
+      perBandCount[band] += 1;
       candidates.push({
         placeId: placeId(r.place),
         name: placeName(r.place),
         region: placeRegion(r.place),
         country: placeCountry(r.place),
         distanceKm: r.dist,
-        tier,
+        tier: band,
       });
     }
 
@@ -330,58 +331,47 @@ export async function getGeoNextTrips(
       lang,
       opts?.preferenceHint,
     );
-    // Shortlist curada por tier (melhor primeiro). byId resolve placeId -> Place.
     const byId = new Map(ranked.map((r) => [placeId(r.place), r.place] as const));
-    const aiByTier = new Map<RankTier, RankPick[]>();
+    const aiByBand = new Map<RankTier, RankPick[]>();
     if (aiResults) {
-      for (const res of aiResults) aiByTier.set(res.tier, res.picks);
+      for (const res of aiResults) aiByBand.set(res.tier, res.picks);
     }
 
-    // Lista de candidatos de um tier: shortlist do Gemini (relevante) ou, se
-    // faltar, o pool geometrico ordenado por distancia (filtrado pelo photo-gate).
-    const tierCandidates = (tier: 'regional' | 'international'): TripCandidate[] => {
-      const picks = aiByTier.get(tier);
+    // Candidatos {place, tag, hook} de uma banda: shortlist do Gemini (relevante)
+    // ou, se faltar, o pool geometrico da banda (filtrado depois pelo photo-gate).
+    const bandCandidates = (band: RankTier): TripCandidate[] => {
+      const picks = aiByBand.get(band);
       if (picks?.length) {
         return picks
           .filter((p) => byId.has(p.placeId))
           .map((p) => ({
             place: byId.get(p.placeId)!,
-            tagKey: CATEGORY_TAG_KEYS[p.category] ?? TIER_TAG_KEYS[tier],
+            tagKey: CATEGORY_TAG_KEYS[p.category] ?? TIER_TAG_KEYS[band],
             description: p.description,
           }));
       }
-      const pool = tier === 'regional' ? (midBand.length ? midBand : midFallback) : intlPool;
-      return pool.map((r) => ({ place: r.place, tagKey: TIER_TAG_KEYS[tier] }));
+      return geoPools[band].map((r) => ({ place: r.place, tagKey: TIER_TAG_KEYS[band] }));
     };
 
     // --- Montagem final com PHOTO-GATE -----------------------------------------
-    // Por tier, escolhemos um place ENTRE os que tem foto no Wikimedia. Tier sem
-    // nenhum place com foto simplesmente nao renderiza (sem card generico). Os 3
-    // tiers (+ foto do destino dos sonhos) rodam em PARALELO: sao disjuntos, entao
-    // nao ha dedup entre eles, e o photo-gate nao vira gargalo no login.
-    const deviceCityPlace = ranked[0].place;
-    const nearbyCandidates: TripCandidate[] = [
-      { place: deviceCityPlace, tagKey: TIER_TAG_KEYS.nearby },
-      ...ranked
-        .filter((r) => r.dist <= NEARBY_MAX_KM && placeId(r.place) !== placeId(deviceCityPlace))
-        .map((r) => ({ place: r.place, tagKey: TIER_TAG_KEYS.nearby })),
-    ];
+    // Um card por banda (near -> mid -> far), sorteado ENTRE os que tem foto no
+    // Wikimedia. Banda sem nenhum place com foto nao renderiza (sem card generico).
+    // As 3 bandas + a foto do destino dos sonhos rodam em PARALELO (bandas
+    // disjuntas por distancia, sem risco de repetir place entre elas).
     const dream = opts?.dreamDestination?.trim();
-
-    const [nearbyTrip, regionalTrip, intlTrip, dreamPhoto] = await Promise.all([
-      // nearby: prefere a cidade do device no topo (card 1 estavel).
-      pickTripWithPhoto(nearbyCandidates, lang, true),
-      pickTripWithPhoto(tierCandidates('regional'), lang, false),
-      pickTripWithPhoto(tierCandidates('international'), lang, false),
+    const [nearTrip, midTrip, farTrip, dreamPhoto] = await Promise.all([
+      pickTripWithPhoto(bandCandidates('near'), lang, false),
+      pickTripWithPhoto(bandCandidates('mid'), lang, false),
+      pickTripWithPhoto(bandCandidates('far'), lang, false),
       dream
         ? withTimeout(getCityPhoto({ display_name: dream } as Place), PHOTO_TIMEOUT_MS, null)
         : Promise.resolve(null),
     ]);
 
     const trips: SignInNextTrip[] = [];
-    if (nearbyTrip) trips.push(nearbyTrip);
-    if (regionalTrip) trips.push(regionalTrip);
-    if (intlTrip) trips.push(intlTrip);
+    if (nearTrip) trips.push(nearTrip);
+    if (midTrip) trips.push(midTrip);
+    if (farTrip) trips.push(farTrip);
 
     // Card extra: destino dos sonhos (perfil). Sem place_id => inspiracional (nao
     // clicavel). Photo-gate tambem se aplica: so entra se houver foto no
@@ -402,7 +392,7 @@ export async function getGeoNextTrips(
       console.log(
         '[content] geo trips:',
         trips.map((t) => `${t.tag}=${t.title}`).join(' | '),
-        `| ${ranked.length} places, deviceCountry=${deviceCountry || '?'}, farthest=${Math.round(ranked[ranked.length - 1].dist)}km, curator=${aiByTier.size ? `gemini(${aiByTier.size})` : 'geometric'}${opts?.preferenceHint ? ', prefs=on' : ''}${dream ? ', dream=on' : ''}`,
+        `| ${ranked.length} places, deviceCountry=${deviceCountry || '?'}, farthest=${Math.round(ranked[ranked.length - 1].dist)}km, curator=${aiByBand.size ? `gemini(${aiByBand.size})` : 'geometric'}${opts?.preferenceHint ? ', prefs=on' : ''}${dream ? ', dream=on' : ''}`,
       );
     }
 

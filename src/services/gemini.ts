@@ -129,17 +129,21 @@ async function callGemini<T>(
 
 // ----------------------------------------------------------------------------
 // rankDestinations: dada a lista de candidatas REAIS (com placeId) e o contexto
-// do device, pede ao Gemini uma SHORTLIST ranqueada das cidades mais turisticas
-// por faixa (nearby / regional / international) - nao so a melhor. O app sorteia
-// dentro da shortlist (vide content.ts) para variar o place a cada login/refresh
-// sem perder a curadoria (o Gemini ordenaria sempre igual). O responseSchema
-// forca o modelo a devolver APENAS placeIds da lista (anti-alucinacao) + uma
-// categoria e uma descricao atraente no idioma do usuario. Retorna null em
-// qualquer falha (chamador cai no fallback geometrico).
+// do device, pede ao Gemini uma SHORTLIST ranqueada das cidades mais atraentes
+// por banda de distancia (near / mid / far) - nao so a melhor. Prioridade: o
+// Perfil de Viajante (preferenceHint) manda; sem perfil, foco em capitais,
+// praias, cidades turisticas e natureza (interior so se turistico). O app
+// sorteia dentro da shortlist (vide content.ts) para variar a cada refresh. O
+// responseSchema forca o modelo a devolver APENAS placeIds da lista (anti-
+// alucinacao) + categoria + hook no idioma do usuario. null em qualquer falha.
 // ----------------------------------------------------------------------------
 
-export type RankTier = 'nearby' | 'regional' | 'international';
-export type RankCategory = 'capital' | 'coastal' | 'touristic';
+// Bandas de distancia (ordem de proximidade): near (mais perto) -> mid (~400km)
+// -> far (~1000km). O card 1 sai de 'near', depois 'mid', depois 'far'.
+export type RankTier = 'near' | 'mid' | 'far';
+// Por que a cidade se destaca (vira a tag do card): capital, litoral/praia,
+// turistica (ex.: Gramado) ou natureza.
+export type RankCategory = 'capital' | 'coastal' | 'touristic' | 'nature';
 
 export type RankCandidate = {
   placeId: string;
@@ -167,7 +171,7 @@ export type RankTierResult = {
 // shortlist a cada refresh (vide content.ts), entao uma lista mais longa =
 // mais variedade de cidades mostradas, em vez de repetir sempre as 2-3 do topo.
 const MAX_PICKS_PER_TIER = 8;
-const RANK_CATEGORIES: RankCategory[] = ['capital', 'coastal', 'touristic'];
+const RANK_CATEGORIES: RankCategory[] = ['capital', 'coastal', 'touristic', 'nature'];
 
 const LANG_LABEL: Record<SupportedLang, string> = {
   'en-US': 'English',
@@ -182,14 +186,14 @@ const RANK_RESPONSE_SCHEMA: Record<string, unknown> = {
   items: {
     type: 'object',
     properties: {
-      tier: { type: 'string', enum: ['nearby', 'regional', 'international'] },
+      tier: { type: 'string', enum: ['near', 'mid', 'far'] },
       picks: {
         type: 'array',
         items: {
           type: 'object',
           properties: {
             placeId: { type: 'string' },
-            category: { type: 'string', enum: ['capital', 'coastal', 'touristic'] },
+            category: { type: 'string', enum: ['capital', 'coastal', 'touristic', 'nature'] },
             description: { type: 'string' },
           },
           required: ['placeId', 'category', 'description'],
@@ -219,36 +223,53 @@ export async function rankDestinations(
   const lines = candidates
     .map(
       (c) =>
-        `- placeId=${c.placeId} | ${c.name}${c.region ? `, ${c.region}` : ''}, ${c.country} | ${Math.round(c.distanceKm)}km | tier=${c.tier}`,
+        `- placeId=${c.placeId} | ${c.name}${c.region ? `, ${c.region}` : ''}, ${c.country} | ${Math.round(c.distanceKm)}km | band=${c.tier}`,
     )
     .join('\n');
 
   const hint = preferenceHint?.trim();
   const prompt = [
-    'You are a travel curator for a global travel app.',
-    `The user is near ${deviceContext.city || 'unknown'}, ${deviceContext.country || 'unknown'}.`,
-    // Preferencias do usuario (Perfil de Viajante), quando disponiveis: viram
-    // um vies de ranqueamento e de tom das descricoes, sem afrouxar as regras.
-    ...(hint ? [`User travel preferences: ${hint}`] : []),
-    'From the candidate cities below (all real), rank the MOST travel-worthy cities',
-    'for EACH tier present (nearby, regional, international). Prefer capitals, coastal/beach',
-    'cities and well-known touristic destinations; AVOID dull inland towns with no tourism',
-    ...(hint
-      ? ['UNLESS they clearly match the user travel preferences above (e.g. nature, off-the-beaten-path, interior).']
-      : ['(no exceptions - only genuinely appealing, well-known destinations).']),
-    'Rules:',
-    '- Use ONLY placeId values from the list. Never invent a city or a placeId.',
-    `- For each tier present, return "picks": a DIVERSE shortlist of up to ${MAX_PICKS_PER_TIER} genuinely`,
-    '  appealing cities, ordered best-first. Offer SEVERAL strong options per tier (not just the single',
-    '  best) so the app can vary which one it shows; still exclude dull towns with no tourism.',
-    '- Only include tiers that appear in the list.',
-    ...(hint
-      ? ['- Favor cities that best match the user travel preferences, and bias each hook to those tastes.']
-      : []),
-    `- Write each "description" as a short, appealing one-line hook (max ~90 chars) in ${LANG_LABEL[lang]}.`,
-    '- "category" must reflect why the city stands out: capital | coastal | touristic.',
+    'You are an expert travel curator for a travel-rewards app. Your job is to pick',
+    'the most travel-worthy destinations to inspire the user\'s next trip.',
     '',
-    'Candidates:',
+    `The user is currently in ${deviceContext.city || 'an unknown city'}, ${deviceContext.country || 'an unknown country'}.`,
+    'The candidate cities below are REAL and grouped by distance band:',
+    '  near = closest to the user | mid = up to ~400km | far = up to ~1000km.',
+    '',
+    // Prioridade 1: Perfil do Viajante. Quando existe, manda no ranqueamento.
+    ...(hint
+      ? [
+          'TOP PRIORITY - the user\'s travel profile:',
+          `  ${hint}`,
+          'Rank destinations that fit this profile ABOVE everything else. When the profile',
+          'points to nature, interior or off-the-beaten-path places, include those even if',
+          'they are small - as long as they genuinely fit the profile.',
+          '',
+        ]
+      : []),
+    'Pick the BEST destinations for EACH band that appears, in this order of appeal:',
+    `  ${hint ? 'first, whatever matches the profile above; then ' : ''}capitals, beach/coastal`,
+    '  cities, well-known touristic cities, and nature/scenic destinations.',
+    ...(hint
+      ? []
+      : [
+          'DEFAULT RULE (no profile): do NOT pick dull interior towns with no tourism.',
+          'The ONLY interior cities allowed are well-known touristic ones (e.g. Gramado-RS,',
+          'Campos do Jordao-SP, Bonito-MS). When in doubt, leave it out.',
+        ]),
+    '',
+    'Rules:',
+    '- Use ONLY placeId values from the list. NEVER invent a city or a placeId.',
+    `- For each band present, return "picks": a DIVERSE shortlist of up to ${MAX_PICKS_PER_TIER}`,
+    '  genuinely appealing cities, ordered best-first. Give SEVERAL options (not just one)',
+    '  so the app can vary which it shows. Fewer is fine if only a few truly stand out.',
+    '- Only include bands that actually appear in the candidate list.',
+    '- "category" = the single best reason it stands out: capital | coastal | touristic | nature.',
+    `- "description" = one short, vivid hook (max ~90 chars) in ${LANG_LABEL[lang]} that makes`,
+    '  the user want to go. Do NOT put the city or state/country name in the hook (the app',
+    '  already shows "City, State" next to it).',
+    '',
+    'Candidates (placeId | city, state, country | distance | band):',
     lines,
   ].join('\n');
 
@@ -261,7 +282,7 @@ export async function rankDestinations(
   //   ate o teto da shortlist;
   // - categoria coagida para um valor valido.
   const validIds = new Set(candidates.map((c) => c.placeId));
-  const validTiers: RankTier[] = ['nearby', 'regional', 'international'];
+  const validTiers: RankTier[] = ['near', 'mid', 'far'];
   const seenTiers = new Set<RankTier>();
   const out: RankTierResult[] = [];
 

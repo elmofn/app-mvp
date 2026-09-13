@@ -21,7 +21,7 @@ import { captureHandledError } from './telemetry';
 //   Fase 2 (ANTES DE ESCALAR) - RECOMENDADO: o backend faz PROXY da chamada
 //     (app -> backend -> Gemini). A chave fica server-side e NUNCA toca o device
 //     = de fato seguro. No app muda so o corpo de `callGemini` (chamar o endpoint
-//     em vez do Google); `rankDestinations` e o resto do fluxo nao mudam.
+//     em vez do Google); `generateDestinations` e o resto do fluxo nao mudam.
 //     Alternativa consciente: o backend manda a chave no payload do signin
 //     (melhor que hardcoded, mas ainda extraivel por usuario logado).
 //
@@ -30,7 +30,7 @@ import { captureHandledError } from './telemetry';
 // ============================================================================
 
 // ⚠️ TEMPORARIO / Fase 1 - preencher com a chave restrita (ou definir
-// EXPO_PUBLIC_GEMINI_API_KEY no ambiente de build). Vazio => rankDestinations
+// EXPO_PUBLIC_GEMINI_API_KEY no ambiente de build). Vazio => generateDestinations
 // devolve null e a home cai na selecao geometrica atual (degrada, nao quebra).
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? '';
 
@@ -128,50 +128,34 @@ async function callGemini<T>(
 }
 
 // ----------------------------------------------------------------------------
-// rankDestinations: dada a lista de candidatas REAIS (com placeId) e o contexto
-// do device, pede ao Gemini uma SHORTLIST ranqueada das cidades mais atraentes
-// por banda de distancia (near / mid / far) - nao so a melhor. Prioridade: o
-// Perfil de Viajante (preferenceHint) manda; sem perfil, foco em capitais,
-// praias, cidades turisticas e natureza (interior so se turistico). O app
-// sorteia dentro da shortlist (vide content.ts) para variar a cada refresh. O
-// responseSchema forca o modelo a devolver APENAS placeIds da lista (anti-
-// alucinacao) + categoria + hook no idioma do usuario. null em qualquer falha.
+// generateDestinations: em vez de RANQUEAR um pool ruim vindo da varredura por
+// coordenada (que pega cidades mortas e perde as gemas), o Gemini GERA os
+// melhores destinos reais que ele conhece, por banda de distancia a partir do
+// device, priorizando o Perfil de Viajante. O content.ts depois RESOLVE cada
+// destino para um place_id real via busca por coordenada da TripEdge (as coords
+// vem do proprio Gemini). Isso corrige a raiz: a QUALIDADE dos destinos deixa de
+// depender da cobertura da TripEdge. Retorna null em qualquer falha.
 // ----------------------------------------------------------------------------
 
-// Bandas de distancia (ordem de proximidade): near (mais perto) -> mid (~400km)
-// -> far (~1000km). O card 1 sai de 'near', depois 'mid', depois 'far'.
-export type RankTier = 'near' | 'mid' | 'far';
+// Banda de distancia do destino a partir do device: near -> mid -> far.
+export type GenBand = 'near' | 'mid' | 'far';
 // Por que a cidade se destaca (vira a tag do card): capital, litoral/praia,
 // turistica (ex.: Gramado) ou natureza.
-export type RankCategory = 'capital' | 'coastal' | 'touristic' | 'nature';
+export type GenCategory = 'capital' | 'coastal' | 'touristic' | 'nature';
 
-export type RankCandidate = {
-  placeId: string;
-  name: string;
-  region: string;
+export type GeneratedDestination = {
+  name: string; // cidade
+  region: string; // estado/provincia
   country: string;
-  distanceKm: number;
-  tier: RankTier;
+  lat: number; // coords aproximadas (para resolver o place_id na TripEdge)
+  lng: number;
+  category: GenCategory;
+  band: GenBand;
+  description: string; // hook no idioma do usuario
 };
 
-// Uma cidade curada (dentro de um tier).
-export type RankPick = {
-  placeId: string;
-  category: RankCategory;
-  description: string;
-};
-
-// Shortlist ranqueada (melhor primeiro) de um tier.
-export type RankTierResult = {
-  tier: RankTier;
-  picks: RankPick[];
-};
-
-// Teto da shortlist por tier. Maior (8) de proposito: o app SORTEIA dentro da
-// shortlist a cada refresh (vide content.ts), entao uma lista mais longa =
-// mais variedade de cidades mostradas, em vez de repetir sempre as 2-3 do topo.
-const MAX_PICKS_PER_TIER = 8;
-const RANK_CATEGORIES: RankCategory[] = ['capital', 'coastal', 'touristic', 'nature'];
+const GEN_CATEGORIES: GenCategory[] = ['capital', 'coastal', 'touristic', 'nature'];
+const GEN_BANDS: GenBand[] = ['near', 'mid', 'far'];
 
 const LANG_LABEL: Record<SupportedLang, string> = {
   'en-US': 'English',
@@ -179,140 +163,119 @@ const LANG_LABEL: Record<SupportedLang, string> = {
   'es-ES': 'Spanish',
 };
 
-// Schema (subset OpenAPI aceito pelo Gemini) da resposta estruturada: por tier,
-// uma shortlist ranqueada (melhor primeiro).
-const RANK_RESPONSE_SCHEMA: Record<string, unknown> = {
+// Schema da resposta estruturada: lista de destinos reais com coords, categoria,
+// banda e hook.
+const GEN_RESPONSE_SCHEMA: Record<string, unknown> = {
   type: 'array',
   items: {
     type: 'object',
     properties: {
-      tier: { type: 'string', enum: ['near', 'mid', 'far'] },
-      picks: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            placeId: { type: 'string' },
-            category: { type: 'string', enum: ['capital', 'coastal', 'touristic', 'nature'] },
-            description: { type: 'string' },
-          },
-          required: ['placeId', 'category', 'description'],
-        },
-      },
+      name: { type: 'string' },
+      region: { type: 'string' },
+      country: { type: 'string' },
+      lat: { type: 'number' },
+      lng: { type: 'number' },
+      category: { type: 'string', enum: ['capital', 'coastal', 'touristic', 'nature'] },
+      band: { type: 'string', enum: ['near', 'mid', 'far'] },
+      description: { type: 'string' },
     },
-    required: ['tier', 'picks'],
+    required: ['name', 'region', 'country', 'lat', 'lng', 'category', 'band', 'description'],
   },
 };
 
 // Shape cru que o modelo devolve (antes da nossa validacao).
-type RawTierResult = { tier?: unknown; picks?: unknown };
-type RawPick = { placeId?: unknown; category?: unknown; description?: unknown };
+type RawGen = {
+  name?: unknown;
+  region?: unknown;
+  country?: unknown;
+  lat?: unknown;
+  lng?: unknown;
+  category?: unknown;
+  band?: unknown;
+  description?: unknown;
+};
 
-export async function rankDestinations(
-  candidates: RankCandidate[],
-  deviceContext: { city: string; country: string },
+export async function generateDestinations(
+  deviceContext: { city: string; country: string; lat: number; lng: number },
   lang: SupportedLang,
-  // Dica de preferencias do usuario (Perfil de Viajante), ja formatada em
-  // ingles (vide formatPreferenceHint). Opcional: so chega preenchida para
-  // usuarios da allowlist que preencheram o perfil; vazio => prompt atual.
+  bandKm: { near: number; mid: number; far: number },
+  perBand: number,
+  // Dica de preferencias do usuario (Perfil de Viajante), ja formatada em ingles
+  // (vide formatPreferenceHint). Prioridade maxima quando presente.
   preferenceHint?: string,
-): Promise<RankTierResult[] | null> {
-  if (candidates.length === 0) return null;
-
-  // Lista compacta - so o que o modelo precisa para escolher (economiza tokens).
-  const lines = candidates
-    .map(
-      (c) =>
-        `- placeId=${c.placeId} | ${c.name}${c.region ? `, ${c.region}` : ''}, ${c.country} | ${Math.round(c.distanceKm)}km | band=${c.tier}`,
-    )
-    .join('\n');
-
+): Promise<GeneratedDestination[] | null> {
   const hint = preferenceHint?.trim();
+  const where = deviceContext.city
+    ? `${deviceContext.city}${deviceContext.country ? `, ${deviceContext.country}` : ''}`
+    : deviceContext.country || 'an unknown location';
+
   const prompt = [
-    'You are an expert travel curator for a travel-rewards app. Your job is to pick',
-    'the most travel-worthy destinations to inspire the user\'s next trip.',
+    'You are a world-class travel expert curating destination ideas for a travel-rewards app.',
+    `The user is in ${where} (approx ${deviceContext.lat.toFixed(3)}, ${deviceContext.lng.toFixed(3)}).`,
     '',
-    `The user is currently in ${deviceContext.city || 'an unknown city'}, ${deviceContext.country || 'an unknown country'}.`,
-    'The candidate cities below are REAL and grouped by distance band:',
-    '  near = closest to the user | mid = up to ~400km | far = up to ~1000km.',
-    '',
-    // Prioridade 1: Perfil do Viajante. Quando existe, manda no ranqueamento.
     ...(hint
       ? [
-          'TOP PRIORITY - the user\'s travel profile:',
+          "TOP PRIORITY - the user's travel profile:",
           `  ${hint}`,
-          'Rank destinations that fit this profile ABOVE everything else. When the profile',
-          'points to nature, interior or off-the-beaten-path places, include those even if',
-          'they are small - as long as they genuinely fit the profile.',
+          'EVERY suggestion must fit this profile above all else. If the profile points to',
+          'nature, interior or off-the-beaten-path places, prioritize those.',
           '',
         ]
       : []),
-    'Pick the BEST destinations for EACH band that appears, in this order of appeal:',
-    `  ${hint ? 'first, whatever matches the profile above; then ' : ''}capitals, beach/coastal`,
-    '  cities, well-known touristic cities, and nature/scenic destinations.',
+    'Suggest REAL, well-known travel destinations grouped by distance band FROM THE USER:',
+    `  - "near": up to ${bandKm.near} km away`,
+    `  - "mid": up to ${bandKm.mid} km away`,
+    `  - "far": up to ${bandKm.far} km away`,
+    `Give up to ${perBand} destinations per band, ordered best-first.`,
+    '',
+    `Focus on ${hint ? 'destinations matching the profile, then ' : ''}capitals, beach/coastal cities,`,
+    'famous touristic cities, and nature/scenic destinations.',
     ...(hint
       ? []
       : [
-          'DEFAULT RULE (no profile): do NOT pick dull interior towns with no tourism.',
-          'The ONLY interior cities allowed are well-known touristic ones (e.g. Gramado-RS,',
-          'Campos do Jordao-SP, Bonito-MS). When in doubt, leave it out.',
+          'Do NOT suggest dull interior towns with no tourism. Interior cities are allowed ONLY',
+          'if they are famous tourist destinations (e.g. Gramado-RS, Campos do Jordao-SP, Bonito-MS).',
         ]),
     '',
-    'Rules:',
-    '- Use ONLY placeId values from the list. NEVER invent a city or a placeId.',
-    `- For each band present, return "picks": a DIVERSE shortlist of up to ${MAX_PICKS_PER_TIER}`,
-    '  genuinely appealing cities, ordered best-first. Give SEVERAL options (not just one)',
-    '  so the app can vary which it shows. Fewer is fine if only a few truly stand out.',
-    '- Only include bands that actually appear in the candidate list.',
-    '- "category" = the single best reason it stands out: capital | coastal | touristic | nature.',
-    `- "description" = one short, vivid hook (max ~90 chars) in ${LANG_LABEL[lang]} that makes`,
-    '  the user want to go. Do NOT put the city or state/country name in the hook (the app',
-    '  already shows "City, State" next to it).',
+    'For each destination provide:',
+    '- name: the city name',
+    '- region: the state/province it belongs to',
+    '- country',
+    "- lat, lng: the city's REAL approximate coordinates in decimal degrees (be as accurate as you can)",
+    '- category: capital | coastal | touristic | nature',
+    '- band: near | mid | far (its distance band from the user)',
+    `- description: one short, vivid hook (max ~90 chars) in ${LANG_LABEL[lang]}. Do NOT include the`,
+    '  city/state/country name in the hook (the app shows "City, State" separately).',
     '',
-    'Candidates (placeId | city, state, country | distance | band):',
-    lines,
+    'Only REAL places with real coordinates. Never invent a city.',
   ].join('\n');
 
-  const result = await callGemini<RawTierResult[]>(prompt, RANK_RESPONSE_SCHEMA);
+  const result = await callGemini<RawGen[]>(prompt, GEN_RESPONSE_SCHEMA);
   if (!Array.isArray(result)) return null;
 
-  // Defesa extra (o schema ja restringe, mas o modelo pode escorregar):
-  // - so tiers validos, 1 entrada por tier;
-  // - dentro do tier, so placeIds que existem nas candidatas, sem repetir,
-  //   ate o teto da shortlist;
-  // - categoria coagida para um valor valido.
-  const validIds = new Set(candidates.map((c) => c.placeId));
-  const validTiers: RankTier[] = ['near', 'mid', 'far'];
-  const seenTiers = new Set<RankTier>();
-  const out: RankTierResult[] = [];
-
-  for (const item of result as RawTierResult[]) {
-    const tier = item?.tier as RankTier;
-    if (!validTiers.includes(tier) || seenTiers.has(tier)) continue;
-    if (!Array.isArray(item.picks)) continue;
-
-    const usedInTier = new Set<string>();
-    const picks: RankPick[] = [];
-    for (const raw of item.picks as RawPick[]) {
-      const id = raw?.placeId;
-      if (typeof id !== 'string' || !validIds.has(id) || usedInTier.has(id)) continue;
-      usedInTier.add(id);
-      const category: RankCategory = RANK_CATEGORIES.includes(raw?.category as RankCategory)
-        ? (raw.category as RankCategory)
-        : 'touristic';
-      picks.push({
-        placeId: id,
-        category,
-        description: typeof raw?.description === 'string' ? raw.description : '',
-      });
-      if (picks.length >= MAX_PICKS_PER_TIER) break;
-    }
-
-    if (picks.length) {
-      seenTiers.add(tier);
-      out.push({ tier, picks });
-    }
+  // Validacao defensiva: nome nao-vazio, coords numericas dentro da faixa, banda
+  // valida; categoria coagida para um valor valido.
+  const out: GeneratedDestination[] = [];
+  for (const raw of result as RawGen[]) {
+    const name = typeof raw?.name === 'string' ? raw.name.trim() : '';
+    const lat = typeof raw?.lat === 'number' ? raw.lat : NaN;
+    const lng = typeof raw?.lng === 'number' ? raw.lng : NaN;
+    if (!name || !Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) continue;
+    if (!GEN_BANDS.includes(raw?.band as GenBand)) continue;
+    const category: GenCategory = GEN_CATEGORIES.includes(raw?.category as GenCategory)
+      ? (raw.category as GenCategory)
+      : 'touristic';
+    out.push({
+      name,
+      region: typeof raw?.region === 'string' ? raw.region.trim() : '',
+      country: typeof raw?.country === 'string' ? raw.country.trim() : '',
+      lat,
+      lng,
+      category,
+      band: raw.band as GenBand,
+      description: typeof raw?.description === 'string' ? raw.description.trim() : '',
+    });
   }
-
   return out.length ? out : null;
 }

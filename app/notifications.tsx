@@ -224,7 +224,7 @@ export default function NotificationsScreen() {
                           />
                         </View>
                       ) : null}
-                      {open && alert.publishDate ? (
+                      {alert.publishDate ? (
                         <Text style={styles.cardTime}>{formatPublishDate(alert.publishDate, t)}</Text>
                       ) : null}
                     </TouchableOpacity>

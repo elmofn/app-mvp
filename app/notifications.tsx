@@ -45,11 +45,14 @@ const HTML_TAG_STYLES: Record<string, MixedStyleDeclaration> = {
   p: { fontSize: 14, lineHeight: 22, marginBottom: 8 },
   // Negrito: <strong>/<b> sao padrao; <bold> e nao-padrao (o editor as vezes
   // emite ele) e precisa do element model abaixo para nao ser ignorado. Todos
-  // usam a fonte bold do app (fontWeight sozinho nao troca a familia Inter).
-  strong: { fontFamily: fonts.bold },
-  b: { fontFamily: fonts.bold },
-  bold: { fontFamily: fonts.bold },
-  em: { fontFamily: fonts.italic },
+  // usam a fonte bold do app. IMPORTANTE: fontWeight 'normal' de proposito -
+  // o RenderHTML aplica fontWeight:'bold' nesses tags, e no RN isso conflita
+  // com uma fontFamily que JA e o arquivo bold (Inter_700Bold), fazendo o
+  // negrito nao renderizar. Deixando o peso 'normal', so a fontFamily manda.
+  strong: { fontFamily: fonts.bold, fontWeight: 'normal' },
+  b: { fontFamily: fonts.bold, fontWeight: 'normal' },
+  bold: { fontFamily: fonts.bold, fontWeight: 'normal' },
+  em: { fontFamily: fonts.italic, fontStyle: 'normal' },
   a: { color: '#0F022D', textDecorationLine: 'underline' },
   ul: { marginBottom: 8, paddingLeft: 18 },
   ol: { marginBottom: 8, paddingLeft: 18 },
@@ -138,6 +141,11 @@ export default function NotificationsScreen() {
   const toggle = (id: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedId((curr) => (curr === id ? null : id));
+
+    if (__DEV__) {
+      const it = items.find((x) => x.contentId === id);
+      if (it) console.log('[alerts] richText cru de', JSON.stringify(it.title), '→', it.richText);
+    }
 
     const alreadyRead = readLocal.has(id) || items.find((it) => it.contentId === id)?.readed;
     if (alreadyRead || !accountId) return;

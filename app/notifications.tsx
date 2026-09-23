@@ -198,15 +198,10 @@ export default function NotificationsScreen() {
                 {items.map((alert) => {
                   const open = expandedId === alert.contentId;
                   const unread = isUnread(alert);
-                  // O backend frequentemente repete title em description -
-                  // nesses casos nao faz sentido mostrar o mesmo texto duas
-                  // vezes. Tambem evita expandir um card vazio quando nao
-                  // ha richText nem description extra.
-                  const showDescription =
-                    alert.description.trim().length > 0 &&
-                    alert.description.trim() !== alert.title.trim();
+                  // Passamos a mostrar SO titulo + conteudo (richText). A
+                  // descricao nao e mais exibida. Fechado = so o titulo; aberto
+                  // = titulo + conteudo (+ data).
                   const hasRichBody = !!alert.richText && alert.richText.trim().length > 0;
-                  const expandable = hasRichBody || showDescription;
                   return (
                     <TouchableOpacity
                       key={alert.contentId}
@@ -218,14 +213,6 @@ export default function NotificationsScreen() {
                         <Text style={styles.cardTitle}>{alert.title}</Text>
                         {unread ? <View style={styles.unreadDot} /> : null}
                       </View>
-                      {showDescription ? (
-                        <Text
-                          style={styles.cardDescription}
-                          numberOfLines={open || !expandable ? undefined : 2}
-                        >
-                          {alert.description}
-                        </Text>
-                      ) : null}
                       {open && hasRichBody ? (
                         <View style={styles.richBody}>
                           <RenderHTML
@@ -237,7 +224,7 @@ export default function NotificationsScreen() {
                           />
                         </View>
                       ) : null}
-                      {alert.publishDate ? (
+                      {open && alert.publishDate ? (
                         <Text style={styles.cardTime}>{formatPublishDate(alert.publishDate, t)}</Text>
                       ) : null}
                     </TouchableOpacity>
@@ -328,7 +315,6 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
     gap: 8,
   },
   cardTitle: {
@@ -343,12 +329,6 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: colors.brand.details,
-  },
-  cardDescription: {
-    fontSize: 14,
-    fontFamily: fonts.regular,
-    color: colors.text.muted,
-    lineHeight: 20,
   },
   richBody: { marginTop: 10 },
   cardTime: {

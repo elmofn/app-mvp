@@ -108,7 +108,9 @@ export async function getAlerts(
         dropped.push({ reason: 'isActive=false', contentId: parsed.data.contentId, title: parsed.data.title });
       continue;
     }
-    if (parsed.data.language !== lang) {
+    // Match de idioma case-insensitive (+ trim): o backend as vezes devolve
+    // 'pt-br' em vez de 'pt-BR'. Mesmo tratamento que o getFAQ ja faz.
+    if (parsed.data.language.trim().toLowerCase() !== lang.toLowerCase()) {
       if (__DEV__)
         dropped.push({
           reason: `language '${parsed.data.language}' != '${lang}'`,

@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import RenderHTML, {
+  defaultSystemFonts,
   HTMLContentModel,
   HTMLElementModel,
   MixedStyleDeclaration,
@@ -68,6 +69,18 @@ const CUSTOM_HTML_ELEMENT_MODELS = {
     contentModel: HTMLContentModel.textual,
   }),
 };
+
+// O RenderHTML SO aplica uma fontFamily se ela estiver declarada em systemFonts;
+// sem isto ele descarta a fontFamily das tags (b/strong/etc.) e o negrito some.
+// Declaramos as fontes Inter do app aqui.
+const SYSTEM_FONTS = [
+  ...defaultSystemFonts,
+  fonts.regular,
+  fonts.medium,
+  fonts.bold,
+  fonts.italic,
+  fonts.bold_italic,
+];
 
 function formatPublishDate(raw: string | undefined, t: Translator['t']): string {
   if (!raw) return '';
@@ -247,6 +260,7 @@ export default function NotificationsScreen() {
                             baseStyle={HTML_BASE_STYLE}
                             tagsStyles={HTML_TAG_STYLES}
                             customHTMLElementModels={CUSTOM_HTML_ELEMENT_MODELS}
+                            systemFonts={SYSTEM_FONTS}
                             enableExperimentalMarginCollapsing
                           />
                         </View>

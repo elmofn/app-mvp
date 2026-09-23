@@ -203,6 +203,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // aqui nao deve barrar o login - caimos no que o payload de SignIn
         // tiver trazido.
         const lang = getUserLanguage(response.accountDetails);
+        // DEBUG (__DEV__): accountId + idioma derivado - sao exatamente as
+        // entradas do GetAlerts (accountId + language). Se um alerta novo nao
+        // aparece, cruzar com o log do [alerts] GetAlerts (mesmo accountId? o
+        // language do alerta bate com este idioma?).
+        if (__DEV__) {
+          const acc = response.accountDetails.accountDetails;
+          console.log('[auth] signIn OK →', {
+            accountId: acc.accountId,
+            countryId: response.accountDetails.account.countryId,
+            langConteudo: lang,
+          });
+        }
         let { banners } = response.accountDetails;
         try {
           // Banners sao leves (GetBanners) - seguem no caminho do login. Falha

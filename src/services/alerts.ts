@@ -50,28 +50,79 @@ export async function getAlerts(
     `${API_BASE_URL}/api/Content/GetAlerts` +
     `?accountId=${encodeURIComponent(accountId)}` +
     `&language=${encodeURIComponent(lang)}`;
+
+  if (__DEV__) console.log('[alerts] GetAlerts request →', { accountId, lang, url });
+
   const response = await fetch(url, {
     method: 'GET',
     headers: { Accept: '*/*' },
   });
 
   if (!response.ok) {
+    if (__DEV__) console.warn('[alerts] GetAlerts HTTP', response.status);
     throw new Error(`GetAlerts failed (${response.status})`);
   }
 
   const raw = await response.json();
+  if (__DEV__) {
+    console.log(
+      '[alerts] GetAlerts resposta crua:',
+      Array.isArray(raw) ? `${raw.length} item(ns)` : `nao-array (${typeof raw})`,
+    );
+    if (Array.isArray(raw)) {
+      console.log(
+        '[alerts] itens crus:',
+        raw.map((it) => ({
+          contentId: (it as any)?.contentId,
+          title: (it as any)?.title,
+          isActive: (it as any)?.isActive,
+          language: (it as any)?.language,
+          readed: (it as any)?.readed,
+          publishDate: (it as any)?.publishDate,
+        })),
+      );
+    } else {
+      console.log('[alerts] payload cru:', raw);
+    }
+  }
   if (!Array.isArray(raw)) return [];
 
   // Mesma defesa do FAQ: itens com shape esquisito sao descartados sem
   // derrubar a tela. Filtramos client-side por isActive e language - a
   // API tem o habito de devolver itens fora do filtro pedido.
   const valid: AlertItem[] = [];
+  const dropped: Array<Record<string, unknown>> = [];
   for (const item of raw) {
     const parsed = AlertItemSchema.safeParse(item);
-    if (!parsed.success) continue;
-    if (!parsed.data.isActive) continue;
-    if (parsed.data.language !== lang) continue;
+    if (!parsed.success) {
+      if (__DEV__)
+        dropped.push({
+          reason: 'schema',
+          campos: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
+          item,
+        });
+      continue;
+    }
+    if (!parsed.data.isActive) {
+      if (__DEV__)
+        dropped.push({ reason: 'isActive=false', contentId: parsed.data.contentId, title: parsed.data.title });
+      continue;
+    }
+    if (parsed.data.language !== lang) {
+      if (__DEV__)
+        dropped.push({
+          reason: `language '${parsed.data.language}' != '${lang}'`,
+          contentId: parsed.data.contentId,
+          title: parsed.data.title,
+        });
+      continue;
+    }
     valid.push(parsed.data);
+  }
+
+  if (__DEV__) {
+    console.log(`[alerts] GetAlerts → ${valid.length} valido(s), ${dropped.length} descartado(s)`);
+    if (dropped.length) console.log('[alerts] DESCARTADOS (motivo):', dropped);
   }
 
   // Ordena por data de publicacao (mais recente primeiro). Itens sem

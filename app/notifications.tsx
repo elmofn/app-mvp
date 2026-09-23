@@ -13,7 +13,11 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import RenderHTML, { MixedStyleDeclaration } from 'react-native-render-html';
+import RenderHTML, {
+  HTMLContentModel,
+  HTMLElementModel,
+  MixedStyleDeclaration,
+} from 'react-native-render-html';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/src/components/ScreenHeader';
@@ -39,13 +43,27 @@ const HTML_BASE_STYLE: MixedStyleDeclaration = {
 
 const HTML_TAG_STYLES: Record<string, MixedStyleDeclaration> = {
   p: { fontSize: 14, lineHeight: 22, marginBottom: 8 },
+  // Negrito: <strong>/<b> sao padrao; <bold> e nao-padrao (o editor as vezes
+  // emite ele) e precisa do element model abaixo para nao ser ignorado. Todos
+  // usam a fonte bold do app (fontWeight sozinho nao troca a familia Inter).
   strong: { fontFamily: fonts.bold },
+  b: { fontFamily: fonts.bold },
+  bold: { fontFamily: fonts.bold },
   em: { fontFamily: fonts.italic },
   a: { color: '#0F022D', textDecorationLine: 'underline' },
   ul: { marginBottom: 8, paddingLeft: 18 },
   ol: { marginBottom: 8, paddingLeft: 18 },
   li: { marginBottom: 2 },
   span: { fontSize: 14, lineHeight: 22 },
+};
+
+// Registra a tag NAO-padrao <bold> como elemento textual (inline), para o
+// RenderHTML renderiza-la (com o estilo bold acima) em vez de ignora-la.
+const CUSTOM_HTML_ELEMENT_MODELS = {
+  bold: HTMLElementModel.fromCustomModel({
+    tagName: 'bold',
+    contentModel: HTMLContentModel.textual,
+  }),
 };
 
 function formatPublishDate(raw: string | undefined, t: Translator['t']): string {
@@ -220,6 +238,7 @@ export default function NotificationsScreen() {
                             source={{ html: alert.richText ?? '' }}
                             baseStyle={HTML_BASE_STYLE}
                             tagsStyles={HTML_TAG_STYLES}
+                            customHTMLElementModels={CUSTOM_HTML_ELEMENT_MODELS}
                             enableExperimentalMarginCollapsing
                           />
                         </View>

@@ -1,6 +1,5 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { MapPinIcon, StarIcon } from 'phosphor-react-native';
+import { MapPinIcon } from 'phosphor-react-native';
 import React from 'react';
 import { ActivityIndicator, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown, FadeInLeft, FadeInRight } from 'react-native-reanimated';
@@ -124,85 +123,39 @@ export function NextTrips({ trips, loading }: Props) {
       ) : null}
 
       {!loading &&
-        list.map((trip, index) => {
-          const isDream = trip.id.startsWith('dream:');
-          const nextIsDream = list[index + 1]?.id.startsWith('dream:') ?? false;
-
-          // Card do "destino dos sonhos": tratamento especial (moldura em
-          // gradiente da marca + selo de estrela + separador com rotulo) para
-          // se destacar dos 3 destinos algoritmicos acima. Nao e clicavel.
-          if (isDream) {
-            return (
-              <Animated.View key={trip.id} entering={FadeInDown.delay(950).duration(550)}>
-                <View style={styles.dreamSeparator}>
-                  <View style={styles.dreamLine} />
-                  <Text style={styles.dreamEyebrow}>{trip.tag}</Text>
-                  <View style={styles.dreamLine} />
-                </View>
-
-                <View style={styles.dreamCard}>
-                  <LinearGradient
-                    colors={['#85EDD3', '#7458E3', '#1B0F4A']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.dreamFrame}
-                  >
-                    <View style={styles.dreamImgBox}>
-                      <TripImage trip={trip} />
-                      <View style={styles.dreamBadge}>
-                        <StarIcon size={14} color="#1B0F4A" weight="fill" />
-                      </View>
-                    </View>
-                  </LinearGradient>
-                  <View style={styles.tripInfo}>
-                    <Text style={styles.tripInfoTitle}>{trip.title}</Text>
-                    {trip.description ? (
-                      <Text style={styles.tripInfoDesc} numberOfLines={2}>
-                        {trip.description}
-                      </Text>
-                    ) : null}
-                  </View>
-                </View>
-              </Animated.View>
-            );
-          }
-
-          return (
-            <React.Fragment key={trip.id}>
-              <Animated.View
-                entering={
-                  index % 2 === 0
-                    ? FadeInLeft.delay(850 + index * 100).duration(500)
-                    : FadeInRight.delay(850 + index * 100).duration(500)
-                }
+        list.map((trip, index) => (
+          <React.Fragment key={trip.id}>
+            <Animated.View
+              entering={
+                index % 2 === 0
+                  ? FadeInLeft.delay(850 + index * 100).duration(500)
+                  : FadeInRight.delay(850 + index * 100).duration(500)
+              }
+            >
+              <TouchableOpacity
+                style={styles.tripCard}
+                activeOpacity={0.9}
+                disabled={!trip.placeId}
+                onPress={() => openTrip(trip)}
               >
-                <TouchableOpacity
-                  style={styles.tripCard}
-                  activeOpacity={0.9}
-                  disabled={!trip.placeId}
-                  onPress={() => openTrip(trip)}
-                >
-                  <View style={styles.tripImgBox}>
-                    <TripImage trip={trip} />
-                    <View style={styles.tripTag}>
-                      <View style={styles.tripTagDot} />
-                      <Text style={styles.tripTagText}>{trip.tag}</Text>
-                    </View>
+                <View style={styles.tripImgBox}>
+                  <TripImage trip={trip} />
+                  <View style={styles.tripTag}>
+                    <View style={styles.tripTagDot} />
+                    <Text style={styles.tripTagText}>{trip.tag}</Text>
                   </View>
-                  <View style={styles.tripInfo}>
-                    <Text style={styles.tripInfoTitle}>{trip.title}</Text>
-                    <Text style={styles.tripInfoDesc} numberOfLines={2}>
-                      {trip.description}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </Animated.View>
-              {/* Divisor generico entre os 3 destinos; some antes do card do
-                  sonho, que tem o proprio separador com rotulo. */}
-              {index < list.length - 1 && !nextIsDream && <View style={styles.tripDivider} />}
-            </React.Fragment>
-          );
-        })}
+                </View>
+                <View style={styles.tripInfo}>
+                  <Text style={styles.tripInfoTitle}>{trip.title}</Text>
+                  <Text style={styles.tripInfoDesc} numberOfLines={2}>
+                    {trip.description}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+            {index < list.length - 1 && <View style={styles.tripDivider} />}
+          </React.Fragment>
+        ))}
     </View>
   );
 }
@@ -332,57 +285,5 @@ const styles = StyleSheet.create({
     width: 60,
     backgroundColor: '#7D7BFE',
     marginBottom: 40,
-  },
-
-  // --- Destaque do "destino dos sonhos" -------------------------------------
-  // Separador com rotulo (linhas mint + label da marca) que abre a secao do
-  // sonho e a diferencia visualmente dos destinos algoritmicos acima.
-  dreamSeparator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 16,
-    marginBottom: 20,
-  },
-  dreamLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#85EDD3',
-    opacity: 0.6,
-  },
-  dreamEyebrow: {
-    fontSize: 11,
-    fontFamily: fonts.bold,
-    color: '#4D2ACC',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  dreamCard: {
-    marginBottom: 24,
-  },
-  // Moldura em gradiente da marca (mint -> roxo -> navy) ao redor da imagem.
-  dreamFrame: {
-    borderRadius: 16,
-    padding: 3,
-    marginBottom: 16,
-  },
-  dreamImgBox: {
-    width: '100%',
-    height: 200,
-    borderRadius: 13,
-    overflow: 'hidden',
-    backgroundColor: '#CCC',
-  },
-  // Selo de estrela (mint) no canto - marca o card como aspiracional.
-  dreamBadge: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#85EDD3',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

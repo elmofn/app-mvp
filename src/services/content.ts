@@ -236,9 +236,9 @@ export async function getGeoNextTrips(
   coords: LocationCoords | null,
   lang: SupportedLang,
   // Contexto do Perfil de Viajante (so chega para usuarios da allowlist com
-  // perfil salvo): preferenceHint enviesa a geracao do Gemini; dreamDestination
-  // adiciona um card extra (inspiracional) do destino dos sonhos do usuario.
-  opts?: { preferenceHint?: string; dreamDestination?: string },
+  // perfil salvo): preferenceHint enviesa a geracao do Gemini. O destino dos
+  // sonhos NAO entra mais nas next trips (fica so no perfil).
+  opts?: { preferenceHint?: string },
 ): Promise<SignInNextTrip[]> {
   if (!coords) return getNextTrips(lang);
 
@@ -280,16 +280,11 @@ export async function getGeoNextTrips(
     };
     for (const g of gen) byBand[g.band].push(g);
 
-    // 3. Resolve 1 card por banda (place_id + foto) + a foto do destino dos
-    // sonhos, tudo em PARALELO.
-    const dream = opts?.dreamDestination?.trim();
-    const [nearCard, midCard, farCard, dreamPhoto] = await Promise.all([
+    // 3. Resolve 1 card por banda (place_id + foto), em PARALELO.
+    const [nearCard, midCard, farCard] = await Promise.all([
       pickBandCard(byBand.near, lang),
       pickBandCard(byBand.mid, lang),
       pickBandCard(byBand.far, lang),
-      dream
-        ? withTimeout(getCityPhoto({ display_name: dream } as Place), PHOTO_TIMEOUT_MS, null)
-        : Promise.resolve(null),
     ]);
 
     // Monta na ordem near -> mid -> far, deduplicando por place_id (raro, mas o
@@ -303,23 +298,11 @@ export async function getGeoNextTrips(
       }
     }
 
-    // Card extra: destino dos sonhos (perfil). Sem place_id => inspiracional (nao
-    // clicavel). Photo-gate tambem se aplica: so entra se houver foto no Wikimedia.
-    if (dream && dreamPhoto) {
-      trips.push({
-        id: `dream:${dream}`,
-        title: dream,
-        tag: translate(lang, 'home.tripTagDream'),
-        description: translate(lang, 'home.tripDreamDesc'),
-        imageUrl: dreamPhoto,
-      });
-    }
-
     if (__DEV__) {
       console.log(
         '[content] geo trips:',
         trips.map((t) => `${t.tag}=${t.title}`).join(' | '),
-        `| device=${deviceCity || '?'}, gerados=${gen.length} (near ${byBand.near.length}/mid ${byBand.mid.length}/far ${byBand.far.length})${opts?.preferenceHint ? ` | prefs="${opts.preferenceHint}"` : ' | prefs=off'}${dream ? `, dream="${dream}"` : ''}`,
+        `| device=${deviceCity || '?'}, gerados=${gen.length} (near ${byBand.near.length}/mid ${byBand.mid.length}/far ${byBand.far.length})${opts?.preferenceHint ? ` | prefs="${opts.preferenceHint}"` : ' | prefs=off'}`,
       );
     }
 

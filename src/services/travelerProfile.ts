@@ -130,11 +130,8 @@ export function formatPreferenceHint(profile: TravelerProfile | null): string {
   if (profile.company) parts.push(COMPANY_HINT[profile.company]);
   if (profile.budget) parts.push(`on ${BUDGET_HINT[profile.budget]}`);
   if (profile.tripLength) parts.push(`likes ${LENGTH_HINT[profile.tripLength]}`);
-  if (!parts.length && !profile.dreamDestination?.trim()) return '';
-
-  let hint = parts.length ? `The user ${parts.join('; ')}.` : '';
-  if (profile.dreamDestination?.trim()) {
-    hint += `${hint ? ' ' : ''}Dream destination mentioned: ${profile.dreamDestination.trim()}.`;
-  }
-  return hint;
+  // O destino dos sonhos NAO entra no hint: fica so no perfil, sem influenciar
+  // as next trips.
+  if (!parts.length) return '';
+  return `The user ${parts.join('; ')}.`;
 }

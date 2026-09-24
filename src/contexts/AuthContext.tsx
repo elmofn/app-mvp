@@ -84,21 +84,19 @@ export type AccountPatch = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 // Contexto do Perfil de Viajante para o nextTrips, derivado da conta:
-//  - preferenceHint: enviesa a curadoria do Gemini;
-//  - dreamDestination: adiciona o card inspiracional do destino dos sonhos.
-// Tudo vazio se o usuario nao esta na allowlist ou nao preencheu o perfil - a
-// curadoria segue igual ao comportamento geral. Leitura local barata
-// (AsyncStorage por accountId); futuramente pode vir do backend.
+// preferenceHint enviesa a curadoria do Gemini. Vazio se o usuario nao esta na
+// allowlist ou nao preencheu o perfil - a curadoria segue igual ao comportamento
+// geral. Leitura local barata (AsyncStorage por accountId). O destino dos sonhos
+// NAO entra aqui: fica so no perfil, sem afetar as next trips.
 async function travelerContextFor(
   account: SignInAccountDetails | null,
-): Promise<{ preferenceHint?: string; dreamDestination?: string }> {
+): Promise<{ preferenceHint?: string }> {
   if (!account) return {};
   if (!canUseTravelerProfile(account.accountDetails.email)) return {};
   const profile = await loadTravelerProfile(account.accountDetails.accountId);
   if (!profile) return {};
   return {
     preferenceHint: formatPreferenceHint(profile) || undefined,
-    dreamDestination: profile.dreamDestination?.trim() || undefined,
   };
 }
 

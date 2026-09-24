@@ -1,45 +1,70 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import {
-  ArrowRightIcon,
+  ArrowLeftIcon,
   FileTextIcon,
   ShieldCheckIcon,
-  SparkleIcon,
-  VideoCameraIcon,
-  WhatsappLogoIcon,
+  WhatsappLogoIcon
 } from 'phosphor-react-native';
-import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ScreenHeader } from '@/src/components/ScreenHeader';
+import { AboutAppModal } from '@/src/components/AboutAppModal';
+import { FAQSection } from '@/src/components/FAQSection';
+import { useT } from '@/src/i18n';
+import type { SupportedLang } from '@/src/services/locale';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
-const FAQS = [
-  { id: '1', question: 'How do I freeze my physical card?' },
-  { id: '2', question: 'Travel Insurance Coverage Limits' },
-  { id: '3', question: 'International ATM Withdraw fees' },
-  { id: '4', question: 'Adding Funds via Swift Transfer' },
-];
+// Numero unico de suporte do TravelBACK no WhatsApp Business - cada
+// link e gerado pelo wa.link com a mensagem pre-preenchida no idioma
+// correspondente. Mantenho aqui ao inves de em config porque sao
+// constantes do produto, nao do ambiente.
+const WHATSAPP_LINKS: Record<SupportedLang, string> = {
+  'pt-BR': 'https://wa.link/gnhtsh',
+  'en-US': 'https://wa.link/tstxoz',
+  'es-ES': 'https://wa.link/oydqsc',
+};
+
+const VIDEO_CALL_LINK = 'https://calendly.com/travelcash';
 
 type Props = {
+  lang: SupportedLang;
   showTravelAssistant?: boolean;
   bottomInset?: number;
   titleFirst?: string;
   titleAccent?: string;
   titleAfter?: string;
+  onTermsPress?: () => void;
+  // Seta de "Voltar" no topo do header. Usada quando a tela e aberta fora das
+  // tabs (ex.: help.tsx, antes do login); a aba de suporte nao passa isso.
+  showBackButton?: boolean;
 };
 
 export function SupportContent({
+  lang,
   showTravelAssistant = true,
   bottomInset = 24,
-  titleFirst = 'How Can\nWe ',
-  titleAccent = 'Assist',
-  titleAfter = '\nYou?',
+  titleFirst,
+  titleAccent,
+  titleAfter,
+  onTermsPress,
+  showBackButton = false,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { t } = useT();
+  const [aboutVisible, setAboutVisible] = useState(false);
+
+  const openExternal = (url: string) => {
+    Linking.openURL(url).catch((err) => {
+      console.warn('[support] could not open url:', url, err);
+    });
+  };
 
   return (
+    <>
     <ScrollView
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ paddingBottom: bottomInset }}
@@ -53,33 +78,55 @@ export function SupportContent({
       >
         <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
 
-        <ScreenHeader title="Support" dark={true} />
+        {showBackButton ? (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+            hitSlop={10}
+          >
+            <ArrowLeftIcon size={29} color={colors.text.light} weight="bold" />
+          </TouchableOpacity>
+        ) : null}
 
         <View style={styles.headerBody}>
+          <Text style={styles.headerLabel}>{t('support.headerLabel')}</Text>
           <Text style={styles.mainTitle}>
-            {titleFirst}
-            <Text style={styles.mainTitleAccent}>{titleAccent}</Text>
-            {titleAfter}
+            {titleFirst ?? t('support.titleFirst')}
+            <Text style={styles.mainTitleAccent}>{titleAccent ?? t('support.titleAccent')}</Text>
+            {titleAfter ?? t('support.titleAfter')}
           </Text>
         </View>
 
         <View style={styles.contactCards}>
-          <TouchableOpacity style={styles.contactCard} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.contactCard}
+            activeOpacity={0.85}
+            onPress={() => openExternal(WHATSAPP_LINKS[lang])}
+          >
             <View style={styles.contactCardBody}>
-              <Text style={[styles.contactCardTitle, { color: '#85EDD3' }]}>Whatsapp</Text>
-              <Text style={styles.contactCardSubtitle}>Direct Support</Text>
+              <Text style={[styles.contactCardTitle, { color: '#85EDD3' }]}>
+                {t('support.whatsappTitle')}
+              </Text>
+              <Text style={styles.contactCardSubtitle}>{t('support.whatsappSubtitle')}</Text>
             </View>
             <WhatsappLogoIcon size={32} color="#85EDD3" weight="regular" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.contactCard} activeOpacity={0.85}>
+          {/*
+          <TouchableOpacity
+            style={styles.contactCard}
+            activeOpacity={0.85}
+            onPress={() => openExternal(VIDEO_CALL_LINK)}
+          >
             <View style={styles.contactCardBody}>
-              <Text style={styles.contactCardTitle}>Video Call</Text>
-              <Text style={styles.contactCardSubtitle}>Lorem Ipsum, Lorem Ipsum.</Text>
+              <Text style={styles.contactCardTitle}>{t('support.videoCallTitle')}</Text>
+              <Text style={styles.contactCardSubtitle}>{t('support.videoCallSubtitle')}</Text>
             </View>
             <VideoCameraIcon size={32} color={colors.text.light} weight="regular" />
           </TouchableOpacity>
 
+          {/*
           {showTravelAssistant && (
             <TouchableOpacity style={styles.contactCard} activeOpacity={0.85}>
               <View style={styles.contactCardBody}>
@@ -89,44 +136,41 @@ export function SupportContent({
               <SparkleIcon size={32} color={colors.text.light} weight="regular" />
             </TouchableOpacity>
           )}
+          */}
         </View>
       </LinearGradient>
 
-      <View style={styles.faqSection}>
-        <Text style={styles.faqTitle}>
-          Frequent{'\n'}
-          <Text style={styles.faqTitleAccent}>Questions<Text style={styles.faqTitle}>.</Text></Text>
-        </Text>
-        <Text style={styles.faqSubtitle}>KNOWLEDGE BASE</Text>
+      <FAQSection lang={lang} />
 
-        <View style={styles.faqList}>
-          {FAQS.map((faq) => (
-            <TouchableOpacity key={faq.id} style={styles.faqItem} activeOpacity={0.7}>
-              <Text style={styles.faqItemText}>{faq.question}</Text>
-              <ArrowRightIcon size={20} color={colors.text.dark} weight="regular" />
-            </TouchableOpacity>
-          ))}
-        </View>
-
+      <View style={styles.bottomSection}>
         <View style={styles.divider} />
 
         <View style={styles.bottomButtons}>
-          <TouchableOpacity style={styles.darkButton} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.darkButton}
+            activeOpacity={0.85}
+            onPress={() => setAboutVisible(true)}
+          >
             <View style={[styles.darkButtonIcon, { backgroundColor: '#85EDD3' }]}>
               <ShieldCheckIcon size={24} color="#0F022D" weight="bold" />
             </View>
-            <Text style={styles.darkButtonText}>About the app</Text>
+            <Text style={styles.darkButtonText}>{t('support.aboutApp')}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.darkButton} activeOpacity={0.85}>
-            <View style={[styles.darkButtonIcon, { backgroundColor: '#f07167' }]}>
-              <FileTextIcon size={24} color="#0F022D" weight="bold" />
-            </View>
-            <Text style={styles.darkButtonText}>Terms and Conditions</Text>
-          </TouchableOpacity>
+          {onTermsPress ? (
+            <TouchableOpacity style={styles.darkButton} activeOpacity={0.85} onPress={onTermsPress}>
+              <View style={[styles.darkButtonIcon, { backgroundColor: '#f07167' }]}>
+                <FileTextIcon size={24} color="#0F022D" weight="bold" />
+              </View>
+              <Text style={styles.darkButtonText}>{t('support.termsAndConditions')}</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
     </ScrollView>
+
+    <AboutAppModal visible={aboutVisible} onClose={() => setAboutVisible(false)} />
+    </>
   );
 }
 
@@ -134,10 +178,25 @@ const styles = StyleSheet.create({
   headerGradient: {
     paddingBottom: 32,
   },
+  // Alinhado como o ScreenHeader das demais telas: icone junto a margem de 24
+  // (paddingLeft 16 + folga interna do glifo).
+  backButton: {
+    alignSelf: 'flex-start',
+    paddingLeft: 16,
+    paddingTop: 5,
+    paddingBottom: 4,
+  },
   headerBody: {
     paddingHorizontal: 24,
-    marginTop: -12,
+    marginTop: 18,
     marginBottom: 28,
+  },
+  headerLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    letterSpacing: 2,
+    marginBottom: 16,
   },
   mainTitle: {
     fontSize: 50,
@@ -181,58 +240,16 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
   },
 
-  faqSection: {
-    padding: 24,
-    paddingTop: 44,
-  },
-  faqTitle: {
-    fontSize: 48,
-    fontFamily: fonts.bold,
-    color: colors.text.dark,
-    letterSpacing: 0,
-    lineHeight: 52,
-  },
-  faqTitleAccent: {
-    color: '#f07167',
-    fontFamily: fonts.italic,
-  },
-  faqSubtitle: {
-    fontSize: 15,
-    fontFamily: fonts.italic,
-    color: colors.text.muted,
-    letterSpacing: 1.5,
-    marginTop: 1,
-    marginBottom: 28,
-  },
-
-  faqList: {
-    gap: 10,
-  },
-  faqItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#EDEDF2',
-    borderRadius: 8,
-    paddingVertical: 22,
-    paddingHorizontal: 20,
-  },
-  faqItemText: {
-    flex: 1,
-    fontSize: 16,
-    fontFamily: fonts.regular,
-    color: colors.text.dark,
-    lineHeight: 20,
-    maxWidth: '80%',
-    paddingRight: 16,
-    paddingLeft: 16,
+  bottomSection: {
+    paddingHorizontal: 24,
+    paddingBottom: 8,
   },
 
   divider: {
     width: 56,
     height: 2,
     backgroundColor: '#f07167',
-    marginTop: 24,
+    marginTop: 4,
     marginBottom: 20,
   },
 

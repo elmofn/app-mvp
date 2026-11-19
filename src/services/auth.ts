@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import * as Device from 'expo-device';
 import { z } from 'zod';
 
 import { endpoints } from '@/src/config/env';
@@ -195,9 +196,25 @@ export async function signIn(
   // devInfo eh declarado como string no contrato, mas o controller faz
   // JsonConvert.DeserializeObject internamente, entao o conteudo precisa
   // ser um JSON serializado (objeto com dados do device).
+  //
+  // Alem de os/version, enviamos modelo + fabricante do device (expo-device)
+  // para o backend investigar comportamentos especificos de hardware em caso
+  // de erro (ex.: bug so em certos Samsung/Xiaomi). Todos os campos degradam
+  // para null quando o expo-device nao resolve (ex.: emulador) - nunca quebra
+  // o login. Dados de HARDWARE, nao-PII: NAO inclui deviceName (nome que o
+  // usuario da ao aparelho, "iPhone do Elmo"), que seria identificavel.
   const devInfo = JSON.stringify({
     os: Platform.OS,
     version: String(Platform.Version),
+    // modelName: nome comercial ("iPhone 13", "Pixel 7", "SM-G998B").
+    model: Device.modelName ?? null,
+    // modelId: id de hardware preciso no iOS ("iPhone14,5"); null no Android.
+    // Ajuda a distinguir variantes de iPhone num bug especifico.
+    modelId: Device.modelId ?? null,
+    // manufacturer: fabricante ("Apple", "samsung", "Xiaomi"). brand como
+    // fallback (no Android as vezes um esta preenchido e o outro nao).
+    manufacturer: Device.manufacturer ?? Device.brand ?? null,
+    brand: Device.brand ?? null,
   });
 
   const body: SignInRequest = {

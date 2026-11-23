@@ -83,14 +83,16 @@ export type AccountPatch = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-// Janela de carencia (ms) em que o AppState listener NAO re-tranca a sessao
-// logo apos uma autenticacao. O proprio prompt de biometria (e o teardown do
-// teclado/navegacao/autofill no login por senha) faz o Android emitir um
-// background/inactive alguns instantes depois do sucesso; sem isto, a sessao
-// re-trancava logo apos desbloquear ("entra na home e volta pra tela de
-// autenticacao em 0.5s"). Cobre o teardown pos-sucesso sem desligar a trava
-// de background para um background REAL (fora do fluxo de auth).
-const LOCK_SUPPRESS_GRACE_MS = 1500;
+// Estrategia de trava por TEMPO FORA, nao por evento: so re-tranca quando o
+// app volta do background (active) tendo ficado fora por pelo menos este tempo.
+// Assim, as transicoes curtas que o PROPRIO fluxo de auth gera (o teardown do
+// teclado/navegacao/autofill no login por senha, que dura poucos ms) ficam
+// abaixo do limiar e nunca re-trancam - independentemente da velocidade do
+// aparelho, sem depender de adivinhar o tempo do teardown. O prompt de
+// biometria, que pode pausar a Activity por varios segundos, e tratado a parte
+// via authInProgressRef (ignorado por completo). Um background REAL e demorado
+// continua trancando normalmente, na volta.
+const LOCK_AFTER_BACKGROUND_MS = 2000;
 
 // Contexto do Perfil de Viajante para o nextTrips, derivado da conta:
 // preferenceHint enviesa a curadoria do Gemini. Vazio se o usuario nao esta na
@@ -131,13 +133,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const biometricAvailableRef = useRef(false);
   biometricAvailableRef.current = biometricAvailable;
 
-  // Guarda contra re-lock falso causado pelo PROPRIO fluxo de autenticacao
-  // (vide LOCK_SUPPRESS_GRACE_MS). authInProgressRef fica true enquanto o
-  // prompt de biometria esta aberto (duracao indeterminada); suppressLockUntilRef
-  // estende a supressao por uma carencia apos o sucesso (login por senha ou
-  // biometria), para absorver o evento atrasado de background/inactive.
+  // Guarda contra re-lock falso causado pelo PROPRIO fluxo de autenticacao.
+  // authInProgressRef fica true enquanto o prompt de biometria esta aberto
+  // (pausa a Activity por tempo indeterminado); nesse periodo o AppState
+  // listener ignora as transicoes. backgroundedAtRef marca QUANDO o app foi
+  // de fato para o background, para o listener medir o tempo fora na volta
+  // (vide LOCK_AFTER_BACKGROUND_MS). 0 = nao esta/estava em background.
   const authInProgressRef = useRef(false);
-  const suppressLockUntilRef = useRef(0);
+  const backgroundedAtRef = useRef(0);
 
   // Boot: restaura sessao, dispara location e checa hardware biometrico.
   useEffect(() => {
@@ -165,13 +168,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // a sessao para forcar nova autenticacao biometrica.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
+      // Durante o prompt de biometria a Activity e pausada: ignoramos tudo e
+      // zeramos qualquer marca de background, para a volta do prompt nao ser
+      // lida como "voltou do background" e re-trancar.
+      if (authInProgressRef.current) {
+        backgroundedAtRef.current = 0;
+        return;
+      }
       if (next === 'background' || next === 'inactive') {
-        // Ignora transicoes disparadas pelo proprio fluxo de autenticacao: o
-        // prompt de biometria (authInProgressRef) e o teardown pos-sucesso
-        // (janela de carencia). Sem isto, o evento de background que o Android
-        // emite logo apos o desbloqueio re-trancava a sessao na mesma hora.
-        if (authInProgressRef.current) return;
-        if (Date.now() < suppressLockUntilRef.current) return;
+        // Nao tranca aqui: so marca QUANDO saiu. A decisao e na volta (active),
+        // medindo o tempo fora - assim as transicoes curtas do fluxo de auth
+        // ficam abaixo do limiar e nao trancam. Nao sobrescreve uma marca ja
+        // existente (inactive->background emite dois eventos; vale o 1o, mais
+        // cedo, para medir o tempo fora completo).
+        if (backgroundedAtRef.current === 0) backgroundedAtRef.current = Date.now();
+      } else if (next === 'active') {
+        const since = backgroundedAtRef.current;
+        backgroundedAtRef.current = 0;
+        if (since === 0) return; // nenhum background real registrado
+        if (Date.now() - since < LOCK_AFTER_BACKGROUND_MS) return; // ficou fora pouco tempo
         if (stateRef.current.token && biometricAvailableRef.current) {
           setIsLocked(true);
         }
@@ -254,9 +269,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // quando o token expirar - vide refreshSession.
         await saveCredentials(login, password);
         setIsLocked(false);
-        // Abre a carencia: o teardown do teclado/navegacao/autofill logo apos
-        // o login nao deve re-trancar a sessao (vide AppState listener).
-        suppressLockUntilRef.current = Date.now() + LOCK_SUPPRESS_GRACE_MS;
         loadNextTrips(account, lang);
       }
       return response;
@@ -327,10 +339,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.warn('[auth] unlock failed:', result.error, result.warning);
       return false;
     } finally {
-      // Mantem a supressao por uma carencia APOS o prompt fechar: o evento de
-      // background/inactive do teardown chega alguns ms depois do sucesso. So
-      // entao liberamos o authInProgressRef.
-      suppressLockUntilRef.current = Date.now() + LOCK_SUPPRESS_GRACE_MS;
+      // Libera o guard e zera a marca de background: qualquer background/active
+      // emitido pelo teardown do prompt nao deve contar como "voltou de fora".
+      // O finally roda como microtask (antes do proximo evento de AppState),
+      // entao o active de volta do prompt ve since=0 e nao tranca.
+      backgroundedAtRef.current = 0;
       authInProgressRef.current = false;
     }
   }, [refreshSession]);

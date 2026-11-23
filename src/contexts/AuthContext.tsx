@@ -83,6 +83,15 @@ export type AccountPatch = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+// Janela de carencia (ms) em que o AppState listener NAO re-tranca a sessao
+// logo apos uma autenticacao. O proprio prompt de biometria (e o teardown do
+// teclado/navegacao/autofill no login por senha) faz o Android emitir um
+// background/inactive alguns instantes depois do sucesso; sem isto, a sessao
+// re-trancava logo apos desbloquear ("entra na home e volta pra tela de
+// autenticacao em 0.5s"). Cobre o teardown pos-sucesso sem desligar a trava
+// de background para um background REAL (fora do fluxo de auth).
+const LOCK_SUPPRESS_GRACE_MS = 1500;
+
 // Contexto do Perfil de Viajante para o nextTrips, derivado da conta:
 // preferenceHint enviesa a curadoria do Gemini. Vazio se o usuario nao esta na
 // allowlist ou nao preencheu o perfil - a curadoria segue igual ao comportamento
@@ -122,6 +131,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const biometricAvailableRef = useRef(false);
   biometricAvailableRef.current = biometricAvailable;
 
+  // Guarda contra re-lock falso causado pelo PROPRIO fluxo de autenticacao
+  // (vide LOCK_SUPPRESS_GRACE_MS). authInProgressRef fica true enquanto o
+  // prompt de biometria esta aberto (duracao indeterminada); suppressLockUntilRef
+  // estende a supressao por uma carencia apos o sucesso (login por senha ou
+  // biometria), para absorver o evento atrasado de background/inactive.
+  const authInProgressRef = useRef(false);
+  const suppressLockUntilRef = useRef(0);
+
   // Boot: restaura sessao, dispara location e checa hardware biometrico.
   useEffect(() => {
     // Disparo da geolocation eh fire-and-forget - n bloqueia o boot. O
@@ -149,6 +166,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
       if (next === 'background' || next === 'inactive') {
+        // Ignora transicoes disparadas pelo proprio fluxo de autenticacao: o
+        // prompt de biometria (authInProgressRef) e o teardown pos-sucesso
+        // (janela de carencia). Sem isto, o evento de background que o Android
+        // emite logo apos o desbloqueio re-trancava a sessao na mesma hora.
+        if (authInProgressRef.current) return;
+        if (Date.now() < suppressLockUntilRef.current) return;
         if (stateRef.current.token && biometricAvailableRef.current) {
           setIsLocked(true);
         }
@@ -231,6 +254,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // quando o token expirar - vide refreshSession.
         await saveCredentials(login, password);
         setIsLocked(false);
+        // Abre a carencia: o teardown do teclado/navegacao/autofill logo apos
+        // o login nao deve re-trancar a sessao (vide AppState listener).
+        suppressLockUntilRef.current = Date.now() + LOCK_SUPPRESS_GRACE_MS;
         loadNextTrips(account, lang);
       }
       return response;
@@ -280,21 +306,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const unlock = useCallback(async () => {
-    const result = await authenticateWithBiometric('Unlock TravelBACK');
-    if (result.success) {
-      setIsLocked(false);
-      // Avisa o backend que o usuario voltou a ficar ativo: re-signin silencioso
-      // com as credenciais guardadas, enviando geolocation + devInfo atualizados
-      // (mesmo payload do login) e renovando o token. Fire-and-forget: nao
-      // atrasa o desbloqueio e falha de rede nao trava o app.
-      if (__DEV__) console.log('[auth] desbloqueio por biometria → re-signin em background (geolocation + devInfo)');
-      refreshSession().catch((err) => {
-        console.warn('[auth] re-signin pos-biometria falhou:', err);
-      });
-      return true;
+    // Enquanto o prompt de biometria esta aberto, a Activity e pausada e o
+    // Android emite background/inactive. Sinalizamos para o AppState listener
+    // nao interpretar isso como "usuario saiu" e re-trancar.
+    authInProgressRef.current = true;
+    try {
+      const result = await authenticateWithBiometric('Unlock TravelBACK');
+      if (result.success) {
+        setIsLocked(false);
+        // Avisa o backend que o usuario voltou a ficar ativo: re-signin silencioso
+        // com as credenciais guardadas, enviando geolocation + devInfo atualizados
+        // (mesmo payload do login) e renovando o token. Fire-and-forget: nao
+        // atrasa o desbloqueio e falha de rede nao trava o app.
+        if (__DEV__) console.log('[auth] desbloqueio por biometria → re-signin em background (geolocation + devInfo)');
+        refreshSession().catch((err) => {
+          console.warn('[auth] re-signin pos-biometria falhou:', err);
+        });
+        return true;
+      }
+      console.warn('[auth] unlock failed:', result.error, result.warning);
+      return false;
+    } finally {
+      // Mantem a supressao por uma carencia APOS o prompt fechar: o evento de
+      // background/inactive do teardown chega alguns ms depois do sucesso. So
+      // entao liberamos o authInProgressRef.
+      suppressLockUntilRef.current = Date.now() + LOCK_SUPPRESS_GRACE_MS;
+      authInProgressRef.current = false;
     }
-    console.warn('[auth] unlock failed:', result.error, result.warning);
-    return false;
   }, [refreshSession]);
 
   const lock = useCallback(() => {

@@ -8,6 +8,7 @@ import {
   EyeIcon,
   EyeSlashIcon,
   InfoIcon,
+  KeyIcon,
   ListIcon,
   SuitcaseRollingIcon,
   UserIcon
@@ -28,6 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActivityHighlights } from '@/src/components/ActivityHighlights';
 import { BannersCarousel } from '@/src/components/BannersCarousel';
+import { AuthCodeModal } from '@/src/components/AuthCodeModal';
 import { NextTrips } from '@/src/components/NextTrips';
 import { useAlert } from '@/src/contexts/AlertContext';
 import { useAuth } from '@/src/contexts/AuthContext';
@@ -75,6 +77,10 @@ export default function HomeScreen() {
 
   // Controle do Menu Suspenso
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Modal do codigo de autenticacao (mesmo do settings), tambem acessivel
+  // pelo menu da home.
+  const [authCodeVisible, setAuthCodeVisible] = useState(false);
 
   // Indicador de notificacoes nao lidas no botao de menu. Consultamos os
   // alertas (mesma fonte da tela de notificacoes) a cada foco da home, para
@@ -349,10 +355,22 @@ export default function HomeScreen() {
                 <Text style={styles.menuItemText}>{t('home.notifications')}</Text>
               </TouchableOpacity>
 
+              <View style={styles.menuDivider} />
+
+              {/* Item 3: Authentication code (mesmo modal do settings) */}
+              <TouchableOpacity style={styles.menuItem} onPress={() => { setIsMenuOpen(false); setAuthCodeVisible(true); }}>
+                <View style={styles.menuIconContainer}>
+                  <KeyIcon size={18} color="#0F022D" weight="bold" />
+                </View>
+                <Text style={styles.menuItemText}>{t('settings.authCodeButton')}</Text>
+              </TouchableOpacity>
+
             </Animated.View>
           </TouchableOpacity>
         </Animated.View>
       )}
+
+      <AuthCodeModal visible={authCodeVisible} onClose={() => setAuthCodeVisible(false)} />
 
     </View>
   );

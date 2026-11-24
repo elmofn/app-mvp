@@ -54,7 +54,7 @@ type AuthContextValue = AuthState & {
   unlock: () => Promise<boolean>;
   lock: () => void;
   updateAccountDetails: (patch: AccountPatch) => Promise<void>;
-  refreshAccount: (langOverride?: SupportedLang) => Promise<void>;
+  refreshAccount: (langOverride?: SupportedLang, opts?: { silent?: boolean }) => Promise<void>;
   reloadFAQ: (langOverride?: SupportedLang) => Promise<void>;
   // Registra o aceite (ConfirmRead) de todas as politicas pendentes da conta
   // e marca-as como lidas em memoria/cache. Usado pelo TermsGate. Lanca se o
@@ -93,6 +93,12 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 // via authInProgressRef (ignorado por completo). Um background REAL e demorado
 // continua trancando normalmente, na volta.
 const LOCK_AFTER_BACKGROUND_MS = 2000;
+
+// Throttle do refresh silencioso de conta ao voltar pro foreground: nao refaz
+// o getAccount se o ultimo refresh foi ha menos que isto (evita martelar em
+// troca-troca rapido de app). Um background que retorna depois desse tempo
+// repopula saldo/extrato/banners.
+const ACCOUNT_REFRESH_THROTTLE_MS = 60000;
 
 // Contexto do Perfil de Viajante para o nextTrips, derivado da conta:
 // preferenceHint enviesa a curadoria do Gemini. Vazio se o usuario nao esta na
@@ -142,6 +148,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const authInProgressRef = useRef(false);
   const backgroundedAtRef = useRef(0);
 
+  // Refs estaveis para o AppState listener (criado 1x no mount) chamar
+  // callbacks definidos depois no corpo. lastAccountRefreshAtRef faz o throttle
+  // do refresh silencioso de conta no retorno ao foreground.
+  const refreshAccountRef = useRef<
+    ((langOverride?: SupportedLang, opts?: { silent?: boolean }) => Promise<void>) | null
+  >(null);
+  const refreshSessionRef = useRef<(() => Promise<string | null>) | null>(null);
+  const lastAccountRefreshAtRef = useRef(0);
+
   // Boot: restaura sessao, dispara location e checa hardware biometrico.
   useEffect(() => {
     // Disparo da geolocation eh fire-and-forget - n bloqueia o boot. O
@@ -167,6 +182,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // AppState: ao voltar do background com sessao ativa + biometria, tranca
   // a sessao para forcar nova autenticacao biometrica.
   useEffect(() => {
+    // Repopula a conta em BACKGROUND ao voltar pro foreground (saldo/extrato
+    // podem ter mudado no backend sem o app saber). Silencioso: sem navegacao,
+    // sem loading e sem mexer nos nextTrips/FAQ. Throttle evita martelar o
+    // getAccount; em falha (ex.: token expirado apos horas/dias -> 401) renova
+    // a sessao e retenta uma vez.
+    const maybeSilentRefresh = () => {
+      if (!stateRef.current.token || !stateRef.current.account) return;
+      const now = Date.now();
+      if (now - lastAccountRefreshAtRef.current < ACCOUNT_REFRESH_THROTTLE_MS) return;
+      lastAccountRefreshAtRef.current = now; // marca otimista (evita disparo duplo)
+      void (async () => {
+        const run = refreshAccountRef.current;
+        if (!run) return;
+        try {
+          await run(undefined, { silent: true });
+        } catch (err) {
+          try {
+            const renew = refreshSessionRef.current;
+            const token = renew ? await renew() : null;
+            if (!token) throw err;
+            await run(undefined, { silent: true });
+          } catch (err2) {
+            lastAccountRefreshAtRef.current = 0; // libera nova tentativa no proximo foreground
+            captureHandledError(err2, { scope: 'silentForegroundRefresh' });
+            console.warn('[auth] silent foreground refresh failed:', err2);
+          }
+        }
+      })();
+    };
+
     const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
       // Durante o prompt de biometria a Activity e pausada: ignoramos tudo e
       // zeramos qualquer marca de background, para a volta do prompt nao ser
@@ -186,6 +231,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const since = backgroundedAtRef.current;
         backgroundedAtRef.current = 0;
         if (since === 0) return; // nenhum background real registrado
+        // Voltou de um background REAL: repopula a conta (throttled), sempre -
+        // independe de trancar ou nao (o update e so de estado, no lugar).
+        maybeSilentRefresh();
         if (Date.now() - since < LOCK_AFTER_BACKGROUND_MS) return; // ficou fora pouco tempo
         if (stateRef.current.token && biometricAvailableRef.current) {
           setIsLocked(true);
@@ -412,7 +460,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // o estado local ainda nao propagou para o stateRef nesta mesma tick;
   // passar o idioma-alvo garante que banners/nextTrips/FAQ venham no idioma
   // recem escolhido e que countryId/setups.lang refletam essa escolha.
-  const refreshAccount = useCallback(async (langOverride?: SupportedLang) => {
+  const refreshAccount = useCallback(async (
+    langOverride?: SupportedLang,
+    opts?: { silent?: boolean },
+  ) => {
     const current = stateRef.current;
     if (!current.account || !current.token) return;
     const accountId = current.account.accountDetails.accountId;
@@ -445,6 +496,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ account: next, token: current.token });
     await saveSession(current.token, next);
 
+    // Refresh silencioso (retorno ao foreground): ja repopulou saldo/extrato/
+    // banners acima; NAO mexe em FAQ nem nextTrips, para nao piscar a UI nem
+    // re-rodar a curadoria do Gemini. Os destinos seguem atualizando no login
+    // e no pull-to-refresh.
+    if (opts?.silent) return;
+
     // Junto com o resto do conteudo, repopula a FAQ no mesmo idioma. Resiliente
     // (reloadFAQ trata o proprio erro), entao nao compromete o refresh.
     await reloadFAQ(lang);
@@ -452,6 +509,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // nextTrips em background (no idioma-alvo), com o loading na secao.
     loadNextTrips(next, lang);
   }, [reloadFAQ, loadNextTrips]);
+
+  // O AppState listener (criado 1x no mount) chama estas callbacks via ref;
+  // mantemos as refs apontando para as versoes atuais a cada render.
+  refreshSessionRef.current = refreshSession;
+  refreshAccountRef.current = refreshAccount;
 
   // Aceite dos termos (gate geral): confirma no backend (ConfirmRead) cada
   // politica ainda nao lida e marca todas como readed=true em memoria + cache,

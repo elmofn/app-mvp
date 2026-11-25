@@ -61,7 +61,7 @@ function ymdInDays(days: number): string {
 export default function MarketplaceScreen() {
   const router = useRouter();
   const { t } = useT();
-  const { account } = useAuth();
+  const { account, refreshSession, signOut } = useAuth();
   const { vertical, hotelId, placeId, city } = useLocalSearchParams<{
     vertical?: string;
     hotelId?: string;
@@ -113,11 +113,39 @@ export default function MarketplaceScreen() {
   // ssoTried distingue "ainda nao montou" (gated) de "montou e deu null" (erro).
   const [uri, setUri] = useState<string | null>(null);
   const [ssoTried, setSsoTried] = useState(false);
+  // Fallback do segredo: se ao abrir o marketplace ainda nao temos o
+  // marketplaceSSoSecret (sessao antiga que nao o recebeu via boot/unlock/
+  // login), tentamos UMA vez recupera-lo via re-signin silencioso. Se mesmo
+  // assim nao vier, deslogamos e mandamos pro login (o signIn manual traz o
+  // segredo). recovering mostra o loading; os refs garantem 1 tentativa/1 kick.
+  const [recovering, setRecovering] = useState(false);
+  const recoveryAttemptedRef = useRef(false);
+  const kickedRef = useRef(false);
   useEffect(() => {
-    if (gated || ssoTried) return;
-    setUri(buildPartnerSsoUrl(accountId, returnTo, ssoSecret));
-    setSsoTried(true);
-  }, [gated, ssoTried, accountId, returnTo, ssoSecret]);
+    if (gated || ssoTried || recovering) return;
+    if (ssoSecret) {
+      setUri(buildPartnerSsoUrl(accountId, returnTo, ssoSecret));
+      setSsoTried(true);
+      return;
+    }
+    if (!recoveryAttemptedRef.current) {
+      // 1a vez sem segredo: ultima tentativa via re-signin silencioso.
+      recoveryAttemptedRef.current = true;
+      setRecovering(true);
+      refreshSession().finally(() => setRecovering(false));
+      return;
+    }
+    // Ja tentamos recuperar e voltamos sem segredo: desiste e vai pro login.
+    // signOut antes do replace p/ a tela inicial nao redirecionar de volta pra
+    // home (ela so mostra o login quando nao ha account).
+    if (!kickedRef.current) {
+      kickedRef.current = true;
+      void (async () => {
+        await signOut();
+        router.replace('/');
+      })();
+    }
+  }, [gated, ssoTried, recovering, ssoSecret, accountId, returnTo, refreshSession, signOut, router]);
 
   // Dispensar um modal de verificacao (X) => sai do marketplace (nao pode usar).
   // Como o proprio modal chama onClose TAMBEM no sucesso (antes do onVerified),
@@ -152,9 +180,16 @@ export default function MarketplaceScreen() {
       </View>
 
       {gated || !ssoTried ? (
-        // Corpo vazio: atras dos modais de verificacao (gated) ou no frame em
-        // que a URL SSO ainda esta sendo montada (logo apos liberar o gate).
-        <View style={styles.webviewWrapper} />
+        // Corpo vazio atras dos modais de verificacao (gated) ou no frame em que
+        // a URL SSO ainda esta sendo montada; durante a recuperacao do segredo
+        // (re-signin) mostramos o loading para a espera nao parecer travada.
+        <View style={styles.webviewWrapper}>
+          {recovering ? (
+            <View style={styles.loadingOverlay} pointerEvents="none">
+              <ActivityIndicator size="large" color={colors.brand.primary} />
+            </View>
+          ) : null}
+        </View>
       ) : uri ? (
         <View style={styles.webviewWrapper}>
           <WebView

@@ -174,6 +174,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (available) {
             setIsLocked(true);
           }
+          // Rede de seguranca p/ quem JA estava logado e atualizou o app: se o
+          // cache (versao anterior) nao tem o marketplaceSSoSecret, busca via
+          // re-signin silencioso em background - sem exigir re-login visivel.
+          // Cobre tambem usuarios SEM biometria (que nao passam pelo unlock).
+          // Usuarios de biometria tambem pegam no unlock; aqui e redundante e
+          // inofensivo. Sem credenciais salvas (sessao muito antiga), o
+          // refreshSession retorna null e o segredo so vem num login manual.
+          if (!session.account.marketplaceSSoSecret) {
+            refreshSessionRef.current?.().catch(() => undefined);
+          }
         }
       })
       .finally(() => setIsRestoring(false));
@@ -345,8 +355,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await apiSignIn(creds.login, creds.password, geolocation);
       if (response.success && response.token) {
         const current = stateRef.current;
-        const account = current.account ?? response.accountDetails ?? null;
-        if (!account) return null;
+        const base = current.account ?? response.accountDetails ?? null;
+        if (!base) return null;
+        // Mantem o account atual em memoria (nao perturbar a sessao), MAS adota
+        // o marketplaceSSoSecret mais recente do re-signin. Essencial para quem
+        // ja estava logado e atualizou o app: o cache antigo nao tinha o
+        // segredo e so o re-signin (login/biometria/boot) o traz. Sem isto, o
+        // marketplace nao abriria. Tambem cobre rotacao do segredo no backend.
+        const freshSecret = response.accountDetails?.marketplaceSSoSecret;
+        const account =
+          freshSecret && freshSecret !== base.marketplaceSSoSecret
+            ? { ...base, marketplaceSSoSecret: freshSecret }
+            : base;
         setState({ account, token: response.token });
         await saveSession(response.token, account);
         return response.token;

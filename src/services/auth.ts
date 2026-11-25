@@ -148,6 +148,12 @@ export const SignInAccountDetailsSchema = z.object({
   polices: z.array(SignInPolicySchema),
   banners: z.array(SignInBannerSchema),
   nextTrips: z.array(SignInNextTripSchema),
+  // Segredo de assinatura do Partner SSO do marketplace (marketplaceSSoSecret
+  // no payload de SignIn). Substitui o antigo hardcode do partnerSso.ts. O
+  // signIn normaliza para ca (vem do root do response). Opcional para tolerar
+  // caches antigos e sessoes ainda sem o campo (ate o proximo re-signin) - sem
+  // isto o zod do storage descartaria o segredo ao reler o cache.
+  marketplaceSSoSecret: z.string().optional(),
 });
 
 export type SignInUser = z.infer<typeof SignInUserSchema>;
@@ -170,6 +176,8 @@ export type SignInResponse = {
   // accountDetails antes de retornar, para que o app acesse via account.
   banners?: SignInBanner[];
   nextTrips?: SignInNextTrip[];
+  // Pode vir no root do response; o signIn normaliza para accountDetails.
+  marketplaceSSoSecret?: string;
   result: boolean;
   message: string;
   status: number;
@@ -273,6 +281,28 @@ export async function signIn(
     if (parsed.accountDetails) {
       parsed.accountDetails.banners = parsed.banners ?? [];
       parsed.accountDetails.nextTrips = parsed.nextTrips ?? [];
+      // marketplaceSSoSecret pode chegar no ROOT do response ou ja dentro de
+      // accountDetails; normalizamos para accountDetails. Tolerante a variacoes
+      // de casing do backend (SSo / Sso / SSO).
+      const anyRoot = parsed as Record<string, unknown>;
+      const anyAcc = parsed.accountDetails as unknown as Record<string, unknown>;
+      const secret =
+        anyRoot.marketplaceSSoSecret ??
+        anyAcc.marketplaceSSoSecret ??
+        anyRoot.marketplaceSsoSecret ??
+        anyAcc.marketplaceSsoSecret ??
+        anyRoot.marketplaceSSOSecret ??
+        anyAcc.marketplaceSSOSecret;
+      if (typeof secret === 'string' && secret) {
+        parsed.accountDetails.marketplaceSSoSecret = secret;
+      }
+      // Log de presenca (NAO loga o valor - e segredo).
+      if (__DEV__) {
+        console.log(
+          '[signIn] marketplaceSSoSecret presente?',
+          !!parsed.accountDetails.marketplaceSSoSecret,
+        );
+      }
     }
     return parsed;
   } catch (err) {

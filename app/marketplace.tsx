@@ -78,6 +78,10 @@ export default function MarketplaceScreen() {
     vertical && vertical in MARKETPLACE ? (vertical as Vertical) : 'hotels';
   const entry = MARKETPLACE[key];
   const accountId = account?.accountDetails.accountId ?? '';
+  // Segredo de assinatura do Partner SSO, vindo do payload de SignIn (nao mais
+  // hardcode). Ausente em sessoes antigas ate o proximo re-signin (login/
+  // biometria/boot) - ai buildPartnerSsoUrl retorna null e cai no estado de erro.
+  const ssoSecret = account?.marketplaceSSoSecret ?? '';
 
   // Com hotelId, o SSO cai direto na pagina do hotel (return_to=/hotel/{id});
   // com placeId (deep-link dos cards "Next Trip Ideas"), cai na busca da cidade.
@@ -111,9 +115,9 @@ export default function MarketplaceScreen() {
   const [ssoTried, setSsoTried] = useState(false);
   useEffect(() => {
     if (gated || ssoTried) return;
-    setUri(buildPartnerSsoUrl(accountId, returnTo));
+    setUri(buildPartnerSsoUrl(accountId, returnTo, ssoSecret));
     setSsoTried(true);
-  }, [gated, ssoTried, accountId, returnTo]);
+  }, [gated, ssoTried, accountId, returnTo, ssoSecret]);
 
   // Dispensar um modal de verificacao (X) => sai do marketplace (nao pode usar).
   // Como o proprio modal chama onClose TAMBEM no sucesso (antes do onVerified),

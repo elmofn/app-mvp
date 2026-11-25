@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
     right: 20,
     backgroundColor: 'rgba(255, 255, 255, 1)', // Fundo alinhado aos action cards
     borderRadius: 12, // Um pouco mais arredondado para casar com os cards
-    width: 200,
+    width: 230,
     paddingVertical: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
@@ -616,6 +616,7 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF',
   },
   menuItemText: {
+    flex: 1,
     fontSize: 14,
     fontFamily: fonts.bold,
     color: colors.text.medium,

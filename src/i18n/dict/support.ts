@@ -21,6 +21,7 @@ export const support: Record<SupportedLang, Record<string, any>> = {
     // Contact cards
     whatsappTitle: 'Whatsapp',
     whatsappSubtitle: 'Contact Our Support Team',
+    whatsappOpening: 'Opening WhatsApp…',
     videoCallTitle: 'Video Call',
     videoCallSubtitle: 'Lorem Ipsum, Lorem Ipsum.',
     travelAssistantTitle: 'Travel Assistant',
@@ -64,6 +65,7 @@ export const support: Record<SupportedLang, Record<string, any>> = {
     // Contact cards
     whatsappTitle: 'Whatsapp',
     whatsappSubtitle: 'Fale com nosso atendimento',
+    whatsappOpening: 'Abrindo WhatsApp…',
     videoCallTitle: 'Chamada de Vídeo',
     videoCallSubtitle: 'Lorem Ipsum, Lorem Ipsum.',
     travelAssistantTitle: 'Assistente de Viagem',
@@ -107,6 +109,7 @@ export const support: Record<SupportedLang, Record<string, any>> = {
     // Contact cards
     whatsappTitle: 'Whatsapp',
     whatsappSubtitle: 'Habla con nuestro equipo de atención',
+    whatsappOpening: 'Abriendo WhatsApp…',
     videoCallTitle: 'Videollamada',
     videoCallSubtitle: 'Lorem Ipsum, Lorem Ipsum.',
     travelAssistantTitle: 'Asistente de Viaje',

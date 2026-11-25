@@ -12,8 +12,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AboutAppModal } from '@/src/components/AboutAppModal';
 import { FAQSection } from '@/src/components/FAQSection';
+import { WhatsAppOpeningModal } from '@/src/components/WhatsAppOpeningModal';
+import { useAuth } from '@/src/contexts/AuthContext';
 import { useT } from '@/src/i18n';
 import type { SupportedLang } from '@/src/services/locale';
+import { METRIC_EVENTS, trackPixel } from '@/src/services/metrics';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
@@ -56,11 +59,38 @@ export function SupportContent({
   const router = useRouter();
   const { t } = useT();
   const [aboutVisible, setAboutVisible] = useState(false);
+  const [openingWhatsApp, setOpeningWhatsApp] = useState(false);
+  const { account } = useAuth();
+  const accountId = account?.account?.id ?? '';
 
   const openExternal = (url: string) => {
     Linking.openURL(url).catch((err) => {
       console.warn('[support] could not open url:', url, err);
     });
+  };
+
+  // Abre o WhatsApp do suporte. LOGADO: mostra o overlay "Abrindo WhatsApp" por
+  // ~2s enquanto dispara o pixel de metrica (so logado - precisa do accountId)
+  // e entao abre o link. A espera da tempo do pixel completar antes do app ir
+  // pro background. DESLOGADO (tela de ajuda): abre direto, sem overlay nem
+  // tracking. O overlay cobre a tela, entao nao ha como clicar duas vezes.
+  const handleOpenWhatsApp = () => {
+    const url = WHATSAPP_LINKS[lang];
+    if (!accountId) {
+      openExternal(url);
+      return;
+    }
+    if (openingWhatsApp) return;
+    setOpeningWhatsApp(true);
+    void trackPixel({
+      eventId: METRIC_EVENTS.WHATSAPP_SUPPORT_CLICK,
+      accountId,
+      language: lang,
+    });
+    setTimeout(() => {
+      setOpeningWhatsApp(false);
+      openExternal(url);
+    }, 2000);
   };
 
   return (
@@ -102,7 +132,7 @@ export function SupportContent({
           <TouchableOpacity
             style={styles.contactCard}
             activeOpacity={0.85}
-            onPress={() => openExternal(WHATSAPP_LINKS[lang])}
+            onPress={handleOpenWhatsApp}
           >
             <View style={styles.contactCardBody}>
               <Text style={[styles.contactCardTitle, { color: '#85EDD3' }]}>
@@ -170,6 +200,7 @@ export function SupportContent({
     </ScrollView>
 
     <AboutAppModal visible={aboutVisible} onClose={() => setAboutVisible(false)} />
+    <WhatsAppOpeningModal visible={openingWhatsApp} />
     </>
   );
 }

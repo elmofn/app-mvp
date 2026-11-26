@@ -162,9 +162,9 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     // Authentication code modal (rotating navigation code)
     authCodeEyebrow: 'AUTENTICAÇÃO',
     authCodeTitleBase: 'Seu',
-    authCodeTitleAccent: 'código',
+    authCodeTitleAccent: 'Código',
     authCodeDescription:
-      'Use este código para acessar o marketplace web com segurança e para resgatar em estabelecimentos parceiros da TravelBACK. Ele é renovado automaticamente ao expirar.',
+      'Use este código para acessar o TravelShop Web ou resgatar seus créditos em estabelecimentos parceiros.',
     authCodeExpiresIn: 'Expira em {time}',
     authCodeLoading: 'Gerando código…',
     authCodeError: 'Não foi possível gerar o código.',

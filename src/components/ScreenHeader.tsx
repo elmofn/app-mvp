@@ -9,9 +9,13 @@ import { fonts } from '@/src/theme/typography';
 interface ScreenHeaderProps {
   title: string;
   dark?: boolean;
+  // Override do "voltar". Sem isso, faz router.back() (comportamento padrao).
+  // Fluxos com etapas internas (signup/activate) passam um handler que recua
+  // uma etapa em vez de sair da tela inteira.
+  onBack?: () => void;
 }
 
-export function ScreenHeader({ title, dark = true }: ScreenHeaderProps) {
+export function ScreenHeader({ title, dark = true, onBack }: ScreenHeaderProps) {
   const router = useRouter();
 
   // Define as cores com base no tema (claro ou escuro)
@@ -20,9 +24,9 @@ export function ScreenHeader({ title, dark = true }: ScreenHeaderProps) {
 
   return (
     <View style={styles.header}>
-      <TouchableOpacity 
-        style={styles.backButton} 
-        onPress={() => router.back()}
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={onBack ?? (() => router.back())}
         activeOpacity={0.7}
       >
         <ArrowLeftIcon size={29} color={iconColor} weight="bold" />

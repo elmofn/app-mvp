@@ -1,3 +1,4 @@
+import { useT } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 import { Tabs } from 'expo-router';
@@ -7,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const { t } = useT();
 
   return (
     <Tabs
@@ -21,7 +23,7 @@ export default function TabLayout() {
           bottom: 0,
           backgroundColor: colors.background.light,
           borderTopColor: '#E5E5E5',
-          height: 42 + insets.bottom,
+          height: 52 + insets.bottom,
           paddingBottom: 10 + insets.bottom,
           paddingTop: 0,
           borderTopLeftRadius: 16,
@@ -40,7 +42,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Home',
+          title: t('home.tabHome'),
           tabBarIcon: ({ color, focused }) => (
             <HouseIcon size={26} color={color} weight={focused ? 'fill' : 'regular'} />
           ),
@@ -50,7 +52,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="travelshop"
         options={{
-          title: 'Travelshop',
+          title: t('home.tabTravelshop'),
           tabBarIcon: ({ color, focused }) => (
             <SuitcaseRollingIcon size={26} color={color} weight={focused ? 'fill' : 'regular'} />
           ),
@@ -60,7 +62,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="statement"
         options={{
-          title: 'Extrato',
+          title: t('home.tabStatement'),
           tabBarIcon: ({ color, focused }) => (
             <CoinsIcon size={26} color={color} weight={focused ? 'fill' : 'regular'} />
           ),
@@ -70,7 +72,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="support"
         options={{
-          title: 'Ajuda',
+          title: t('home.tabSupport'),
           tabBarIcon: ({ color, focused }) => (
             <QuestionMarkIcon size={26} color={color} weight={focused ? 'fill' : 'regular'} />
           ),

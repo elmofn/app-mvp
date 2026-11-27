@@ -33,7 +33,7 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     authCodeTitleBase: 'Your',
     authCodeTitleAccent: 'code',
     authCodeDescription:
-      'Use this code to securely access the web marketplace and to redeem at TravelBACK partner locations. It refreshes automatically when it expires.',
+      'Use this code to access TravelShop Web or redeem your credits at partner locations.',
     authCodeExpiresIn: 'Expires in {time}',
     authCodeLoading: 'Generating code…',
     authCodeError: "Couldn't generate the code.",
@@ -295,7 +295,7 @@ export const settings: Record<SupportedLang, Record<string, any>> = {
     authCodeTitleBase: 'Tu',
     authCodeTitleAccent: 'código',
     authCodeDescription:
-      'Usa este código para acceder al marketplace web de forma segura y para canjear en establecimientos asociados de TravelBACK. Se renueva automáticamente al expirar.',
+      'Usa este código para acceder a TravelShop Web o canjear tus créditos en establecimientos asociados.',
     authCodeExpiresIn: 'Expira en {time}',
     authCodeLoading: 'Generando código…',
     authCodeError: 'No se pudo generar el código.',
